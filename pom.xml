@@ -211,6 +211,8 @@ flexible messaging model and an intuitive client API.</description>
     <guava.version>25.1-jre</guava.version>
     <jcip.version>1.0</jcip.version>
     <prometheus-jmx.version>0.12.0</prometheus-jmx.version>
+    <httpcomponents.version>4.5.5</httpcomponents.version>
+    <asynchttpclient.version>2.12.1</asynchttpclient.version>
 
     <!-- test dependencies -->
     <cassandra.version>3.6.0</cassandra.version>
@@ -239,7 +241,7 @@ flexible messaging model and an intuitive client API.</description>
       <dependency>
         <groupId>org.asynchttpclient</groupId>
         <artifactId>async-http-client</artifactId>
-        <version>2.7.0</version>
+        <version>${asynchttpclient.version}</version>
         <exclusions>
           <exclusion>
             <groupId>io.netty</groupId>
@@ -251,7 +253,7 @@ flexible messaging model and an intuitive client API.</description>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
-        <version>4.5.5</version>
+        <version>${httpcomponents.version}</version>
       </dependency>
 
       <dependency>
