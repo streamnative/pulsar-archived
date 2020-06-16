@@ -22,13 +22,13 @@ import com.google.common.annotations.Beta;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.service.ServerCnx;
 import org.apache.pulsar.common.api.proto.PulsarApi.BaseCommand;
+import org.apache.pulsar.common.intercept.InterceptException;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * A plugin interface that allows you to intercept the
@@ -43,7 +43,7 @@ public interface BrokerInterceptor extends AutoCloseable {
     /**
      * Called by the broker while new command incoming.
      */
-    void onPulsarCommand(BaseCommand command, ServerCnx cnx, Map<String, String> properties) throws Exception;
+    void onPulsarCommand(BaseCommand command, ServerCnx cnx) throws InterceptException;
 
     /**
      * Called by the web service while new request incoming.
@@ -65,8 +65,8 @@ public interface BrokerInterceptor extends AutoCloseable {
     class BrokerInterceptorDisabled implements BrokerInterceptor {
 
         @Override
-        public void onPulsarCommand(BaseCommand command, ServerCnx cnx, Map<String, String> properties) throws Exception {
-            //No-op
+        public void onPulsarCommand(BaseCommand command, ServerCnx cnx) throws InterceptException {
+            // no-op
         }
 
         @Override
@@ -76,12 +76,12 @@ public interface BrokerInterceptor extends AutoCloseable {
 
         @Override
         public void initialize(ServiceConfiguration conf) throws Exception {
-            //No-op
+            // no-op
         }
 
         @Override
         public void close() {
-            //No-op
+            // no-op
         }
     }
 

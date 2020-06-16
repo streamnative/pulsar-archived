@@ -79,6 +79,7 @@ import org.apache.pulsar.client.impl.ClientCnx;
 import org.apache.pulsar.client.impl.MessageIdImpl;
 import org.apache.pulsar.common.api.AuthData;
 import org.apache.pulsar.common.api.proto.PulsarApi.CommandNewTxn;
+import org.apache.pulsar.common.intercept.InterceptException;
 import org.apache.pulsar.common.policies.data.TopicOperation;
 import org.apache.pulsar.common.protocol.ByteBufPair;
 import org.apache.pulsar.common.protocol.CommandUtils;
@@ -1731,14 +1732,14 @@ public class ServerCnx extends PulsarHandler {
         return state == State.Connected;
     }
 
-    ChannelHandlerContext ctx() {
+    public ChannelHandlerContext ctx() {
         return ctx;
     }
 
     @Override
-    protected void onCommand(PulsarApi.BaseCommand command) throws Exception {
+    protected void interceptCommand(PulsarApi.BaseCommand command) throws InterceptException {
         if (getBrokerService().getInterceptor() != null) {
-            getBrokerService().getInterceptor().onPulsarCommand(command, this, null);
+            getBrokerService().getInterceptor().onPulsarCommand(command, this);
         }
     }
 
@@ -1933,7 +1934,7 @@ public class ServerCnx extends PulsarHandler {
         PulsarApi.BaseCommand command = Commands.newMessageCommand(consumerId, messageId, redeliveryCount, ackSet);
         ByteBufPair res = Commands.serializeCommandMessageWithSize(command, metadataAndPayload);
         try {
-            getBrokerService().getInterceptor().onPulsarCommand(command, this, Collections.singletonMap("topic", topic));
+            getBrokerService().getInterceptor().onPulsarCommand(command, this);
         } catch (Exception e) {
             log.error("Exception occur when intercept messages.", e);
         } finally {
@@ -2018,5 +2019,13 @@ public class ServerCnx extends PulsarHandler {
 
     public String getAuthMethod() {
         return authMethod;
+    }
+
+    public ConcurrentLongHashMap<CompletableFuture<Consumer>> getConsumers() {
+        return consumers;
+    }
+
+    public ConcurrentLongHashMap<CompletableFuture<Producer>> getProducers() {
+        return producers;
     }
 }

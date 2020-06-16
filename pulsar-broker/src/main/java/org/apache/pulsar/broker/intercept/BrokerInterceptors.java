@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.service.ServerCnx;
 import org.apache.pulsar.common.api.proto.PulsarApi.BaseCommand;
+import org.apache.pulsar.common.intercept.InterceptException;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -85,9 +86,9 @@ public class BrokerInterceptors implements BrokerInterceptor {
     }
 
     @Override
-    public void onPulsarCommand(BaseCommand command, ServerCnx cnx, Map<String, String> properties) throws Exception {
+    public void onPulsarCommand(BaseCommand command, ServerCnx cnx) throws InterceptException {
         for (BrokerInterceptorWithClassLoader value : interceptors.values()) {
-            value.onPulsarCommand(command, cnx, properties);
+            value.onPulsarCommand(command, cnx);
         }
     }
 
