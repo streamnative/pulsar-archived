@@ -20,6 +20,7 @@ package org.apache.pulsar.broker.intercept;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.service.ServerCnx;
 import org.apache.pulsar.common.api.proto.PulsarApi.BaseCommand;
@@ -100,9 +101,9 @@ public class BrokerInterceptors implements BrokerInterceptor {
     }
 
     @Override
-    public void initialize(ServiceConfiguration conf) throws Exception {
+    public void initialize(PulsarService pulsarService) throws Exception {
         for (BrokerInterceptorWithClassLoader v : interceptors.values()) {
-            v.initialize(conf);
+            v.initialize(pulsarService);
         }
     }
 

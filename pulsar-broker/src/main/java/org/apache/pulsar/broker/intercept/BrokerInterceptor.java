@@ -19,7 +19,7 @@
 package org.apache.pulsar.broker.intercept;
 
 import com.google.common.annotations.Beta;
-import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.service.ServerCnx;
 import org.apache.pulsar.common.api.proto.PulsarApi.BaseCommand;
 import org.apache.pulsar.common.intercept.InterceptException;
@@ -55,7 +55,7 @@ public interface BrokerInterceptor extends AutoCloseable {
      *
      * @throws Exception when fail to initialize the broker interceptor.
      */
-    void initialize(ServiceConfiguration conf) throws Exception;
+    void initialize(PulsarService pulsarService) throws Exception;
 
     BrokerInterceptor DISABLED = new BrokerInterceptorDisabled();
 
@@ -75,7 +75,7 @@ public interface BrokerInterceptor extends AutoCloseable {
         }
 
         @Override
-        public void initialize(ServiceConfiguration conf) throws Exception {
+        public void initialize(PulsarService pulsarService) throws Exception {
             // no-op
         }
 

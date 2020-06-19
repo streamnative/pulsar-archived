@@ -21,7 +21,7 @@ package org.apache.pulsar.broker.intercept;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.service.ServerCnx;
 import org.apache.pulsar.common.api.proto.PulsarApi.BaseCommand;
 import org.apache.pulsar.common.intercept.InterceptException;
@@ -55,8 +55,8 @@ public class BrokerInterceptorWithClassLoader implements BrokerInterceptor {
     }
 
     @Override
-    public void initialize(ServiceConfiguration conf) throws Exception {
-        this.interceptor.initialize(conf);
+    public void initialize(PulsarService pulsarService) throws Exception {
+        this.interceptor.initialize(pulsarService);
     }
 
     @Override
