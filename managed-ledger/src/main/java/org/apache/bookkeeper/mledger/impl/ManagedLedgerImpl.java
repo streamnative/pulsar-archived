@@ -1176,9 +1176,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
     @Override
     public synchronized void createComplete(int rc, final LedgerHandle lh, Object ctx) {
-        if (log.isDebugEnabled()) {
-            log.debug("[{}] createComplete rc={} ledger={}", name, rc, lh != null ? lh.getId() : -1);
-        }
+        log.info("[{}] createComplete rc={} ledger={}", name, rc, lh != null ? lh.getId() : -1);
 
         if (checkAndCompleteLedgerOpTask(rc, lh, ctx)) {
             return;
@@ -1367,9 +1365,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
         if (!pendingAddEntries.isEmpty()) {
             // Need to create a new ledger to write pending entries
-            if (log.isDebugEnabled()) {
-                log.debug("[{}] Creating a new ledger", name);
-            }
+            log.info("[{}] Creating a new ledger", name);
             STATE_UPDATER.set(this, State.CreatingLedger);
             this.lastLedgerCreationInitiationTimestamp = System.currentTimeMillis();
             mbean.startDataLedgerCreateOp();
@@ -3085,14 +3081,16 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         finalMetadata.putAll(ledgerMetadata);
         finalMetadata.putAll(metadata);
         log.info("[{}] Creating ledger, metadata: {} - metadata ops timeout : {} seconds",
-            finalMetadata, config.getMetadataOperationsTimeoutSeconds());
+            name, finalMetadata, config.getMetadataOperationsTimeoutSeconds());
         bookKeeper.asyncCreateLedger(config.getEnsembleSize(), config.getWriteQuorumSize(), config.getAckQuorumSize(),
                 digestType, config.getPassword(), cb, ledgerCreated, finalMetadata);
         scheduledExecutor.schedule(() -> {
             if (!ledgerCreated.get()) {
                 log.info("[{}] Timeout creating ledger", name);
-                cb.createComplete(BKException.Code.TimeoutException, null, ledgerCreated);
+            } else {
+                log.info("[{}] Ledger already created when timeout task is triggered", name);
             }
+            cb.createComplete(BKException.Code.TimeoutException, null, ledgerCreated);
         }, config.getMetadataOperationsTimeoutSeconds(), TimeUnit.SECONDS);
     }
 
