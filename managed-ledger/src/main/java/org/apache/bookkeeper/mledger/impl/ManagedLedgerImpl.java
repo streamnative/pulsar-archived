@@ -583,8 +583,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             if (State.CreatingLedger == state) {
                 long elapsedMs = System.currentTimeMillis() - this.lastLedgerCreationInitiationTimestamp;
                 if (elapsedMs > TimeUnit.SECONDS.toMillis(2 * config.getMetadataOperationsTimeoutSeconds())) {
-                    log.info("[{}] Ledger creation was initiated {} ms before but it never completed" +
-                        " and creation timeout task doesn't kick in as well. Force to fail the create ledger operation ...");
+                    log.info("[{}] Ledger creation was initiated {} ms ago but it never completed" +
+                        " and creation timeout task didn't kick in as well. Force to fail the create ledger operation ...");
                     this.createComplete(Code.TimeoutException, null, null);
                 }
             }
@@ -592,8 +592,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             // No ledger and no pending operations. Create a new ledger
             log.info("[{}] Creating a new ledger", name);
             if (STATE_UPDATER.compareAndSet(this, State.ClosedLedger, State.CreatingLedger)) {
-                log.info("[{}] The managed ledger state is moved from {} to {}",
-                    name, State.ClosedLedger, State.CreatingLedger);
                 this.lastLedgerCreationInitiationTimestamp = System.currentTimeMillis();
                 mbean.startDataLedgerCreateOp();
                 asyncCreateLedger(bookKeeper, config, digestType, this, Collections.emptyMap());
@@ -1184,11 +1182,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
     @Override
     public synchronized void createComplete(int rc, final LedgerHandle lh, Object ctx) {
-        log.info("[{}] createComplete rc={} ledger={}", name, rc, lh != null ? lh.getId() : -1);
+        if (log.isDebugEnabled()) {
+            log.debug("[{}] createComplete rc={} ledger={}", name, rc, lh != null ? lh.getId() : -1);
+        }
 
         if (checkAndCompleteLedgerOpTask(rc, lh, ctx)) {
-            log.info("[{}] ledger creation is already completed: rc = {}, ledger = {}",
-                name, rc, lh != null ? lh.getId() : -1);
             return;
         }
 
@@ -3103,9 +3101,13 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
         scheduledExecutor.schedule(() -> {
             if (!ledgerCreated.get()) {
-                log.info("[{}] Timeout creating ledger", name);
+                if (log.isDebugEnabled()) {
+                    log.debug("[{}] Timeout creating ledger", name);
+                }
             } else {
-                log.info("[{}] Ledger already created when timeout task is triggered", name);
+                if (log.isDebugEnabled()) {
+                    log.debug("[{}] Ledger already created when timeout task is triggered", name);
+                }
             }
             cb.createComplete(BKException.Code.TimeoutException, null, ledgerCreated);
         }, config.getMetadataOperationsTimeoutSeconds(), TimeUnit.SECONDS);
