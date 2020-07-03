@@ -329,13 +329,14 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
                 }
             } else {
                 PendingInitializeManagedLedger pendingLedger = pendingInitializeLedgers.get(name);
-                if (null != pendingLedger &&
-                    (System.currentTimeMillis() - pendingLedger.createTimeMs) >
-                        TimeUnit.SECONDS.toMillis(config.getMetadataOperationsTimeoutSeconds())) {
-                    log.warn("[{}] Managed ledger has been pending in initialize state more than {} milliseconds,"
-                        + " remove it from cache to retry ...", name);
-                    pendingInitializeLedgers.remove(name, pendingLedger);
-                    ledgers.remove(name, existingFuture);
+                if (null != pendingLedger) {
+                    long pendingMs = System.currentTimeMillis() - pendingLedger.createTimeMs;
+                    if (pendingMs > TimeUnit.SECONDS.toMillis(config.getMetadataOperationsTimeoutSeconds())) {
+                        log.warn("[{}] Managed ledger has been pending in initialize state more than {} milliseconds,"
+                            + " remove it from cache to retry ...", name, pendingMs);
+                        ledgers.remove(name, existingFuture);
+                        pendingInitializeLedgers.remove(name, pendingLedger);
+                    }
                 }
 
             }
@@ -351,18 +352,24 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
                                     config.getBookKeeperEnsemblePlacementPolicyProperties())),
                     store, config, scheduledExecutor,
                     orderedExecutor, name);
-            pendingInitializeLedgers.put(name, new PendingInitializeManagedLedger(newledger));
+            PendingInitializeManagedLedger pendingLedger = new PendingInitializeManagedLedger(newledger);
+            pendingInitializeLedgers.put(name, pendingLedger);
             newledger.initialize(new ManagedLedgerInitializeLedgerCallback() {
                 @Override
                 public void initializeComplete() {
-                    pendingInitializeLedgers.remove(name);
+                    log.info("[{}] Successfully initialize managed ledger", name);
+                    pendingInitializeLedgers.remove(name, pendingLedger);
                     future.complete(newledger);
                 }
 
                 @Override
                 public void initializeFailed(ManagedLedgerException e) {
-                    PendingInitializeManagedLedger pendingLedger = pendingInitializeLedgers.remove(name);
-                    if (null != pendingLedger) {
+                    log.error("[{}] Failed to initialize managed ledger: {}", name, e.getMessage());
+
+                    // Clean the map if initialization fails
+                    ledgers.remove(name, future);
+
+                    if (pendingInitializeLedgers.remove(name, pendingLedger)) {
                         pendingLedger.ledger.asyncClose(new CloseCallback() {
                             @Override
                             public void closeComplete(Object ctx) {
@@ -375,8 +382,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
                             }
                         }, null);
                     }
-                    // Clean the map if initialization fails
-                    ledgers.remove(name, future);
+
                     future.completeExceptionally(e);
                 }
             }, null);
