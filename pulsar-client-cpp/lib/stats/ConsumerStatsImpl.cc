@@ -48,6 +48,7 @@ ConsumerStatsImpl::ConsumerStatsImpl(const ConsumerStatsImpl& stats)
       statsIntervalInSeconds_(stats.statsIntervalInSeconds_) {}
 
 void ConsumerStatsImpl::flushAndReset(const boost::system::error_code& ec) {
+    LOG_INFO("Start flush and reset consumer stats ... " << ec);
     if (ec) {
         LOG_DEBUG("Ignoring timer cancelled event, code[" << ec << "]");
         return;
@@ -63,6 +64,7 @@ void ConsumerStatsImpl::flushAndReset(const boost::system::error_code& ec) {
     timer_->expires_from_now(boost::posix_time::seconds(statsIntervalInSeconds_));
     timer_->async_wait(std::bind(&pulsar::ConsumerStatsImpl::flushAndReset, this, std::placeholders::_1));
     LOG_INFO(tmp);
+    LOG_INFO("End flush and reset consumer stats ...");
 }
 
 ConsumerStatsImpl::~ConsumerStatsImpl() {

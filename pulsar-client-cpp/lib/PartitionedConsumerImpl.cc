@@ -566,8 +566,11 @@ void PartitionedConsumerImpl::seekAsync(uint64_t timestamp, ResultCallback callb
 
 void PartitionedConsumerImpl::runPartitionUpdateTask() {
     partitionsUpdateTimer_->expires_from_now(partitionsUpdateInterval_);
-    partitionsUpdateTimer_->async_wait(
-        std::bind(&PartitionedConsumerImpl::getPartitionMetadata, shared_from_this()));
+    partitionsUpdateTimer_->async_wait([this](const boost::system::error_code& ec) -> void {
+        LOG_INFO("Start checking partitions update ...");
+        this->getPartitionMetadata();
+        LOG_INFO("End checking partitions update ...");
+    });
 }
 
 void PartitionedConsumerImpl::getPartitionMetadata() {

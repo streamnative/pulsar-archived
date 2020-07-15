@@ -40,8 +40,11 @@ const std::regex PatternMultiTopicsConsumerImpl::getPattern() { return pattern_;
 void PatternMultiTopicsConsumerImpl::resetAutoDiscoveryTimer() {
     autoDiscoveryRunning_ = false;
     autoDiscoveryTimer_->expires_from_now(seconds(conf_.getPatternAutoDiscoveryPeriod()));
-    autoDiscoveryTimer_->async_wait(
-        std::bind(&PatternMultiTopicsConsumerImpl::autoDiscoveryTimerTask, this, std::placeholders::_1));
+    autoDiscoveryTimer_->async_wait([&](const boost::system::error_code& ec) -> void {
+        LOG_INFO("Start discover topics ...");
+        this->autoDiscoveryTimerTask(ec);
+        LOG_INFO("End discover topics ...");
+    });
 }
 
 void PatternMultiTopicsConsumerImpl::autoDiscoveryTimerTask(const boost::system::error_code& err) {

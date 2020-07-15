@@ -51,6 +51,7 @@ void NegativeAcksTracker::scheduleTimer() {
 }
 
 void NegativeAcksTracker::handleTimer(const boost::system::error_code &ec) {
+    LOG_INFO("Start redeliver messages: " << ec)
     if (ec) {
         // Ignore cancelled events
         return;
@@ -80,6 +81,7 @@ void NegativeAcksTracker::handleTimer(const boost::system::error_code &ec) {
     if (!messagesToRedeliver.empty()) {
         consumer_.redeliverMessages(messagesToRedeliver);
     }
+    LOG_INFO("End redeliver messages: " << ec)
     scheduleTimer();
 }
 

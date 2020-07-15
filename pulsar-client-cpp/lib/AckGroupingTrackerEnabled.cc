@@ -144,8 +144,10 @@ void AckGroupingTrackerEnabled::scheduleTimer() {
     this->timer_ = this->executor_->createDeadlineTimer();
     this->timer_->expires_from_now(boost::posix_time::milliseconds(std::max(1L, this->ackGroupingTimeMs_)));
     this->timer_->async_wait([this](const boost::system::error_code& ec) -> void {
+        LOG_INFO("Start flushing acknowledges ...");
         if (!ec) {
             this->flush();
+            LOG_INFO("End flushing acknowledges ...");
             this->scheduleTimer();
         }
     });

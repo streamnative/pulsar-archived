@@ -328,8 +328,11 @@ void PartitionedProducerImpl::flushAsync(FlushCallback callback) {
 
 void PartitionedProducerImpl::runPartitionUpdateTask() {
     partitionsUpdateTimer_->expires_from_now(partitionsUpdateInterval_);
-    partitionsUpdateTimer_->async_wait(
-        std::bind(&PartitionedProducerImpl::getPartitionMetadata, shared_from_this()));
+    partitionsUpdateTimer_->async_wait([this](const boost::system::error_code& ec) -> void {
+        LOG_INFO("Start checking partitions update ...");
+        this->getPartitionMetadata();
+        LOG_INFO("End checking partitions update ...");
+    });
 }
 
 void PartitionedProducerImpl::getPartitionMetadata() {

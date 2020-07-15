@@ -114,6 +114,7 @@ int64_t ProducerImpl::getLastSequenceId() const { return lastSequenceIdPublished
 const std::string& ProducerImpl::getSchemaVersion() const { return schemaVersion_; }
 
 void ProducerImpl::refreshEncryptionKey(const boost::system::error_code& ec) {
+    LOG_INFO(producerId_ << "Start refresh encryption key ... " << ec);
     if (ec) {
         LOG_DEBUG("Ignoring timer cancelled event, code[" << ec << "]");
         return;
@@ -124,6 +125,7 @@ void ProducerImpl::refreshEncryptionKey(const boost::system::error_code& ec) {
     dataKeyGenTImer_->expires_from_now(boost::posix_time::seconds(dataKeyGenIntervalSec_));
     dataKeyGenTImer_->async_wait(
         std::bind(&pulsar::ProducerImpl::refreshEncryptionKey, shared_from_this(), std::placeholders::_1));
+    LOG_INFO(producerId_ << "End refresh encryption key ... " << ec);
 }
 
 void ProducerImpl::connectionOpened(const ClientConnectionPtr& cnx) {
@@ -562,6 +564,7 @@ Future<Result, ProducerImplBaseWeakPtr> ProducerImpl::getProducerCreatedFuture()
 uint64_t ProducerImpl::getProducerId() const { return producerId_; }
 
 void ProducerImpl::handleSendTimeout(const boost::system::error_code& err) {
+    LOG_INFO(producerId_ << "Start handle send timeout ... " << err);
     Lock lock(mutex_);
     if (state_ != Ready) {
         return;
@@ -605,6 +608,7 @@ void ProducerImpl::handleSendTimeout(const boost::system::error_code& err) {
     if (pendingCallbacks) {
         pendingCallbacks->complete(ResultTimeout);
     }
+    LOG_INFO(producerId_ << "End handle send timeout ... " << err);
 }
 
 bool ProducerImpl::removeCorruptMessage(uint64_t sequenceId) {

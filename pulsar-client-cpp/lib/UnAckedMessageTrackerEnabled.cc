@@ -33,7 +33,9 @@ void UnAckedMessageTrackerEnabled::timeoutHandler() {
         if (ec) {
             LOG_DEBUG("Ignoring timer cancelled event, code[" << ec << "]");
         } else {
+            LOG_INFO("Start timeout the unacked messages ...");
             timeoutHandler();
+            LOG_INFO("End timeout the unacked messages ...");
         }
     });
 }

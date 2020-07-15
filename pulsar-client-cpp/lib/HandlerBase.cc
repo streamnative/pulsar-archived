@@ -136,11 +136,14 @@ void HandlerBase::scheduleReconnection(HandlerBasePtr handler) {
 }
 
 void HandlerBase::handleTimeout(const boost::system::error_code& ec, HandlerBasePtr handler) {
+    LOG_INFO(handler->getName() << "Handle reconnection timeout ...");
     if (ec) {
         LOG_DEBUG(handler->getName() << "Ignoring timer cancelled event, code[" << ec << "]");
         return;
     } else {
+        LOG_INFO(handler->getName() << "Start grab cnx for reconnection ...");
         handler->grabCnx();
+        LOG_INFO(handler->getName() << "End grab cnx for reconnection ...");
     }
 }
 

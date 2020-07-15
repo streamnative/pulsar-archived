@@ -98,8 +98,11 @@ void BatchMessageContainer::startTimer() {
     const unsigned long& publishDelayInMs = producer_.conf_.getBatchingMaxPublishDelayMs();
     LOG_DEBUG(*this << " Timer started with expiry after " << publishDelayInMs);
     timer_->expires_from_now(boost::posix_time::milliseconds(publishDelayInMs));
-    timer_->async_wait(
-        std::bind(&pulsar::ProducerImpl::batchMessageTimeoutHandler, &producer_, std::placeholders::_1));
+    timer_->async_wait([&](const boost::system::error_code& ec) -> void {
+        LOG_INFO("Start expire the batch batch ...");
+        producer_.batchMessageTimeoutHandler(ec);
+        LOG_INFO("End expire the batch batch ...");
+    });
 }
 
 bool BatchMessageContainer::sendMessage(FlushCallback flushCallback) {
