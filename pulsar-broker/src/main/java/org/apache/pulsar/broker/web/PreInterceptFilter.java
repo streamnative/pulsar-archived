@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.web;
 
 import org.apache.pulsar.broker.intercept.BrokerInterceptor;
+import org.apache.pulsar.common.intercept.InterceptException;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -26,6 +27,7 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public class PreInterceptFilter implements Filter {
@@ -43,7 +45,12 @@ public class PreInterceptFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        interceptor.onWebserviceRequest(servletRequest, servletResponse, filterChain);
+        try {
+            interceptor.onWebserviceRequest(servletRequest);
+            filterChain.doFilter(servletRequest, servletResponse);
+        } catch (InterceptException e) {
+            ((HttpServletResponse) servletResponse).sendError(e.getErrorCode(), e.getMessage());
+        }
     }
 
     @Override
