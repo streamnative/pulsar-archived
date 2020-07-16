@@ -27,6 +27,7 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
@@ -46,8 +47,9 @@ public class PreInterceptFilter implements Filter {
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         try {
-            interceptor.onWebserviceRequest(servletRequest);
-            filterChain.doFilter(servletRequest, servletResponse);
+            RequestWrapper requestWrapper = new RequestWrapper((HttpServletRequest) servletRequest);
+            interceptor.onWebserviceRequest(requestWrapper);
+            filterChain.doFilter(requestWrapper, servletResponse);
         } catch (InterceptException e) {
             ((HttpServletResponse) servletResponse).sendError(e.getErrorCode(), e.getMessage());
         }
