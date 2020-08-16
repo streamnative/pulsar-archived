@@ -321,7 +321,7 @@ flexible messaging model and an intuitive client API.</description>
       <dependency>
         <groupId>org.apache.bookkeeper</groupId>
         <artifactId>bookkeeper-server</artifactId>
-        <version>4.10.0-sn-1</version>
+        <version>4.10.0-sn-2</version>
         <exclusions>
           <exclusion>
             <artifactId>slf4j-log4j12</artifactId>
