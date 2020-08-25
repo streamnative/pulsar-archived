@@ -70,6 +70,5 @@ ENV PULSAR_ROOT_LOGGER=INFO,CONSOLE
 COPY --from=pulsar /pulsar /pulsar
 WORKDIR /pulsar
 
-RUN /pulsar/bin/install-pulsar-client-27.sh
 RUN /pulsar/bin/install-pulsar-client-37.sh
 
