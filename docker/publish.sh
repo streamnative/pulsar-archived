@@ -79,7 +79,7 @@ docker push ${docker_registry_org}/pulsar:latest
 docker push ${docker_registry_org}/pulsar-all:latest
 docker push ${docker_registry_org}/pulsar-grafana:latest
 docker push ${docker_registry_org}/pulsar-dashboard:latest
-docker push ${docker_registry_org}/pulsar-standalone:latest
+#docker push ${docker_registry_org}/pulsar-standalone:latest
 docker push ${docker_registry_org}/pulsar:$MVN_VERSION
 docker push ${docker_registry_org}/pulsar-all:$MVN_VERSION
 docker push ${docker_registry_org}/pulsar-grafana:$MVN_VERSION
