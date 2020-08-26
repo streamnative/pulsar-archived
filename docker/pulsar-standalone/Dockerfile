@@ -86,4 +86,4 @@ RUN cd /pulsar/django && python3 manage.py collectstatic --no-input
 ENV SERVICE_URL http://127.0.0.1:8080
 EXPOSE 80 8080 6650
 
-# CMD ["supervisord", "-n"]
+CMD ["supervisord", "-n"]
