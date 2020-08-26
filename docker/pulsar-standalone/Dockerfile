@@ -70,7 +70,8 @@ RUN pip3 install -r /pulsar/django/requirements.txt
 COPY --from=dashboard /pulsar/init-postgres.sh /pulsar/django/init-postgres.sh
 RUN mkdir /data
 RUN /pulsar/django/init-postgres.sh
-RUN sudo -u postgres /etc/init.d/postgresql stop Add postgresql to supervisord. Redirect logs to stdout
+RUN sudo -u postgres /etc/init.d/postgresql stop 
+#Add postgresql to supervisord. Redirect logs to stdout
 RUN echo "\n[program:postgresql]\n\
 command = /etc/init.d/postgresql start\n\
 stdout_logfile=/dev/fd/1\n\
