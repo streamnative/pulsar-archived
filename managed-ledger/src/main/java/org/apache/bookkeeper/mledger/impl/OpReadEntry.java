@@ -23,6 +23,8 @@ import static org.apache.bookkeeper.mledger.util.SafeRun.safeRun;
 import com.google.common.collect.Lists;
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
+
+import java.util.BitSet;
 import java.util.List;
 
 import org.apache.bookkeeper.mledger.AsyncCallbacks.ReadEntriesCallback;
@@ -89,6 +91,17 @@ class OpReadEntry implements ReadEntriesCallback {
         cursor.readOperationCompleted();
 
         if (!entries.isEmpty()) {
+            boolean hasNullDataBuffer = false;
+            BitSet bitSet = new BitSet();
+            for (int i = 0; i < entries.size(); i++) {
+                if (entries.get(i).getDataBuffer() == null) {
+                    hasNullDataBuffer = true;
+                    bitSet.set(i);
+                }
+            }
+            if (hasNullDataBuffer) {
+                log.warn("There are some entries {} without data buffer in {} entries.", bitSet, entries.size());
+            }
             // There were already some entries that were read before, we can return them
             cursor.ledger.getExecutor().execute(safeRun(() -> {
                 callback.readEntriesComplete(entries, ctx);
