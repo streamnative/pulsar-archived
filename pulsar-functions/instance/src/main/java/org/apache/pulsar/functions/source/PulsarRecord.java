@@ -28,6 +28,9 @@ import lombok.ToString;
 
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.impl.MessageImpl;
+import org.apache.pulsar.client.impl.TopicMessageImpl;
 import org.apache.pulsar.common.api.EncryptionContext;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 
@@ -110,5 +113,18 @@ public class PulsarRecord<T> implements RecordWithEncryptionContext<T> {
     @Override
     public Optional<Message<T>> getMessage() {
         return Optional.of(message);
+    }
+
+    @Override
+    public Schema<T> getSchema() {
+        MessageImpl<T>  rawMessage;
+        if (message instanceof TopicMessageImpl){
+            rawMessage = (MessageImpl<T>) ((TopicMessageImpl<T>) this.message).getMessage();
+        } else {
+            rawMessage = (MessageImpl<T>) message;
+        }
+        @SuppressWarnings("unchecked")
+        final Schema<T> schema = rawMessage.getSchema();
+        return schema;
     }
 }
