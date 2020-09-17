@@ -21,7 +21,7 @@ name: CI - Unit - Brokers - Transaction
 on:
   pull_request:
     branches:
-      - *
+      - '*'
 
 jobs:
 

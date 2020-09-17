@@ -21,7 +21,7 @@ name: CI - Unit - Brokers - Long - Time
 on:
   pull_request:
     branches:
-      - *
+      - '*'
 
 jobs:
 
