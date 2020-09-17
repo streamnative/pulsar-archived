@@ -67,6 +67,8 @@ public class ProxyConfiguration implements PulsarConfiguration {
     private static final String CATEGORY_HTTP = "HTTP";
     @Category
     private static final String CATEGORY_SASL_AUTH = "SASL Authentication Provider";
+    @Category
+    private static final String CATEGORY_PLUGIN = "proxy plugin";
 
     @FieldContext(
         category = CATEGORY_BROKER_DISCOVERY,
@@ -464,6 +466,18 @@ public class ProxyConfiguration implements PulsarConfiguration {
            doc = "Number of threads to use for HTTP requests processing"
     )
     private int httpNumThreads = Math.max(8, 2 * Runtime.getRuntime().availableProcessors());
+
+    @FieldContext(
+            category = CATEGORY_PLUGIN,
+            doc = "The directory to locate proxy additional servlet"
+    )
+    private String proxyAdditionalServletDirectory = "./proxyAdditionalServlet";
+
+    @FieldContext(
+            category = CATEGORY_PLUGIN,
+            doc = "List of proxy additional servlet to load, which is a list of proxy additional servlet names"
+    )
+    private Set<String> proxyAdditionalServlets = Sets.newTreeSet();
 
     @PropertiesContext(
         properties = {
