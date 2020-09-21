@@ -22,13 +22,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Metadata information about a proxy protocol handler.
+ * Metadata information about a proxy additional servlet.
  */
 @Data
 @NoArgsConstructor
 public class ProxyAdditionalServletDefinition {
     /**
-     * The name of the broker interceptor.
+     * The name of the proxy additional servlet.
      */
     private String name;
 

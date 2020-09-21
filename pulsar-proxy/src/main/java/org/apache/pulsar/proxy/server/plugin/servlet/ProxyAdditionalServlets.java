@@ -49,7 +49,7 @@ public class ProxyAdditionalServlets implements AutoCloseable {
     public static ProxyAdditionalServlets load(ProxyConfiguration conf) throws IOException {
         ProxyAdditionalServletDefinitions definitions =
                 ProxyAdditionalServletUtils.searchForServlets(
-                        conf.getProxyAdditionalServletDirectory(), conf.getNarExtractionDirectory());
+                        conf.getProxyAdditionalServletDirectory(), "");
 
         ImmutableMap.Builder<String, ProxyAdditionalServletWithClassLoader> builder = ImmutableMap.builder();
 
@@ -63,7 +63,7 @@ public class ProxyAdditionalServlets implements AutoCloseable {
 
             ProxyAdditionalServletWithClassLoader servletWithClassLoader;
             try {
-                servletWithClassLoader = ProxyAdditionalServletUtils.load(definition, conf.getNarExtractionDirectory());
+                servletWithClassLoader = ProxyAdditionalServletUtils.load(definition, "");
                 if (servletWithClassLoader != null) {
                     builder.put(servletName, servletWithClassLoader);
                 }
