@@ -385,7 +385,7 @@ The Apache Software License, Version 2.0
     - org.apache.bookkeeper-bookkeeper-common-4.10.0.jar
     - org.apache.bookkeeper-bookkeeper-common-allocator-4.10.0.jar
     - org.apache.bookkeeper-bookkeeper-proto-4.10.0.jar
-    - org.apache.bookkeeper-bookkeeper-server-4.10.0.jar
+    - org.apache.bookkeeper-bookkeeper-server-4.10.0-sn-2.jar
     - org.apache.bookkeeper-bookkeeper-tools-framework-4.10.0.jar
     - org.apache.bookkeeper-circe-checksum-4.10.0.jar
     - org.apache.bookkeeper-cpu-affinity-4.10.0.jar
