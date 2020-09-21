@@ -18,11 +18,16 @@
  */
 package org.apache.pulsar.proxy.server;
 
+import static org.mockito.Mockito.doReturn;
+import static org.testng.Assert.assertEquals;
+
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
-import okhttp3.Response;
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.pulsar.broker.auth.MockedPulsarServiceBaseTest;
 import org.apache.pulsar.broker.authentication.AuthenticationService;
 import org.apache.pulsar.common.configuration.PulsarConfigurationLoader;
@@ -45,6 +50,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -52,13 +58,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
-import static org.mockito.Mockito.doReturn;
-import static org.testng.Assert.assertEquals;
-
+/**
+ * Proxy additional servlet test.
+ */
 @Slf4j
 public class ProxyAdditionalServletTest extends MockedPulsarServiceBaseTest {
 
-    private final String BASE_PATH = "/plugin";
+    private final String BASE_PATH = "/metrics/broker";
     private final String QUERY_PARAM = "param";
     private final String DUMMY_VALUE = "DUMMY_VALUE";
 
@@ -140,6 +146,7 @@ public class ProxyAdditionalServletTest extends MockedPulsarServiceBaseTest {
                 log.info("[service] path: {}", ((Request) servletRequest).getOriginalURI());
                 String value = servletRequest.getParameterMap().get(QUERY_PARAM)[0];
                 ServletOutputStream servletOutputStream = servletResponse.getOutputStream();
+                servletResponse.setContentLength(value.getBytes().length);
                 servletOutputStream.write(value.getBytes());
                 servletOutputStream.flush();
             }
@@ -177,24 +184,20 @@ public class ProxyAdditionalServletTest extends MockedPulsarServiceBaseTest {
     }
 
     @Test
-    public void test() throws InterruptedException, IOException {
+    public void test() throws IOException, InterruptedException {
         int httpPort = proxyWebServer.getListenPortHTTP().get();
         log.info("proxy service httpPort {}", httpPort);
         String paramValue = "value - " + RandomUtils.nextInt();
-        String response = httpGet("http://localhost:" + httpPort + BASE_PATH + "?" + QUERY_PARAM + "=" + paramValue);
-        Assert.assertEquals(response, paramValue);
-    }
 
-    String httpGet(String url) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        okhttp3.Request request = new okhttp3.Request.Builder()
-                .get()
-                .url(url)
-                .build();
+        String url = "http://localhost:" + httpPort + BASE_PATH + "?"
+                + QUERY_PARAM + "=" + URLEncoder.encode(paramValue, "UTF-8") + "";
+        HttpClient httpClient = HttpClientBuilder.create().build();
+        HttpResponse httpResponse = httpClient.execute(new HttpGet(url));
+        Assert.assertEquals(httpResponse.getStatusLine().getStatusCode(), 200);
 
-        try (Response response = client.newCall(request).execute()) {
-            return response.body().string();
-        }
+        byte[] bytes = new byte[(int) httpResponse.getEntity().getContentLength()];
+        httpResponse.getEntity().getContent().read(bytes);
+        Assert.assertEquals(paramValue, new String(bytes));
     }
 
 }
