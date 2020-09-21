@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.proxy.server.ProxyConfiguration;
 
 /**
- * A collection of loaded proxy handlers.
+ * A collection of loaded proxy additional servlets.
  */
 @Slf4j
 public class ProxyAdditionalServlets implements AutoCloseable {
