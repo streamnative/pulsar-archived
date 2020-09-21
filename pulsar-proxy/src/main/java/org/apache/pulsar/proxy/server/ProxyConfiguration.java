@@ -164,6 +164,12 @@ public class ProxyConfiguration implements PulsarConfiguration {
 
     @FieldContext(
             category = CATEGORY_SERVER,
+            doc = "The directory where nar Extraction happens"
+    )
+    private String narExtractionDirectory = NarClassLoader.DEFAULT_NAR_EXTRACTION_DIR;
+
+    @FieldContext(
+            category = CATEGORY_SERVER,
             doc = "Proxy log level, default is 0."
                     + " 0: Do not log any tcp channel info"
                     + " 1: Parse and log any tcp channel info and command info without message body"
