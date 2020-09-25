@@ -70,7 +70,7 @@ public class RackAwareTest extends BkEnsemblesTestBase {
             String addr = String.format("10.0.0.%d", i + 1);
             conf.setAdvertisedAddress(addr);
 
-            BookieServer bs = new BookieServer(conf, NullStatsLogger.INSTANCE);
+            BookieServer bs = new BookieServer(conf);
 
             bs.start();
             bookies.add(bs);

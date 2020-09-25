@@ -249,7 +249,7 @@ public class PulsarBrokerStarter {
             if (starterArguments.runBookie) {
                 checkNotNull(bookieConfig, "No ServerConfiguration for Bookie");
                 checkNotNull(bookieStatsProvider, "No Stats Provider for Bookie");
-                bookieServer = new BookieServer(bookieConfig, bookieStatsProvider.getStatsLogger(""));
+                bookieServer = new BookieServer(bookieConfig);
             } else {
                 bookieServer = null;
             }
