@@ -91,6 +91,8 @@ public class ServiceConfiguration implements PulsarConfiguration {
     private static final String CATEGORY_HTTP = "HTTP";
     @Category
     private static final String CATEGORY_TRANSACTION = "Transaction";
+    @Category
+    private static final String CATEGORY_PACKAGE_MANAGER = "Package Manager";
 
     /***** --- pulsar configuration --- ****/
     @FieldContext(
@@ -256,7 +258,7 @@ public class ServiceConfiguration implements PulsarConfiguration {
         category = CATEGORY_SERVER,
         doc = "ZooKeeper session timeout in milliseconds"
     )
-    private long zooKeeperSessionTimeoutMillis = 30000;
+    private long zooKeeperSessionTimeoutMillis = 3000000;
     @FieldContext(
             category = CATEGORY_SERVER,
             doc = "ZooKeeper operation timeout in seconds"
@@ -1960,6 +1962,19 @@ public class ServiceConfiguration implements PulsarConfiguration {
                   + " used by the internal client to authenticate with Pulsar brokers"
     )
     private Set<String> brokerClientTlsProtocols = Sets.newTreeSet();
+
+    /**
+     * Package manager related
+     */
+    @FieldContext(
+        category = CATEGORY_PACKAGE_MANAGER,
+        doc = ""
+    )
+    private String packageStorageProvider = "org.apache.pulsar.packages.manager.storage.bk.BKPackageStorageProvider";
+
+    private int packageReplicas = 1;
+
+    private String packageLedgerRootPath = "/ledgers";
 
     /**
      * @deprecated See {@link #getConfigurationStoreServers}

@@ -126,6 +126,11 @@ import org.apache.pulsar.functions.worker.ErrorNotifier;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.WorkerUtils;
+import org.apache.pulsar.packages.manager.PackageManagerService;
+import org.apache.pulsar.packages.manager.PackageStorage;
+import org.apache.pulsar.packages.manager.PackageStorageConfig;
+import org.apache.pulsar.packages.manager.PackageStorageProvider;
+import org.apache.pulsar.packages.manager.impl.PackageImpl;
 import org.apache.pulsar.policies.data.loadbalancer.AdvertisedListener;
 import org.apache.pulsar.transaction.coordinator.TransactionMetadataStoreProvider;
 import org.apache.pulsar.websocket.WebSocketConsumerServlet;
@@ -212,6 +217,9 @@ public class PulsarService implements AutoCloseable {
     private TransactionBufferClient transactionBufferClient;
 
     private BrokerInterceptor brokerInterceptor;
+
+    private PackageImpl packageService;
+    private PackageStorageProvider packageStorageProvider;
 
     public enum State {
         Init, Started, Closed
@@ -592,6 +600,19 @@ public class PulsarService implements AutoCloseable {
 
             acquireSLANamespace();
 
+            // start package manager service
+            LOG.info("setup package manager service");
+            this.packageStorageProvider = PackageStorageProvider.newProvider(config.getPackageStorageProvider());
+            PackageStorageConfig packageStorageConfig = PackageStorageConfig.builder()
+                .zkServers(config.getZookeeperServers())
+                .numReplicas(config.getPackageReplicas())
+                .ledgersRootPath(config.getPackageLedgerRootPath())
+                .bookkeeperClientAuthenticationPlugin(config.getBookkeeperClientAuthenticationPlugin())
+                .bookkeeperClientAuthenticationParametersName(config.getBookkeeperClientAuthenticationParametersName())
+                .bookkeeperClientAuthenticationParameters(config.getBookkeeperClientAuthenticationParameters()).build();
+            this.packageService = new PackageImpl(packageStorageProvider.getStorage(packageStorageConfig));
+            LOG.info("package manager service is ready");
+
             // start function worker service if necessary
             this.startWorkerService(brokerService.getAuthenticationService(), brokerService.getAuthorizationService());
 
@@ -848,6 +869,10 @@ public class PulsarService implements AutoCloseable {
      */
     public NamespaceService getNamespaceService() {
         return this.nsService;
+    }
+
+    public PackageImpl getPackageManagerService() {
+        return this.packageService;
     }
 
     public WorkerService getWorkerService() {
