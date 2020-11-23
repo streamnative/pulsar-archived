@@ -126,8 +126,6 @@ import org.apache.pulsar.functions.worker.ErrorNotifier;
 import org.apache.pulsar.functions.worker.WorkerConfig;
 import org.apache.pulsar.functions.worker.WorkerService;
 import org.apache.pulsar.functions.worker.WorkerUtils;
-import org.apache.pulsar.packages.manager.PackageManagerService;
-import org.apache.pulsar.packages.manager.PackageStorage;
 import org.apache.pulsar.packages.manager.PackageStorageConfig;
 import org.apache.pulsar.packages.manager.PackageStorageProvider;
 import org.apache.pulsar.packages.manager.impl.PackageImpl;
