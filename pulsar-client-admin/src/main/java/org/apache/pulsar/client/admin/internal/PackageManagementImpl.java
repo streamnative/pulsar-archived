@@ -216,8 +216,6 @@ public class PackageManagementImpl extends ComponentResource implements PackageM
         asyncGetRequest(path, new InvocationCallback<List<String>>() {
             @Override
             public void completed(List<String> strings) {
-                System.out.println("get");
-                System.out.println(strings);
                 future.complete(strings);
             }
 
@@ -248,8 +246,6 @@ public class PackageManagementImpl extends ComponentResource implements PackageM
         asyncGetRequest(path, new InvocationCallback<List<String>>() {
             @Override
             public void completed(List<String> strings) {
-                System.out.println("get");
-                System.out.println(strings);
                 future.complete(strings);
             }
 

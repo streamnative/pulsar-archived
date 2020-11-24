@@ -64,7 +64,7 @@ class DLOutputStream {
         CompletableFuture<DLOutputStream> result = new CompletableFuture<>();
         List<CompletableFuture<DLOutputStream>> writeFuture = new ArrayList<>();
         CompletableFuture.runAsync(() -> {
-            byte[] readBuffer = new byte[1024];
+            byte[] readBuffer = new byte[102400];
             try {
                 int read = 0;
                 while ((read = inputStream.read(readBuffer)) != -1) {

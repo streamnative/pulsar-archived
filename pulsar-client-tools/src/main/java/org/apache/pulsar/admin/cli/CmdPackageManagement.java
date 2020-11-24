@@ -52,8 +52,6 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(packageName);
-
             print(packageManagement.getMetadata(packageName));
         }
     }
@@ -74,10 +72,6 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(packageName);
-            print(description);
-            print(contact);
-            print(new Gson().toJson(properties));
             packageManagement.updateMetadata(packageName, PackageMetadata.builder()
                 .description(description).contact(contact).properties(properties).build());
         }
@@ -102,11 +96,6 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(packageName);
-            print(description);
-            print(contact);
-            print(new Gson().toJson(properties));
-            print(path);
             PackageMetadata metadata = PackageMetadata.builder()
                 .description(description)
                 .contact(contact)
@@ -125,7 +114,6 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(path);
             packageManagement.download(packageName, path);
         }
     }
@@ -138,7 +126,6 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(packageName);
             print(packageManagement.listPackageVersions(packageName).toString());
         }
     }
@@ -153,11 +140,7 @@ public class CmdPackageManagement extends CmdBase{
 
         @Override
         void run() throws Exception {
-            print(type);
-            print(namespace);
             print(packageManagement.listPackages(type, namespace));
         }
     }
-
-
 }
