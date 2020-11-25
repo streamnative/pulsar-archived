@@ -92,12 +92,13 @@ public class PackageImpl implements Package {
     @Override
     public CompletableFuture<Void> download(PackageName packageName, OutputStream outputStream) {
         String packagePath = getPackageStoragePath(packageName);
-        return packageStorage.existAsync(packagePath)
-            .thenCompose(exists -> exists
-                ? packageStorage.readAsync(packagePath, outputStream)
-                : FutureUtil.failedFuture(
-                    new PackageNotFoundException(
-                        "The package " + packageName.toString() + " is not found")));
+        return packageStorage.readAsync(packagePath, outputStream);
+//        return packageStorage.existAsync(packagePath)
+//            .thenCompose(exists -> exists
+//                ? packageStorage.readAsync(packagePath, outputStream)
+//                : FutureUtil.failedFuture(
+//                    new PackageNotFoundException(
+//                        "The package " + packageName.toString() + " is not found")));
     }
 
     @Override

@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.distributedlog.LogRecord;
@@ -64,18 +65,23 @@ class DLOutputStream {
         CompletableFuture<DLOutputStream> result = new CompletableFuture<>();
         List<CompletableFuture<DLOutputStream>> writeFuture = new ArrayList<>();
         CompletableFuture.runAsync(() -> {
-            byte[] readBuffer = new byte[102400];
+            byte[] readBuffer = new byte[8192];
             try {
                 int read = 0;
                 while ((read = inputStream.read(readBuffer)) != -1) {
-                    log.info("write something into the ledgers");
+                    log.info("write something into the ledgers " + offset);
                     ByteBuf writeBuf = Unpooled.wrappedBuffer(readBuffer, 0, read);
-                    writeFuture.add(writeAsync(writeBuf));
+                    writeAsync(writeBuf).get();
                 }
-                log.info("write done, and add to the future");
+                writeFuture.add(CompletableFuture.completedFuture(null));
+                log.info("write done, and add to the future" + offset);
             } catch (IOException e) {
                 e.printStackTrace();
                 result.completeExceptionally(e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
             }
         }).whenComplete((ignore, e) -> {
             if (e != null) {
@@ -106,16 +112,18 @@ class DLOutputStream {
      * @return
      */
     private CompletableFuture<DLOutputStream> writeAsync(ByteBuf data) {
-        offset += data.readableBytes();
-        LogRecord record = new LogRecord(offset, data);
-        log.info("execute write to the dlog");
-        return writer.write(record).whenComplete((dlsn, throwable) -> {
-            if (throwable != null) {
-                throwable.printStackTrace();
-            } else {
-                log.info("DLSN is {}", dlsn.toString());
-            }
-        }).thenApply(ignore -> this);
+        synchronized (this) {
+            offset += data.readableBytes();
+            LogRecord record = new LogRecord(offset, data);
+            log.info("execute write to the dlog " + offset);
+            return writer.write(record).whenComplete((dlsn, throwable) -> {
+                if (throwable != null) {
+                    throwable.printStackTrace();
+                } else {
+                    log.info("DLSN is {} {}", dlsn.toString(), offset);
+                }
+            }).thenApply(ignore -> this);
+        }
     }
 
     /**
