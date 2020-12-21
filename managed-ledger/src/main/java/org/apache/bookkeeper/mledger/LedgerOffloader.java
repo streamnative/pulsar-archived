@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
@@ -34,6 +33,19 @@ import org.apache.pulsar.common.policies.data.OffloadPolicies;
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
+    class OffloadResult {
+
+    }
+
+    /**
+     * Used to store driver info, buffer entries, mark progress, etc.
+     * Create one per second.
+     */
+    interface OffloaderHandle {
+        boolean offerEntry(Entry entry);
+
+        CompletableFuture<OffloadResult> completeFuture();
+    }
 
     // TODO: improve the user metadata in subsequent changes
     String METADATA_SOFTWARE_VERSION_KEY = "S3ManagedLedgerOffloaderSoftwareVersion";
@@ -84,6 +96,31 @@ public interface LedgerOffloader {
     CompletableFuture<Void> offload(ReadHandle ledger,
                                     UUID uid,
                                     Map<String, String> extraMetadata);
+
+    /**
+     * Offload the passed in ledger to longterm storage.
+     * Metadata passed in is for inspection purposes only and should be stored
+     * alongside the segment data.
+     *
+     * When the returned future completes, the ledger has been persisted to the
+     * loadterm storage, so it is safe to delete the original copy in bookkeeper.
+     *
+     * The uid is used to identify an attempt to offload. The implementation should
+     * use this to deterministically generate a unique name for the offloaded object.
+     * This uid will be stored in the managed ledger metadata before attempting the
+     * call to offload(). If a subsequent or concurrent call to offload() finds
+     * a uid in the metadata, it will attempt to cleanup this attempt with a call
+     * to #deleteOffloaded(ReadHandle,UUID). Once the offload attempt completes,
+     * the managed ledger will update its metadata again, to record the completion,
+     * ensuring that subsequent calls will not attempt to offload the same ledger
+     * again.
+     *
+     * @param uid unique id to identity this offload attempt
+     * @param extraMetadata metadata to be stored with the offloaded segment for informational
+     *                      purposes
+     * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
+     */
+    OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata);
 
     /**
      * Create a ReadHandle which can be used to read a ledger back from longterm

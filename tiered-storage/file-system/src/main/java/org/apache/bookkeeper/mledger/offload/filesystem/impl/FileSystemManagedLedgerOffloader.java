@@ -18,9 +18,19 @@
  */
 package org.apache.bookkeeper.mledger.offload.filesystem.impl;
 
+import static org.apache.bookkeeper.mledger.offload.OffloadUtils.buildLedgerMetadataFormat;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import io.netty.util.Recycler;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.client.api.LedgerEntries;
 import org.apache.bookkeeper.client.api.LedgerEntry;
 import org.apache.bookkeeper.client.api.ReadHandle;
@@ -37,19 +47,6 @@ import org.apache.hadoop.io.MapFile;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.bookkeeper.mledger.offload.OffloadUtils.buildLedgerMetadataFormat;
 
 public class FileSystemManagedLedgerOffloader implements LedgerOffloader {
 
@@ -136,13 +133,20 @@ public class FileSystemManagedLedgerOffloader implements LedgerOffloader {
     }
 
     /*
-    * ledgerMetadata stored in an index of -1
-    * */
+     * ledgerMetadata stored in an index of -1
+     * */
     @Override
     public CompletableFuture<Void> offload(ReadHandle readHandle, UUID uuid, Map<String, String> extraMetadata) {
         CompletableFuture<Void> promise = new CompletableFuture<>();
-        scheduler.chooseThread(readHandle.getId()).submit(new LedgerReader(readHandle, uuid, extraMetadata, promise, storageBasePath, configuration, assignmentScheduler, offloadPolicies.getManagedLedgerOffloadPrefetchRounds()));
+        scheduler.chooseThread(readHandle.getId())
+                .submit(new LedgerReader(readHandle, uuid, extraMetadata, promise, storageBasePath, configuration,
+                        assignmentScheduler, offloadPolicies.getManagedLedgerOffloadPrefetchRounds()));
         return promise;
+    }
+
+    @Override
+    public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException();
     }
 
     private static class LedgerReader implements Runnable {

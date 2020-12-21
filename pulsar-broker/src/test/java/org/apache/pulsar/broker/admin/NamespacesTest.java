@@ -34,7 +34,6 @@ import static org.testng.Assert.assertNotEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import java.lang.reflect.Field;
@@ -1219,6 +1218,11 @@ public class NamespacesTest extends MockedPulsarServiceBaseTest {
                 promise.completeExceptionally(new Exception("Already exists exception"));
             }
             return promise;
+        }
+
+        @Override
+        public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

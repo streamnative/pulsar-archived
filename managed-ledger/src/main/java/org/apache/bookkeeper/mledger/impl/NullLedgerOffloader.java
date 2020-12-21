@@ -21,7 +21,6 @@ package org.apache.bookkeeper.mledger.impl;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
@@ -44,6 +43,11 @@ public class NullLedgerOffloader implements LedgerOffloader {
         CompletableFuture<Void> promise = new CompletableFuture<>();
         promise.completeExceptionally(new UnsupportedOperationException());
         return promise;
+    }
+
+    @Override
+    public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

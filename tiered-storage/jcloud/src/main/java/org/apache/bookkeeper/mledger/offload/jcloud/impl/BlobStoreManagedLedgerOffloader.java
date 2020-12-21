@@ -230,6 +230,11 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
+    @Override
+    public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Attempts to create a BlobStoreLocation from the values in the offloadDriverMetadata,
      * however, if no values are available, it defaults to the currently configured

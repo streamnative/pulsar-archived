@@ -25,12 +25,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
 import io.netty.buffer.ByteBuf;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.bookkeeper.client.api.DigestType;
 import org.apache.bookkeeper.client.api.LastConfirmedAndEntry;
 import org.apache.bookkeeper.client.api.LedgerEntries;
@@ -53,7 +49,6 @@ import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.net.BookieId;
-import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.test.MockedBookKeeperTestCase;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 import org.testng.Assert;
@@ -133,6 +128,11 @@ public class OffloadPrefixReadTest extends MockedBookKeeperTestCase {
                 promise.completeExceptionally(e);
             }
             return promise;
+        }
+
+        @Override
+        public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
