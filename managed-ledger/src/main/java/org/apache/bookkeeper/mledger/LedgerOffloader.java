@@ -19,12 +19,17 @@
 package org.apache.bookkeeper.mledger;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
+import org.apache.bookkeeper.mledger.AsyncCallbacks.StreamingOffloadCallback;
+import org.apache.bookkeeper.mledger.impl.EntryImpl;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
 /**
@@ -33,6 +38,22 @@ import org.apache.pulsar.common.policies.data.OffloadPolicies;
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
+    /**
+     * Decide which is the start position of this offloader
+     * @param ledgers
+     */
+    default List<CompletableFuture<OffloaderHandle>> initializeStreamingOffload(SortedMap<Long, LedgerInfo> ledgers) {
+        throw new UnsupportedOperationException();
+    }
+
+    default void setOffloadedCallback(StreamingOffloadCallback callback) {
+        //this.streamingCallback = callback;
+    }
+
+    default boolean offer(EntryImpl entry) {
+        return false;
+    }
+
     class OffloadResult {
 
     }

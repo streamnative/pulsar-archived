@@ -19,16 +19,13 @@
 package org.apache.bookkeeper.mledger.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
-
+import io.netty.util.ReferenceCountUtil;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
-import io.netty.util.ReferenceCountUtil;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
 import org.apache.bookkeeper.client.BKException;
@@ -47,6 +44,11 @@ import org.slf4j.LoggerFactory;
 class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
     protected ManagedLedgerImpl ml;
     LedgerHandle ledger;
+
+    public long getEntryId() {
+        return entryId;
+    }
+
     private long entryId;
 
     @SuppressWarnings("unused")
@@ -60,6 +62,11 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
     private boolean closeWhenDone;
     private long startTime;
     volatile long lastInitTime;
+
+    public ByteBuf getData() {
+        return data;
+    }
+
     @SuppressWarnings("unused")
     ByteBuf data;
     private int dataLength;
@@ -140,7 +147,7 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
         }
         checkArgument(ledger.getId() == lh.getId(), "ledgerId %s doesn't match with acked ledgerId %s", ledger.getId(),
                 lh.getId());
-        
+
         if (!checkAndCompleteOp(ctx)) {
             // means callback might have been completed by different thread (timeout task thread).. so do nothing
             return;
@@ -228,7 +235,7 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
 
     /**
      * Checks if add-operation is completed
-     * 
+     *
      * @return true if task is not already completed else returns false.
      */
     private boolean checkAndCompleteOp(Object ctx) {
@@ -249,7 +256,7 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
 
     /**
      * It handles add failure on the given ledger. it can be triggered when add-entry fails or times out.
-     * 
+     *
      * @param ledger
      */
     void handleAddFailure(final LedgerHandle ledger) {
@@ -272,7 +279,7 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
     public State getState() {
         return state;
     }
-    
+
     private final Handle<OpAddEntry> recyclerHandle;
 
     private OpAddEntry(Handle<OpAddEntry> recyclerHandle) {

@@ -77,6 +77,7 @@ import org.apache.bookkeeper.common.util.Backoff;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.Retries;
+import org.apache.bookkeeper.mledger.AsyncCallbacks;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.AddEntryCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.CloseCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.DeleteCursorCallback;
@@ -89,6 +90,8 @@ import org.apache.bookkeeper.mledger.AsyncCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.TerminateCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.UpdatePropertiesCallback;
 import org.apache.bookkeeper.mledger.Entry;
+import org.apache.bookkeeper.mledger.LedgerOffloader;
+import org.apache.bookkeeper.mledger.LedgerOffloader.OffloaderHandle;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedger;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
@@ -197,13 +200,15 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
     protected static final int DEFAULT_LEDGER_DELETE_RETRIES = 3;
     protected static final int DEFAULT_LEDGER_DELETE_BACKOFF_TIME_SEC = 60;
+    private LedgerOffloader streamingOffloader;
+    private List<CompletableFuture<OffloaderHandle>> offloaderHandles;
 
     enum State {
         None, // Uninitialized
         LedgerOpened, // A ledger is ready to write into
         ClosingLedger, // Closing current ledger
         ClosedLedger, // Current ledger has been closed and there's no pending
-                      // operation
+        // operation
         CreatingLedger, // Creating a new ledger
         Closed, // ManagedLedger has been closed
         Fenced, // A managed ledger is fenced when there is some concurrent
@@ -343,6 +348,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     }
                     mbean.startDataLedgerOpenOp();
                     bookKeeper.asyncOpenLedger(id, digestType, config.getPassword(), opencb, null);
+                    initializeStreamingOffloader();
                 } else {
                     initializeBookKeeper(callback);
                 }
@@ -359,6 +365,39 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         });
 
         scheduleTimeoutTask();
+    }
+
+    /**
+     * Should be called after `ledgers` were initialized.
+     */
+    synchronized void initializeStreamingOffloader() {
+        if (!isStreamOffload()) {
+            return;
+        }
+        streamingOffloader = config.getLedgerOffloader();
+        final List<CompletableFuture<OffloaderHandle>> offloaderHandles = streamingOffloader
+                .initializeStreamingOffload(ledgers);
+        this.offloaderHandles = offloaderHandles;
+
+        streamingOffloader.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
+            @Override
+            public void offloadComplete(List<CompletableFuture<OffloaderHandle>> handles, Object ctx) {
+                ManagedLedgerImpl.this.offloaderHandles.addAll(handles);
+                for (CompletableFuture<OffloaderHandle> offloaderHandle : offloaderHandles) {
+                    if (offloaderHandle.isDone()) {
+                        //update metadata ...
+
+                        //
+                        ManagedLedgerImpl.this.offloaderHandles.remove(offloaderHandle);
+                    }
+                }
+            }
+
+            @Override
+            public void offloadFailed(ManagedLedgerException exception, Object ctx) {
+
+            }
+        });
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {
@@ -674,15 +713,32 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             }
 
             addOperation.initiate();
+            addToOffload(addOperation);
+        }
+    }
+
+    /**
+     * This method should not block the thread, if the buffer is full then use another runnable to fill data
+     * when buffer available.
+     *
+     * @param addOperation
+     */
+    private void addToOffload(OpAddEntry addOperation) {
+        final EntryImpl entry = EntryImpl
+                .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
+                        addOperation.getData());
+        final boolean used = streamingOffloader.offer(entry);
+        if (!used) {
+            entry.release();
         }
     }
 
     @Override
     public void readyToCreateNewLedger() {
-       // only set transition state to ClosedLedger if current state is WriteFailed
-       if (STATE_UPDATER.compareAndSet(this, State.WriteFailed, State.ClosedLedger)){
-           log.info("[{}] Managed ledger is now ready to accept writes again", name);
-       }
+        // only set transition state to ClosedLedger if current state is WriteFailed
+        if (STATE_UPDATER.compareAndSet(this, State.WriteFailed, State.ClosedLedger)) {
+            log.info("[{}] Managed ledger is now ready to accept writes again", name);
+        }
     }
 
     @Override
@@ -1426,7 +1482,9 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
         trimConsumedLedgersInBackground();
 
-        maybeOffloadInBackground(NULL_OFFLOAD_PROMISE);
+        if (!isStreamOffload()) {
+            maybeOffloadInBackground(NULL_OFFLOAD_PROMISE);
+        }
 
         if (!pendingAddEntries.isEmpty()) {
             // Need to create a new ledger to write pending entries
@@ -2561,14 +2619,19 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                             }
 
                             offloadLoop(promise, ledgersToOffload,
-                                        newFirstUnoffloaded,
-                                        errorToReport);
+                                    newFirstUnoffloaded,
+                                    errorToReport);
                         } else {
                             ledgerCache.remove(ledgerId);
                             offloadLoop(promise, ledgersToOffload, firstUnoffloaded, firstError);
                         }
-                    });
+                });
         }
+    }
+
+    public boolean isStreamOffload() {
+        //TODO: read from config after offloader implemented
+        return false;
     }
 
     interface LedgerInfoTransformation {
