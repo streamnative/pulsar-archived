@@ -734,6 +734,9 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      * @param addOperation
      */
     protected synchronized void addToOffload(OpAddEntry addOperation) {
+        if (currentOffloaderHandle == null) {
+            return;
+        }
         final PositionImpl positionNextToOffered = getNextValidPosition(currentOffloaderHandle.lastOffered());
         if (positionNextToOffered
                 .equals(addOperation.getPosition())
