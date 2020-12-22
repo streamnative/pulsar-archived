@@ -386,12 +386,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
         offloader = config.getLedgerOffloader();
 
-        //TODO initialize segments
         this.offloadSegments = Queues.newConcurrentLinkedQueue();
 
         for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
+            //TODO initialize segments
             final LedgerInfo ledgerInfo = entry.getValue();
-            ledgerInfo.getOffloadContext()
         }
 
         if (!offloadSegments.isEmpty()) {
