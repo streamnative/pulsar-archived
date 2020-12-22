@@ -69,6 +69,15 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
 
     @SuppressWarnings("unused")
     ByteBuf data;
+
+    public int getDataLength() {
+        return dataLength;
+    }
+
+    public long getLedgerId() {
+        return ledger.getId();
+    }
+
     private int dataLength;
 
     private static final AtomicReferenceFieldUpdater<OpAddEntry, OpAddEntry.State> STATE_UPDATER = AtomicReferenceFieldUpdater

@@ -46,11 +46,6 @@ public class NullLedgerOffloader implements LedgerOffloader {
     }
 
     @Override
-    public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, UUID uid,
                                                        Map<String, String> offloadDriverMetadata) {
         CompletableFuture<ReadHandle> promise = new CompletableFuture<>();

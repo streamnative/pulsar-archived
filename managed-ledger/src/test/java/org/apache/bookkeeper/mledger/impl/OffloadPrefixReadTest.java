@@ -131,11 +131,6 @@ public class OffloadPrefixReadTest extends MockedBookKeeperTestCase {
         }
 
         @Override
-        public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, UUID uuid,
                                                            Map<String, String> offloadDriverMetadata) {
             return CompletableFuture.completedFuture(offloads.get(uuid));

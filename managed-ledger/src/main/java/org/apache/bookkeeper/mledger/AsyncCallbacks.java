@@ -21,7 +21,6 @@ package org.apache.bookkeeper.mledger;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
 import org.apache.bookkeeper.mledger.LedgerOffloader.OffloaderHandle;
@@ -144,7 +143,7 @@ public interface AsyncCallbacks {
     }
 
     interface StreamingOffloadCallback {
-        void offloadComplete(List<CompletableFuture<OffloaderHandle>> handles, Object ctx);
+        void offloadComplete(OffloaderHandle handle, Object ctx);
 
         void offloadFailed(ManagedLedgerException exception, Object ctx);
     }

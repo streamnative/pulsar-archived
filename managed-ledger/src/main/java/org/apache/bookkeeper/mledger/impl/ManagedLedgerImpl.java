@@ -197,11 +197,20 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     protected final Supplier<Boolean> mlOwnershipChecker;
 
     volatile PositionImpl lastConfirmedEntry;
+    volatile CompletableFuture<Void> offloadEntryFillTask;
 
     protected static final int DEFAULT_LEDGER_DELETE_RETRIES = 3;
     protected static final int DEFAULT_LEDGER_DELETE_BACKOFF_TIME_SEC = 60;
-    private LedgerOffloader streamingOffloader;
-    private List<CompletableFuture<OffloaderHandle>> offloaderHandles;
+    private LedgerOffloader offloader;
+    private ConcurrentLinkedQueue<OffloadSegment> offloadSegments;
+    private OffloaderHandle currentOffloaderHandle;
+
+    static class OffloadSegment {
+        UUID uuid;
+        long beginLedger;
+        long beginEntry;
+        //TODO add rest if need
+    }
 
     enum State {
         None, // Uninitialized
@@ -374,30 +383,31 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         if (!isStreamOffload()) {
             return;
         }
-        streamingOffloader = config.getLedgerOffloader();
-        final List<CompletableFuture<OffloaderHandle>> offloaderHandles = streamingOffloader
-                .initializeStreamingOffload(ledgers);
-        this.offloaderHandles = offloaderHandles;
+        offloader = config.getLedgerOffloader();
 
-        streamingOffloader.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
-            @Override
-            public void offloadComplete(List<CompletableFuture<OffloaderHandle>> handles, Object ctx) {
-                ManagedLedgerImpl.this.offloaderHandles.addAll(handles);
-                for (CompletableFuture<OffloaderHandle> offloaderHandle : offloaderHandles) {
-                    if (offloaderHandle.isDone()) {
-                        //update metadata ...
+        //TODO initialize segments
+        this.offloadSegments = Queues.newConcurrentLinkedQueue();
 
-                        //
-                        ManagedLedgerImpl.this.offloaderHandles.remove(offloaderHandle);
-                    }
+        if (!offloadSegments.isEmpty()) {
+            final OffloadSegment headSegment = offloadSegments.peek();
+            this.currentOffloaderHandle = offloader
+                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
+                            new HashMap<>());
+            this.currentOffloaderHandle.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
+                @Override
+                public void offloadComplete(OffloaderHandle handle, Object ctx) {
+                    handle.completeFuture().whenCompleteAsync((offloadResult, ex) -> {
+                        //TODO update metadata
+                        //TODO change current handle
+                    });
                 }
-            }
 
-            @Override
-            public void offloadFailed(ManagedLedgerException exception, Object ctx) {
+                @Override
+                public void offloadFailed(ManagedLedgerException exception, Object ctx) {
 
-            }
-        });
+                }
+            });
+        }
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {
@@ -723,14 +733,32 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      *
      * @param addOperation
      */
-    private void addToOffload(OpAddEntry addOperation) {
-        final EntryImpl entry = EntryImpl
-                .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
-                        addOperation.getData());
-        final boolean used = streamingOffloader.offer(entry);
-        if (!used) {
-            entry.release();
+    private synchronized void addToOffload(OpAddEntry addOperation) {
+        if (getNextValidPosition(currentOffloaderHandle.lastOffered())
+                .equals(PositionImpl.get(addOperation.getLedgerId(), addOperation.getEntryId()))
+                && currentOffloaderHandle
+                .canOffer(addOperation.getDataLength())) {
+            final EntryImpl entry = EntryImpl
+                    .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
+                            addOperation.getData());
+            final boolean used = currentOffloaderHandle.offerEntry(entry);
+            if (!used) {
+                entry.release();
+            }
+        } else if (offloadEntryFillTask == null || offloadEntryFillTask.isDone()) {
+            offloadEntryFillTask = new CompletableFuture<>();
+            executor.executeOrdered("fillEntries",
+                    safeRun(() -> entryFillLoop(currentOffloaderHandle, currentOffloaderHandle.lastOffered(),
+                            PositionImpl.get(addOperation.getLedgerId(), addOperation.getEntryId()),
+                            offloadEntryFillTask)));
         }
+    }
+
+    private void entryFillLoop(OffloaderHandle offloaderHandle,
+                               PositionImpl offeredPosition, PositionImpl endPosition,
+                               CompletableFuture<Void> offloadEntryFillTask) {
+        //TODO if buffer full then delay execute
+        //TODO loop to the end position then mark offloadEntryFillTask completed
     }
 
     @Override

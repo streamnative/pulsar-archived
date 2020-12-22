@@ -19,17 +19,14 @@
 package org.apache.bookkeeper.mledger;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.StreamingOffloadCallback;
-import org.apache.bookkeeper.mledger.impl.EntryImpl;
-import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
+import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
 /**
@@ -38,21 +35,6 @@ import org.apache.pulsar.common.policies.data.OffloadPolicies;
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
-    /**
-     * Decide which is the start position of this offloader
-     * @param ledgers
-     */
-    default List<CompletableFuture<OffloaderHandle>> initializeStreamingOffload(SortedMap<Long, LedgerInfo> ledgers) {
-        throw new UnsupportedOperationException();
-    }
-
-    default void setOffloadedCallback(StreamingOffloadCallback callback) {
-        //this.streamingCallback = callback;
-    }
-
-    default boolean offer(EntryImpl entry) {
-        return false;
-    }
 
     class OffloadResult {
 
@@ -63,9 +45,23 @@ public interface LedgerOffloader {
      * Create one per second.
      */
     interface OffloaderHandle {
+
+        /**
+         * return true when both buffer have enough size and ledger/entry id is next to the current one.
+         * @param size
+         * @return
+         */
+        boolean canOffer(long size);
+
+        PositionImpl lastOffered();
+
         boolean offerEntry(Entry entry);
 
         CompletableFuture<OffloadResult> completeFuture();
+
+        default void setOffloadedCallback(StreamingOffloadCallback callback) {
+            //this.streamingCallback = callback;
+        }
     }
 
     // TODO: improve the user metadata in subsequent changes
@@ -141,7 +137,10 @@ public interface LedgerOffloader {
      *                      purposes
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata);
+    default OffloaderHandle streamingOffload(UUID uid, long beginLedger, long beginEntry,
+                                             Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Create a ReadHandle which can be used to read a ledger back from longterm

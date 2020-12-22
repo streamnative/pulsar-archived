@@ -144,11 +144,6 @@ public class FileSystemManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
-    @Override
-    public OffloaderHandle streamingOffload(UUID uid, Map<String, String> extraMetadata) {
-        throw new UnsupportedOperationException();
-    }
-
     private static class LedgerReader implements Runnable {
 
         private final ReadHandle readHandle;
