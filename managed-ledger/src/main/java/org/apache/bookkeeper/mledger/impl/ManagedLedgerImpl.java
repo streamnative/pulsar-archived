@@ -390,7 +390,24 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
         for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
             //TODO initialize segments
+            final Long ledgerId = entry.getKey();
             final LedgerInfo ledgerInfo = entry.getValue();
+            final OffloadContext offloadContext = ledgerInfo.getOffloadContext();
+            if (offloadContext == null) {
+                //TODO should initialize context
+
+                break;
+            } else {
+                //TODO continue from context
+                //TODO if last write failed
+                //TODO if last write not full offload the ledger
+                break;
+            }
+
+        }
+
+        if (offloadSegments.isEmpty()) {
+            //TODO should not happen, newest ledger must initialize a segment
         }
 
         if (!offloadSegments.isEmpty()) {
