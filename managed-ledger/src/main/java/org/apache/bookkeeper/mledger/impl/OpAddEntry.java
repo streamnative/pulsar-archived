@@ -317,5 +317,9 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
         recyclerHandle.recycle(this);
     }
 
+    public PositionImpl getPosition() {
+        return PositionImpl.get(getLedgerId(), getEntryId());
+    }
+
     private static final Logger log = LoggerFactory.getLogger(OpAddEntry.class);
 }
