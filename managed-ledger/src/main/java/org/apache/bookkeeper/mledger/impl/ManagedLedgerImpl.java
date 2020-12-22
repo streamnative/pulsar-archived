@@ -389,6 +389,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         //TODO initialize segments
         this.offloadSegments = Queues.newConcurrentLinkedQueue();
 
+        for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
+            final LedgerInfo ledgerInfo = entry.getValue();
+            ledgerInfo.getOffloadContext()
+        }
+
         if (!offloadSegments.isEmpty()) {
             final OffloadSegment headSegment = offloadSegments.peek();
             this.currentOffloaderHandle = offloader
