@@ -127,6 +127,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
+    //TODO add code to support switch between streaming and traditional offloading
     private final static long MegaByte = 1024 * 1024;
 
     protected final static int AsyncOperationTimeoutSeconds = 30;
@@ -723,7 +724,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             }
 
             addOperation.initiate();
-            addToOffload(addOperation);
         }
     }
 
@@ -733,7 +733,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      *
      * @param addOperation
      */
-    private synchronized void addToOffload(OpAddEntry addOperation) {
+    protected synchronized void addToOffload(OpAddEntry addOperation) {
         if (getNextValidPosition(currentOffloaderHandle.lastOffered())
                 .equals(PositionImpl.get(addOperation.getLedgerId(), addOperation.getEntryId()))
                 && currentOffloaderHandle

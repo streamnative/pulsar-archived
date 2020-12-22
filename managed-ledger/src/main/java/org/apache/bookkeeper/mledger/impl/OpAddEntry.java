@@ -200,7 +200,7 @@ class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallback {
         PositionImpl lastEntry = PositionImpl.get(ledger.getId(), entryId);
         ManagedLedgerImpl.ENTRIES_ADDED_COUNTER_UPDATER.incrementAndGet(ml);
         ml.lastConfirmedEntry = lastEntry;
-
+        ml.addToOffload(this);
         if (closeWhenDone) {
             log.info("[{}] Closing ledger {} for being full", ml.getName(), ledger.getId());
             ledger.asyncClose(this, ctx);
