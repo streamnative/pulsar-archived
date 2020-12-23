@@ -208,9 +208,18 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private volatile OffloaderHandle currentOffloaderHandle;
 
     static public class SegmentInfo {
-        UUID uuid;
-        long beginLedger;
-        long beginEntry;
+        //TODO keep safe in concurrent execute
+        class LedgerInSegment {
+            long ledgerId;
+            long beginEntryId;
+            long endEntryId;
+        }
+
+        final UUID uuid;
+        final long beginLedger;
+        final long beginEntry;
+
+        List<LedgerInSegment> ledgers;
 
         public SegmentInfo(UUID uuid, long beginLedger, long beginEntry) {
             this.uuid = uuid;
@@ -460,6 +469,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 break;
             }
         }
+        //TODO delete wrong write blobs
 
         if (offloadSegments.isEmpty()) {
             log.error("Streaming offloading began but there is no segments to offload, should not happen.");
@@ -2822,15 +2832,80 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
+    private CompletableFuture<Void> transformLedgerInfo(Map<Long, LedgerInfoTransformation> transformations) {
+        CompletableFuture<Void> promise = new CompletableFuture<>();
+
+        tryTransformLedgerInfo(transformations, promise);
+
+        return promise;
+    }
+
+
+    private void tryTransformLedgerInfo(Map<Long, LedgerInfoTransformation> transformations,
+                                        CompletableFuture<Void> finalPromise) {
+        synchronized (this) {
+            if (!metadataMutex.tryLock()) {
+                // retry in 100 milliseconds
+                scheduledExecutor.schedule(
+                        safeRun(() -> tryTransformLedgerInfo(transformations, finalPromise)), 100,
+                        TimeUnit.MILLISECONDS);
+            } else { // lock acquired
+                CompletableFuture<Void> unlockingPromise = new CompletableFuture<>();
+                unlockingPromise.whenComplete((res, ex) -> {
+                    metadataMutex.unlock();
+                    if (ex != null) {
+                        finalPromise.completeExceptionally(ex);
+                    } else {
+                        finalPromise.complete(res);
+                    }
+                });
+                for (Map.Entry<Long, LedgerInfoTransformation> ledgerIdTrans : transformations
+                        .entrySet()) {
+                    final Long ledgerId = ledgerIdTrans.getKey();
+                    final LedgerInfoTransformation transformation = ledgerIdTrans.getValue();
+                    LedgerInfo oldInfo = ledgers.get(ledgerId);
+                    if (oldInfo == null) {
+                        unlockingPromise.completeExceptionally(new OffloadConflict(
+                                "Ledger " + ledgerId + " no longer exists in ManagedLedger, likely trimmed"));
+                    } else {
+                        try {
+                            LedgerInfo newInfo = transformation.transform(oldInfo);
+                            ledgers.put(ledgerId, newInfo);
+                        } catch (ManagedLedgerException mle) {
+                            unlockingPromise.completeExceptionally(mle);
+                        }
+                    }
+                }
+                try {
+                    store.asyncUpdateLedgerIds(name, getManagedLedgerInfo(), ledgersStat,
+                            new MetaStoreCallback<Void>() {
+                                @Override
+                                public void operationComplete(Void result, Stat stat) {
+                                    ledgersStat = stat;
+                                    unlockingPromise.complete(null);
+                                }
+
+                                @Override
+                                public void operationFailed(MetaStoreException e) {
+                                    unlockingPromise.completeExceptionally(e);
+                                }
+                            });
+                } catch (Exception mle) {
+                    unlockingPromise.completeExceptionally(mle);
+                }
+            }
+        }
+    }
+
     private CompletableFuture<Void> prepareLedgerInfoForOffloaded(long ledgerId, UUID uuid, String offloadDriverName,
-            Map<String, String> offloadDriverMetadata) {
+                                                                  Map<String, String> offloadDriverMetadata) {
         log.info("[{}] Preparing metadata to offload ledger {} with uuid {}", name, ledgerId, uuid);
         return transformLedgerInfo(ledgerId,
-                                   (oldInfo) -> {
-                                       if (oldInfo.getOffloadContext().hasUidMsb()) {
-                                           UUID oldUuid = new UUID(oldInfo.getOffloadContext().getUidMsb(),
-                                                                   oldInfo.getOffloadContext().getUidLsb());
-                                           log.info("[{}] Found previous offload attempt for ledger {}, uuid {}"
+                (oldInfo) -> {
+                    if (oldInfo.getOffloadContext().hasUidMsb()) {
+                        UUID oldUuid = new UUID(oldInfo.getOffloadContext().getUidMsb(),
+                                oldInfo.getOffloadContext().getUidLsb());
+                        log.info("[{}] Found previous offload attempt for ledger {}, uuid {}"
                                                     + ", cleaning up", name, ledgerId, uuid);
                                            cleanupOffloaded(
                                                ledgerId,
