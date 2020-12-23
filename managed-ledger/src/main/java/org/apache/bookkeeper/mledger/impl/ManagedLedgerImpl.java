@@ -205,9 +205,9 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     protected static final int DEFAULT_LEDGER_DELETE_BACKOFF_TIME_SEC = 60;
     private LedgerOffloader offloader;
     private ConcurrentLinkedQueue<SegmentInfo> offloadSegments;
-    private OffloaderHandle currentOffloaderHandle;
+    private volatile OffloaderHandle currentOffloaderHandle;
 
-    static class SegmentInfo {
+    static public class SegmentInfo {
         UUID uuid;
         long beginLedger;
         long beginEntry;
@@ -467,6 +467,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     "Streaming offloading began but there is no segments to offload, should not happen.");
         }
 
+        startOffload();
+    }
+
+    private synchronized void startOffload() {
+
         final SegmentInfo headSegment = offloadSegments.peek();
         this.currentOffloaderHandle = offloader
                 .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
@@ -475,17 +480,20 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             @Override
             public void offloadComplete(OffloaderHandle handle, Object ctx) {
                 handle.completeFuture().whenCompleteAsync((offloadResult, ex) -> {
-                    //TODO update metadata
-                    //TODO change current handle
+                    offloadSegments.poll();
+                    //TODO update metadata and create new segment
+
+                    // offloadSegments.add(..)
+                    startOffload();
                 });
             }
 
             @Override
             public void offloadFailed(ManagedLedgerException exception, Object ctx) {
-
+                log.error("offload failed", exception);
+                startOffload();
             }
         });
-
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {
