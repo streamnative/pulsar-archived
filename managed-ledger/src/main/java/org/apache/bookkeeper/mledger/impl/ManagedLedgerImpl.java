@@ -405,6 +405,10 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             if (!ledgerInfo.hasOffloadContext()) {
                 // Initialize context
                 UUID uuid = UUID.randomUUID();
+                //TODO maybe better way to update ledger info exists, find some one more familiar with java protobuf
+                // to review
+
+                //TODO add driver info
                 final OffloadSegment segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
@@ -415,11 +419,12 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 final OffloadContext context = OffloadContext.newBuilder().addOffloadSegment(segment)
                         .setComplete(false)
                         .build();
-                final LedgerInfo newLedgerInfo = LedgerInfo.newBuilder(ledgerInfo).setOffloadContext(context).build();
+                final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
                 entry.setValue(newLedgerInfo);
                 offloadSegments.add(new SegmentInfo(uuid, ledgerId, 0));
                 break;
             } else if (!ledgerInfo.getOffloadContext().getComplete()) {
+                List<OffloadSegment> newSegments = Lists.newArrayList();
                 // Continue from incomplete context
                 long beginEntry = 0;
                 for (OffloadSegment offloadSegment : ledgerInfo.getOffloadContext().getOffloadSegmentList()) {
@@ -429,11 +434,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                                     + "should not happen. {}", ledgerId, ledgerInfo);
                         } else {
                             beginEntry = offloadSegment.getEndEntryId() + 1;
+                            newSegments.add(offloadSegment);
                         }
                     }
                 }
                 UUID uuid = UUID.randomUUID();
-                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry));
                 final OffloadSegment segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
@@ -441,14 +446,20 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .setAssignedTs(System.currentTimeMillis())
                         .setComplete(false)
                         .build();
-                LedgerInfo.newBuilder(ledgerInfo)
-                        .getOffloadContextBuilder().addOffloadSegment(segment);
+                newSegments.add(segment);
+                final OffloadContext context = ledgerInfo.getOffloadContext().toBuilder().clearOffloadSegment()
+                        .addAllOffloadSegment(newSegments).build();
+                final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
+                entry.setValue(newLedgerInfo);
+                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry));
                 break;
             }
         }
 
         if (offloadSegments.isEmpty()) {
-            //TODO should not happen, newest ledger must initialize a segment
+            log.error("Streaming offloading began but there is no segments to offload, should not happen.");
+            throw new RuntimeException(
+                    "Streaming offloading began but there is no segments to offload, should not happen.");
         }
 
         if (!offloadSegments.isEmpty()) {
