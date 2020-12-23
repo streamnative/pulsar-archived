@@ -117,6 +117,7 @@ import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.NestedPositionInfo;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.OffloadContext;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats.OffloadSegment;
 import org.apache.bookkeeper.mledger.util.CallbackMutex;
 import org.apache.bookkeeper.mledger.util.Futures;
 import org.apache.commons.lang3.tuple.Pair;
@@ -203,13 +204,19 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     protected static final int DEFAULT_LEDGER_DELETE_RETRIES = 3;
     protected static final int DEFAULT_LEDGER_DELETE_BACKOFF_TIME_SEC = 60;
     private LedgerOffloader offloader;
-    private ConcurrentLinkedQueue<OffloadSegment> offloadSegments;
+    private ConcurrentLinkedQueue<SegmentInfo> offloadSegments;
     private OffloaderHandle currentOffloaderHandle;
 
-    static class OffloadSegment {
+    static class SegmentInfo {
         UUID uuid;
         long beginLedger;
         long beginEntry;
+
+        public SegmentInfo(UUID uuid, long beginLedger, long beginEntry) {
+            this.uuid = uuid;
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+        }
         //TODO add rest if need
     }
 
@@ -382,28 +389,62 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      */
     synchronized void initializeStreamingOffloader() {
         if (!isStreamOffload()) {
+            log.info("Streaming offload not enabled for managed ledger: {}", name);
             return;
+        } else {
+            log.info("Streaming offload enabled for managed ledger: {}", name);
         }
         offloader = config.getLedgerOffloader();
 
         this.offloadSegments = Queues.newConcurrentLinkedQueue();
-
+        //Initialize segments
         for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
-            //TODO initialize segments
+
             final Long ledgerId = entry.getKey();
             final LedgerInfo ledgerInfo = entry.getValue();
-            final OffloadContext offloadContext = ledgerInfo.getOffloadContext();
-            if (offloadContext == null) {
-                //TODO should initialize context
-
+            if (!ledgerInfo.hasOffloadContext()) {
+                // Initialize context
+                UUID uuid = UUID.randomUUID();
+                final OffloadSegment segment = OffloadSegment.newBuilder()
+                        .setUidLsb(uuid.getLeastSignificantBits())
+                        .setUidMsb(uuid.getMostSignificantBits())
+                        .setBeginEntryId(0)
+                        .setAssignedTs(System.currentTimeMillis())
+                        .setComplete(false)
+                        .build();
+                final OffloadContext context = OffloadContext.newBuilder().addOffloadSegment(segment)
+                        .setComplete(false)
+                        .build();
+                final LedgerInfo newLedgerInfo = LedgerInfo.newBuilder(ledgerInfo).setOffloadContext(context).build();
+                entry.setValue(newLedgerInfo);
+                offloadSegments.add(new SegmentInfo(uuid, ledgerId, 0));
                 break;
-            } else {
-                //TODO continue from context
-                //TODO if last write failed
-                //TODO if last write not full offload the ledger
+            } else if (!ledgerInfo.getOffloadContext().getComplete()) {
+                // Continue from incomplete context
+                long beginEntry = 0;
+                for (OffloadSegment offloadSegment : ledgerInfo.getOffloadContext().getOffloadSegmentList()) {
+                    if (offloadSegment.getComplete()) {
+                        if (!offloadSegment.hasEndEntryId()) {
+                            log.error("segment of ledger {} offload completed bug not have end entry id "
+                                    + "should not happen. {}", ledgerId, ledgerInfo);
+                        } else {
+                            beginEntry = offloadSegment.getEndEntryId() + 1;
+                        }
+                    }
+                }
+                UUID uuid = UUID.randomUUID();
+                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry));
+                final OffloadSegment segment = OffloadSegment.newBuilder()
+                        .setUidLsb(uuid.getLeastSignificantBits())
+                        .setUidMsb(uuid.getMostSignificantBits())
+                        .setBeginEntryId(beginEntry)
+                        .setAssignedTs(System.currentTimeMillis())
+                        .setComplete(false)
+                        .build();
+                LedgerInfo.newBuilder(ledgerInfo)
+                        .getOffloadContextBuilder().addOffloadSegment(segment);
                 break;
             }
-
         }
 
         if (offloadSegments.isEmpty()) {
@@ -411,7 +452,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
 
         if (!offloadSegments.isEmpty()) {
-            final OffloadSegment headSegment = offloadSegments.peek();
+            final SegmentInfo headSegment = offloadSegments.peek();
             this.currentOffloaderHandle = offloader
                     .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
                             new HashMap<>());
@@ -766,6 +807,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             final EntryImpl entry = EntryImpl
                     .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
                             addOperation.getData());
+            //TODO decide how to manually retain/release
             final boolean used = currentOffloaderHandle.offerEntry(entry);
             if (!used) {
                 entry.release();
