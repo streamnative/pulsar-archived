@@ -19,14 +19,12 @@
 package org.apache.bookkeeper.mledger.offload;
 
 import com.google.common.collect.Maps;
-
+import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import com.google.protobuf.ByteString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerMetadataBuilder;
@@ -36,6 +34,7 @@ import org.apache.bookkeeper.mledger.proto.MLDataFormats.KeyValue;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.OffloadContext;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats.OffloadDriverMetadata;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats.OffloadSegment;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.DataFormats;
 
@@ -92,7 +91,7 @@ public final class OffloadUtils {
                                                 Map<String, String> offloadDriverMetadata) {
         infoBuilder.getOffloadContextBuilder()
             .getDriverMetadataBuilder()
-            .setName(driverName);
+                .setName(driverName);
         infoBuilder.getOffloadContextBuilder().getDriverMetadataBuilder().clearProperties();
         offloadDriverMetadata.forEach((k, v) -> infoBuilder
                 .getOffloadContextBuilder()
@@ -103,13 +102,28 @@ public final class OffloadUtils {
                         .build()));
     }
 
+    public static void setOffloadDriverMetadata(OffloadSegment.Builder offloadSegmentBuilder,
+                                                String driverName,
+                                                Map<String, String> offloadDriverMetadata) {
+
+        offloadSegmentBuilder.getDriverMetadataBuilder().setName(driverName);
+        offloadSegmentBuilder.getDriverMetadataBuilder().clearProperties();
+        offloadDriverMetadata.forEach((k, v) -> offloadSegmentBuilder.getDriverMetadataBuilder().addProperties(
+                KeyValue.newBuilder()
+                        .setKey(k)
+                        .setValue(v)
+                        .build()
+        ));
+    }
+
     public static byte[] buildLedgerMetadataFormat(LedgerMetadata metadata) {
         DataFormats.LedgerMetadataFormat.Builder builder = DataFormats.LedgerMetadataFormat.newBuilder();
         builder.setQuorumSize(metadata.getWriteQuorumSize())
                 .setAckQuorumSize(metadata.getAckQuorumSize())
                 .setEnsembleSize(metadata.getEnsembleSize())
                 .setLength(metadata.getLength())
-                .setState(metadata.isClosed() ? DataFormats.LedgerMetadataFormat.State.CLOSED : DataFormats.LedgerMetadataFormat.State.OPEN)
+                .setState(
+                        metadata.isClosed() ? DataFormats.LedgerMetadataFormat.State.CLOSED : DataFormats.LedgerMetadataFormat.State.OPEN)
                 .setLastEntryId(metadata.getLastEntryId())
                 .setCtime(metadata.getCtime())
                 .setDigestType(BookKeeper.DigestType.toProtoDigestType(

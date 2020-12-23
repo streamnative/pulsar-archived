@@ -397,25 +397,30 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         offloader = config.getLedgerOffloader();
 
         this.offloadSegments = Queues.newConcurrentLinkedQueue();
-        //Initialize segments
+
+        //Initialize offloadSegments
         for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
 
             final Long ledgerId = entry.getKey();
             final LedgerInfo ledgerInfo = entry.getValue();
+            String driverName = OffloadUtils.getOffloadDriverName(ledgerInfo,
+                    config.getLedgerOffloader().getOffloadDriverName());
+            Map<String, String> driverMetadata = OffloadUtils.getOffloadDriverMetadata(ledgerInfo,
+                    config.getLedgerOffloader().getOffloadDriverMetadata());
+
             if (!ledgerInfo.hasOffloadContext()) {
                 // Initialize context
                 UUID uuid = UUID.randomUUID();
                 //TODO maybe better way to update ledger info exists, find some one more familiar with java protobuf
                 // to review
 
-                //TODO add driver info
-                final OffloadSegment segment = OffloadSegment.newBuilder()
+                final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
                         .setBeginEntryId(0)
                         .setAssignedTs(System.currentTimeMillis())
-                        .setComplete(false)
-                        .build();
+                        .setComplete(false);
+                OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
                 final OffloadContext context = OffloadContext.newBuilder().addOffloadSegment(segment)
                         .setComplete(false)
                         .build();
@@ -439,14 +444,14 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     }
                 }
                 UUID uuid = UUID.randomUUID();
-                final OffloadSegment segment = OffloadSegment.newBuilder()
+                final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
                         .setBeginEntryId(beginEntry)
                         .setAssignedTs(System.currentTimeMillis())
-                        .setComplete(false)
-                        .build();
-                newSegments.add(segment);
+                        .setComplete(false);
+                OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
+                newSegments.add(segment.build());
                 final OffloadContext context = ledgerInfo.getOffloadContext().toBuilder().clearOffloadSegment()
                         .addAllOffloadSegment(newSegments).build();
                 final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
@@ -462,26 +467,25 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     "Streaming offloading began but there is no segments to offload, should not happen.");
         }
 
-        if (!offloadSegments.isEmpty()) {
-            final SegmentInfo headSegment = offloadSegments.peek();
-            this.currentOffloaderHandle = offloader
-                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
-                            new HashMap<>());
-            this.currentOffloaderHandle.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
-                @Override
-                public void offloadComplete(OffloaderHandle handle, Object ctx) {
-                    handle.completeFuture().whenCompleteAsync((offloadResult, ex) -> {
-                        //TODO update metadata
-                        //TODO change current handle
-                    });
-                }
+        final SegmentInfo headSegment = offloadSegments.peek();
+        this.currentOffloaderHandle = offloader
+                .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
+                        new HashMap<>());
+        this.currentOffloaderHandle.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
+            @Override
+            public void offloadComplete(OffloaderHandle handle, Object ctx) {
+                handle.completeFuture().whenCompleteAsync((offloadResult, ex) -> {
+                    //TODO update metadata
+                    //TODO change current handle
+                });
+            }
 
-                @Override
-                public void offloadFailed(ManagedLedgerException exception, Object ctx) {
+            @Override
+            public void offloadFailed(ManagedLedgerException exception, Object ctx) {
 
-                }
-            });
-        }
+            }
+        });
+
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {
