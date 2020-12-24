@@ -912,6 +912,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      *
      * @param addOperation
      */
+    static private String ENTRY_FILL_LOOP = "entry_fill_loop";
     protected synchronized void addToOffload(OpAddEntry addOperation) {
         if (currentOffloaderHandle == null) {
             return;
@@ -931,18 +932,48 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             }
         } else if (offloadEntryFillTask == null || offloadEntryFillTask.isDone()) {
             offloadEntryFillTask = new CompletableFuture<>();
-            executor.executeOrdered("fillEntries",
-                    safeRun(() -> entryFillLoop(currentOffloaderHandle, currentOffloaderHandle.lastOffered(),
+            executor.executeOrdered(ENTRY_FILL_LOOP,
+                    safeRun(() -> entryFillLoop(currentOffloaderHandle, positionNextToOffered,
                             PositionImpl.get(addOperation.getLedgerId(), addOperation.getEntryId()),
                             offloadEntryFillTask)));
         }
     }
 
     private void entryFillLoop(OffloaderHandle offloaderHandle,
-                               PositionImpl offeredPosition, PositionImpl endPosition,
+                               PositionImpl beginPosition, PositionImpl endPosition,
                                CompletableFuture<Void> offloadEntryFillTask) {
-        //TODO if buffer full then delay execute
-        //TODO loop to the end position then mark offloadEntryFillTask completed
+        asyncReadEntry(beginPosition, new ReadEntryCallback() {
+            void delayExecute(OffloaderHandle offloaderHandle,
+                              PositionImpl beginPosition, PositionImpl endPosition,
+                              CompletableFuture<Void> offloadEntryFillTask) {
+                scheduledExecutor
+                        .schedule(() -> entryFillLoop(offloaderHandle, beginPosition, endPosition,
+                                offloadEntryFillTask)
+                                , 100, TimeUnit.MILLISECONDS);
+            }
+
+            @Override
+            public void readEntryComplete(Entry entry, Object ctx) {
+                if (!offloaderHandle.canOffer(entry.getLength())) {
+                    delayExecute(offloaderHandle, beginPosition, endPosition, offloadEntryFillTask);
+                } else {
+                    offloaderHandle.offerEntry(entry);
+                    //TODO deal with offer failed
+
+                    if (beginPosition == endPosition) {
+                        offloadEntryFillTask.complete(null);
+                        final PositionImpl nextPos = getNextValidPosition(beginPosition);
+                        entryFillLoop(offloaderHandle, nextPos, endPosition,
+                                offloadEntryFillTask);
+                    }
+                }
+            }
+
+            @Override
+            public void readEntryFailed(ManagedLedgerException exception, Object ctx) {
+                offloadEntryFillTask.completeExceptionally(exception);
+            }
+        }, null);
     }
 
     @Override
