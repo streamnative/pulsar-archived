@@ -77,7 +77,6 @@ import org.apache.bookkeeper.common.util.Backoff;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.Retries;
-import org.apache.bookkeeper.mledger.AsyncCallbacks;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.AddEntryCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.CloseCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.DeleteCursorCallback;
@@ -483,27 +482,25 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private synchronized void startOffload() {
 
         final SegmentInfo headSegment = offloadSegments.peek();
-        this.currentOffloaderHandle = offloader
-                .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
-                        new HashMap<>());
-        this.currentOffloaderHandle.setOffloadedCallback(new AsyncCallbacks.StreamingOffloadCallback() {
-            @Override
-            public void offloadComplete(OffloaderHandle handle, Object ctx) {
-                handle.completeFuture().whenCompleteAsync((offloadResult, ex) -> {
-                    offloadSegments.poll();
+        //TODO put extra metadata
+        try {
+            this.currentOffloaderHandle = offloader
+                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
+                            new HashMap<>()).get();
+            this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("offload failed", ex);
+                } else {
+                    final SegmentInfo segmentInfo = offloadSegments.poll();
                     //TODO update metadata and create new segment
 
                     // offloadSegments.add(..)
-                    startOffload();
-                });
-            }
-
-            @Override
-            public void offloadFailed(ManagedLedgerException exception, Object ctx) {
-                log.error("offload failed", exception);
+                }
                 startOffload();
-            }
-        });
+            });
+        } catch (InterruptedException | ExecutionException e) {
+            log.error("failed to continue streaming offload", e);
+        }
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {

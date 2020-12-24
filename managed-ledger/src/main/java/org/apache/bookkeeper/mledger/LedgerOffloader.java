@@ -25,7 +25,6 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
-import org.apache.bookkeeper.mledger.AsyncCallbacks.StreamingOffloadCallback;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
@@ -58,10 +57,6 @@ public interface LedgerOffloader {
         boolean offerEntry(Entry entry);
 
         CompletableFuture<OffloadResult> completeFuture();
-
-        default void setOffloadedCallback(StreamingOffloadCallback callback) {
-            //this.streamingCallback = callback;
-        }
     }
 
     // TODO: improve the user metadata in subsequent changes
@@ -137,8 +132,8 @@ public interface LedgerOffloader {
      *                      purposes
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    default OffloaderHandle streamingOffload(UUID uid, long beginLedger, long beginEntry,
-                                             Map<String, String> extraMetadata) {
+    default CompletableFuture<OffloaderHandle> streamingOffload(UUID uid, long beginLedger, long beginEntry,
+                                                                Map<String, String> extraMetadata) {
         throw new UnsupportedOperationException();
     }
 

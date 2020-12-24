@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
-import org.apache.bookkeeper.mledger.LedgerOffloader.OffloaderHandle;
 
 /**
  * Definition of all the callbacks used for the ManagedLedger asynchronous API.
@@ -138,12 +137,6 @@ public interface AsyncCallbacks {
 
     interface OffloadCallback {
         void offloadComplete(Position pos, Object ctx);
-
-        void offloadFailed(ManagedLedgerException exception, Object ctx);
-    }
-
-    interface StreamingOffloadCallback {
-        void offloadComplete(OffloaderHandle handle, Object ctx);
 
         void offloadFailed(ManagedLedgerException exception, Object ctx);
     }
