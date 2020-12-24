@@ -207,6 +207,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private volatile OffloaderHandle currentOffloaderHandle;
 
     static public class SegmentInfo {
+        //TODO will pass cross threads, how to keep all content volatile?
+        //TODO keep safe in concurrent execute
         public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
                            Map<String, String> driverMetadata) {
             this.uuid = uuid;
@@ -216,7 +218,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             this.driverMetadata = driverMetadata;
         }
 
-        //TODO keep safe in concurrent execute
         class LedgerInSegment {
             long ledgerId;
             long beginEntryId;
