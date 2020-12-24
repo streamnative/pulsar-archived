@@ -925,11 +925,9 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             final EntryImpl entry = EntryImpl
                     .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
                             addOperation.getData());
-            //TODO decide how to manually retain/release
             final boolean used = currentOffloaderHandle.offerEntry(entry);
-            if (!used) {
-                entry.release();
-            }
+            entry.release();
+
         } else if (offloadEntryFillTask == null || offloadEntryFillTask.isDone()) {
             offloadEntryFillTask = new CompletableFuture<>();
             executor.executeOrdered(ENTRY_FILL_LOOP,
