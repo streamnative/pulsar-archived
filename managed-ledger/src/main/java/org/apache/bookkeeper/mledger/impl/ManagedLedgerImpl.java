@@ -227,12 +227,10 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         final UUID uuid;
         final long beginLedger;
         final long beginEntry;
-        //TODO initialize these two
         String driverName;
         Map<String, String> driverMetadata;
 
         List<LedgerInSegment> ledgers;
-        //TODO add rest if need
     }
 
     enum State {
