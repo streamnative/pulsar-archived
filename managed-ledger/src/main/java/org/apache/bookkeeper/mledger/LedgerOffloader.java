@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
+import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
@@ -56,7 +57,7 @@ public interface LedgerOffloader {
 
         boolean offerEntry(Entry entry);
 
-        CompletableFuture<OffloadResult> completeFuture();
+        CompletableFuture<OffloadResult> getOffloadResultAsync();
     }
 
     // TODO: improve the user metadata in subsequent changes
@@ -127,13 +128,9 @@ public interface LedgerOffloader {
      * ensuring that subsequent calls will not attempt to offload the same ledger
      * again.
      *
-     * @param uid unique id to identity this offload attempt
-     * @param extraMetadata metadata to be stored with the offloaded segment for informational
-     *                      purposes
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    default CompletableFuture<OffloaderHandle> streamingOffload(UUID uid, long beginLedger, long beginEntry,
-                                                                Map<String, String> extraMetadata) {
+    default CompletableFuture<OffloaderHandle> streamingOffload(ManagedLedgerImpl.SegmentInfo segmentInfo) {
         throw new UnsupportedOperationException();
     }
 

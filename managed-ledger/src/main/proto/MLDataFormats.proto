@@ -48,9 +48,8 @@ message OffloadSegment {
   optional bool bookkeeperDeleted = 4;
   optional int64 assignedTs = 5; //epoch millis
   optional int64 offloadedTs = 6; //epoch millis
-  optional int64 beginEntryId = 7;
-  optional int64 endEntryId = 8;
-  optional OffloadDriverMetadata driverMetadata = 9;
+  optional int64 endEntryId = 7;
+  optional OffloadDriverMetadata driverMetadata = 8;
 }
 
 message ManagedLedgerInfo {

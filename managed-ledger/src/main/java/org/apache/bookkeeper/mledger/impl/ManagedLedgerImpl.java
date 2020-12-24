@@ -207,24 +207,31 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private volatile OffloaderHandle currentOffloaderHandle;
 
     static public class SegmentInfo {
+        public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
+                           Map<String, String> driverMetadata) {
+            this.uuid = uuid;
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+            this.driverName = driverName;
+            this.driverMetadata = driverMetadata;
+        }
+
         //TODO keep safe in concurrent execute
         class LedgerInSegment {
             long ledgerId;
             long beginEntryId;
             long endEntryId;
+            long beginTs;
         }
 
         final UUID uuid;
         final long beginLedger;
         final long beginEntry;
+        //TODO initialize these two
+        String driverName;
+        Map<String, String> driverMetadata;
 
         List<LedgerInSegment> ledgers;
-
-        public SegmentInfo(UUID uuid, long beginLedger, long beginEntry) {
-            this.uuid = uuid;
-            this.beginLedger = beginLedger;
-            this.beginEntry = beginEntry;
-        }
         //TODO add rest if need
     }
 
@@ -406,7 +413,19 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
         this.offloadSegments = Queues.newConcurrentLinkedQueue();
 
-        //Initialize offloadSegments
+        initializeSegments();
+        //TODO delete wrong write blobs
+
+        if (offloadSegments.isEmpty()) {
+            log.error("Streaming offloading began but there is no segments to offload, should not happen.");
+            throw new RuntimeException(
+                    "Streaming offloading began but there is no segments to offload, should not happen.");
+        }
+
+        startOffload();
+    }
+
+    private void initializeSegments() {
         for (Map.Entry<Long, LedgerInfo> entry : ledgers.entrySet()) {
 
             final Long ledgerId = entry.getKey();
@@ -425,7 +444,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
-                        .setBeginEntryId(0)
                         .setAssignedTs(System.currentTimeMillis())
                         .setComplete(false);
                 OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
@@ -434,7 +452,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .build();
                 final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
                 entry.setValue(newLedgerInfo);
-                offloadSegments.add(new SegmentInfo(uuid, ledgerId, 0));
+                offloadSegments.add(new SegmentInfo(uuid, ledgerId, 0, driverName, driverMetadata));
                 break;
             } else if (!ledgerInfo.getOffloadContext().getComplete()) {
                 List<OffloadSegment> newSegments = Lists.newArrayList();
@@ -455,7 +473,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
-                        .setBeginEntryId(beginEntry)
                         .setAssignedTs(System.currentTimeMillis())
                         .setComplete(false);
                 OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
@@ -464,43 +481,115 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .addAllOffloadSegment(newSegments).build();
                 final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
                 entry.setValue(newLedgerInfo);
-                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry));
+                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry, driverName, driverMetadata));
                 break;
             }
         }
-        //TODO delete wrong write blobs
-
-        if (offloadSegments.isEmpty()) {
-            log.error("Streaming offloading began but there is no segments to offload, should not happen.");
-            throw new RuntimeException(
-                    "Streaming offloading began but there is no segments to offload, should not happen.");
-        }
-
-        startOffload();
     }
 
     private synchronized void startOffload() {
+        //TODO add mutex to verify only one offload
 
         final SegmentInfo headSegment = offloadSegments.peek();
-        //TODO put extra metadata
         try {
             this.currentOffloaderHandle = offloader
-                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
-                            new HashMap<>()).get();
+                    .streamingOffload(headSegment).get();
             this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
                 if (ex != null) {
                     log.error("offload failed", ex);
                 } else {
                     final SegmentInfo segmentInfo = offloadSegments.poll();
-                    //TODO update metadata and create new segment
+                    if (segmentInfo == null) {
+                        throw new RuntimeException("An empty segment list, should not happen");
+                    }
+                    updatedMetaForOffloaded(segmentInfo);
+                    initializeSegments();
 
-                    // offloadSegments.add(..)
+                    if (offloadSegments.isEmpty()) {
+                        log.error("Streaming offloading began but there is no segments to offload, should not happen.");
+                        throw new RuntimeException(
+                                "Streaming offloading began but there is no segments to offload, should not happen.");
+                    }
                 }
                 startOffload();
             });
         } catch (InterruptedException | ExecutionException e) {
             log.error("failed to continue streaming offload", e);
         }
+    }
+
+    private void updatedMetaForOffloaded(SegmentInfo segmentInfo) {
+        final HashMap<Long, LedgerInfoTransformation> ledgerForTrans = new HashMap<>();
+        for (SegmentInfo.LedgerInSegment ledgerInSeg : segmentInfo.ledgers) {
+            ledgerForTrans.put(ledgerInSeg.ledgerId, (ledgerInfo) -> {
+
+                final LedgerInfo.Builder newBuilder = ledgerInfo.toBuilder();
+                if (ledgerInSeg.beginEntryId == 0) {
+                    //It's the start segment of the ledger
+                    final OffloadSegment.Builder newSegmentMeta = OffloadSegment.newBuilder()
+                            .setUidMsb(segmentInfo.uuid.getMostSignificantBits())
+                            .setUidLsb(segmentInfo.uuid.getLeastSignificantBits())
+                            .setAssignedTs(ledgerInSeg.beginTs)
+                            .setOffloadedTs(System.currentTimeMillis())
+                            .setComplete(true)
+                            .setEndEntryId(ledgerInSeg.endEntryId);
+                    OffloadUtils.setOffloadDriverMetadata(newSegmentMeta, segmentInfo.driverName,
+                            segmentInfo.driverMetadata);
+
+                    newBuilder.getOffloadContextBuilder()
+                            .setComplete(false)
+                            .clearOffloadSegment()
+                            .addOffloadSegment(newSegmentMeta);
+                } else {
+                    final List<OffloadSegment> currentSegments = ledgerInfo.getOffloadContext()
+                            .getOffloadSegmentList();
+                    final OffloadSegment lastOffloadSegment = currentSegments
+                            .get(currentSegments.size() - 1);
+                    if (!lastOffloadSegment.getComplete()) {
+                        //fulfill current last segment
+                        final OffloadSegment secondLastOffloadSegment = currentSegments
+                                .get(currentSegments.size() - 2);
+                        if (secondLastOffloadSegment.getEndEntryId() != ledgerInSeg.beginEntryId - 1) {
+                            log.error("the entries are not constructive");
+                            //TODO reconstruct a segment and start streaming offload
+                        }
+                        final OffloadSegment.Builder newLast = lastOffloadSegment.toBuilder()
+                                .setEndEntryId(ledgerInSeg.endEntryId)
+                                .setOffloadedTs(System.currentTimeMillis())
+                                .setComplete(true);
+                        currentSegments.remove(lastOffloadSegment);
+                        currentSegments.add(newLast.build());
+
+                        newBuilder.getOffloadContextBuilder().clearOffloadSegment()
+                                .addAllOffloadSegment(currentSegments);
+                    } else {
+                        if (lastOffloadSegment.getEndEntryId() != ledgerInSeg.beginEntryId - 1) {
+                            log.error("the entries are not constructive");
+                            //TODO reconstruct a segment and start streaming offload
+                        }
+
+                        //create new segment
+                        final OffloadSegment.Builder newSegmentMeta = OffloadSegment.newBuilder()
+                                .setUidMsb(segmentInfo.uuid.getMostSignificantBits())
+                                .setUidLsb(segmentInfo.uuid.getLeastSignificantBits())
+                                .setAssignedTs(ledgerInSeg.beginTs)
+                                .setOffloadedTs(System.currentTimeMillis())
+                                .setComplete(true)
+                                .setEndEntryId(ledgerInSeg.endEntryId);
+                        OffloadUtils.setOffloadDriverMetadata(newSegmentMeta, segmentInfo.driverName,
+                                segmentInfo.driverMetadata);
+                        newBuilder.getOffloadContextBuilder()
+                                .addOffloadSegment(newSegmentMeta);
+                    }
+                }
+                //Ledger offload finished, set complete to true
+                if (ledgerInfo.hasSize() && ledgerInfo.getSize() - 1 == ledgerInSeg.endEntryId) {
+                    newBuilder.getOffloadContextBuilder().setComplete(true);
+                }
+                return newBuilder.build();
+            });
+        }
+        transformLedgerInfo(ledgerForTrans);
     }
 
     private synchronized void initializeBookKeeper(final ManagedLedgerInitializeLedgerCallback callback) {
