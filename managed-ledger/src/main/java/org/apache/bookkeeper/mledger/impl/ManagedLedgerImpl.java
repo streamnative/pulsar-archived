@@ -91,6 +91,7 @@ import org.apache.bookkeeper.mledger.AsyncCallbacks.UpdatePropertiesCallback;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.LedgerOffloader.OffloaderHandle;
+import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfo;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedger;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
@@ -128,6 +129,7 @@ import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     //TODO add code to support switch between streaming and traditional offloading
+    //TODO ensure we create exactly one offloader for one segment to write in streaming
     private final static long MegaByte = 1024 * 1024;
 
     protected final static int AsyncOperationTimeoutSeconds = 30;
@@ -206,34 +208,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private ConcurrentLinkedQueue<SegmentInfo> offloadSegments;
     private volatile OffloaderHandle currentOffloaderHandle;
 
-    static public class SegmentInfo {
-        //TODO start a new offloader when new segmentInfo create
-        //TODO will pass cross threads, how to keep all content volatile?
-        //TODO keep safe in concurrent execute
-        public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
-                           Map<String, String> driverMetadata) {
-            this.uuid = uuid;
-            this.beginLedger = beginLedger;
-            this.beginEntry = beginEntry;
-            this.driverName = driverName;
-            this.driverMetadata = driverMetadata;
-        }
-
-        class LedgerInSegment {
-            long ledgerId;
-            long beginEntryId;
-            long endEntryId;
-            long beginTs;
-        }
-
-        final UUID uuid;
-        final long beginLedger;
-        final long beginEntry;
-        String driverName;
-        Map<String, String> driverMetadata;
-
-        List<LedgerInSegment> ledgers;
-    }
 
     enum State {
         None, // Uninitialized
@@ -493,7 +467,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         final SegmentInfo headSegment = offloadSegments.peek();
         try {
             this.currentOffloaderHandle = offloader
-                    .streamingOffloadstreamingOffload(headSegment.uuid, headSegment.driverMetadata).get();
+                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
+                            headSegment.driverMetadata).get();
             this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
                 if (ex != null) {
                     log.error("offload failed", ex);
@@ -957,7 +932,12 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 if (!offloaderHandle.canOffer(entry.getLength())) {
                     delayExecute(offloaderHandle, beginPosition, endPosition, offloadEntryFillTask);
                 } else {
-                    offloaderHandle.offerEntry(entry);
+                    //TODO maybe we can add retain to interface Entry to avoid  copy data
+                    final EntryImpl entryImpl = EntryImpl
+                            .create(entry.getLedgerId(), entry.getEntryId(), entry.getDataAndRelease());
+                    offloaderHandle.offerEntry(entryImpl);
+                    entryImpl.release();
+
                     //TODO deal with offer failed
 
                     if (beginPosition == endPosition) {

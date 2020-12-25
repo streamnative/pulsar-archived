@@ -19,12 +19,14 @@
 package org.apache.bookkeeper.mledger;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
+import org.apache.bookkeeper.mledger.impl.EntryImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
@@ -34,6 +36,57 @@ import org.apache.pulsar.common.policies.data.OffloadPolicies;
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
+
+    class SegmentInfo {
+        //TODO will pass cross threads, how to keep all content async safe?
+        public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
+                           Map<String, String> driverMetadata) {
+            this.uuid = uuid;
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+            this.driverName = driverName;
+            this.driverMetadata = driverMetadata;
+        }
+
+        class LedgerInSegment {
+            long ledgerId;
+            long beginEntryId;
+            long endEntryId;
+            long beginTs;
+        }
+
+        final UUID uuid;
+        final long beginLedger;
+        final long beginEntry;
+        String driverName;
+
+        public boolean isClosed() {
+            return closed;
+        }
+
+        public void setClosed(boolean closed) {
+            this.closed = closed;
+        }
+
+        volatile boolean closed = false;
+        Map<String, String> driverMetadata;
+
+        List<LedgerInSegment> ledgers;
+
+        @Override
+        public String toString() {
+            return "SegmentInfo{" +
+                    "uuid=" + uuid +
+                    ", beginLedger=" + beginLedger +
+                    ", beginEntry=" + beginEntry +
+                    ", driverName='" + driverName + '\'' +
+                    ", closed=" + closed +
+                    ", driverMetadata=" + driverMetadata +
+                    ", ledgers=" + ledgers +
+                    '}';
+        }
+    }
+
 
     class OffloadResult {
 
@@ -54,7 +107,7 @@ public interface LedgerOffloader {
 
         PositionImpl lastOffered();
 
-        boolean offerEntry(Entry entry);
+        boolean offerEntry(EntryImpl entry);
 
         CompletableFuture<OffloadResult> getOffloadResultAsync();
     }
@@ -129,8 +182,8 @@ public interface LedgerOffloader {
      *
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    default CompletableFuture<OffloaderHandle> streamingOffloadstreamingOffload(UUID uuid,
-                                                                                Map<String, String> driverMetadata) {
+    default CompletableFuture<OffloaderHandle> streamingOffload(UUID uuid, long beginLedger, long beginEntry,
+                                                                Map<String, String> driverMetadata) {
         throw new UnsupportedOperationException();
     }
 
