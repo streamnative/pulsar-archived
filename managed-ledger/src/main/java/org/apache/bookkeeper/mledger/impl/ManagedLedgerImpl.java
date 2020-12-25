@@ -207,6 +207,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private volatile OffloaderHandle currentOffloaderHandle;
 
     static public class SegmentInfo {
+        //TODO start a new offloader when new segmentInfo create
         //TODO will pass cross threads, how to keep all content volatile?
         //TODO keep safe in concurrent execute
         public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
@@ -492,7 +493,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         final SegmentInfo headSegment = offloadSegments.peek();
         try {
             this.currentOffloaderHandle = offloader
-                    .streamingOffload(headSegment).get();
+                    .streamingOffloadstreamingOffload(headSegment.uuid, headSegment.driverMetadata).get();
             this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
                 if (ex != null) {
                     log.error("offload failed", ex);

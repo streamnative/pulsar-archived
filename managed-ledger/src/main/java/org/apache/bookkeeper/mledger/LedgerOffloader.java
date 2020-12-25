@@ -25,7 +25,6 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
-import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
@@ -130,7 +129,8 @@ public interface LedgerOffloader {
      *
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    default CompletableFuture<OffloaderHandle> streamingOffload(ManagedLedgerImpl.SegmentInfo segmentInfo) {
+    default CompletableFuture<OffloaderHandle> streamingOffloadstreamingOffload(UUID uuid,
+                                                                                Map<String, String> driverMetadata) {
         throw new UnsupportedOperationException();
     }
 
