@@ -304,7 +304,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     }
 
     private void streamingOffloadLoop() {
-        if (offloadResult.isDone()) {
+        if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
+            offloadResult.complete(new OffloadResult());
             return;
         }
         final BufferedOffloadStream payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
