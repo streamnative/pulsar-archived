@@ -324,7 +324,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         }
         final Entry peek = offloadBuffer.peek();
         //initialize payload when there is at least one entry
-        payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
+        payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer, segmentInfo,
                 peek.getLedgerId(), peek.getEntryId(), bufferLength);
 
         Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
