@@ -73,6 +73,7 @@ import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.Backoff;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
@@ -482,7 +483,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         final SegmentInfo headSegment = offloadSegments.peek();
         try {
             this.currentOffloaderHandle = offloader
-                    .streamingOffload(headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
+                    .streamingOffload(this, headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
                             headSegment.driverMetadata).get();
             this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
                 if (ex != null) {
@@ -1937,6 +1938,10 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
     public CompletableFuture<String> getLedgerMetadata(long ledgerId) {
         return getLedgerHandle(ledgerId).thenApply(rh -> rh.getLedgerMetadata().toSafeString());
+    }
+
+    public CompletableFuture<LedgerMetadata> getRawLedgerMetadata(long ledgerId) {
+        return getLedgerHandle(ledgerId).thenApply(org.apache.bookkeeper.client.api.Handle::getLedgerMetadata);
     }
 
     CompletableFuture<ReadHandle> getLedgerHandle(long ledgerId) {

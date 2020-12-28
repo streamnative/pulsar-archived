@@ -182,7 +182,8 @@ public interface LedgerOffloader {
      *
      * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
      */
-    default CompletableFuture<OffloaderHandle> streamingOffload(UUID uuid, long beginLedger, long beginEntry,
+    default CompletableFuture<OffloaderHandle> streamingOffload(ManagedLedger ml, UUID uuid, long beginLedger,
+                                                                long beginEntry,
                                                                 Map<String, String> driverMetadata) {
         throw new UnsupportedOperationException();
     }

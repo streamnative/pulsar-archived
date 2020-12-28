@@ -31,18 +31,22 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
+import org.apache.bookkeeper.mledger.ManagedLedger;
 import org.apache.bookkeeper.mledger.impl.EntryImpl;
+import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.bookkeeper.mledger.offload.jcloud.BlockAwareSegmentInputStream;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlock;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlockBuilder;
+import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlock;
+import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlockBuilder;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.BlobStoreLocation;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.TieredStorageConfiguration;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
@@ -57,6 +61,7 @@ import org.jclouds.domain.LocationBuilder;
 import org.jclouds.domain.LocationScope;
 import org.jclouds.io.Payload;
 import org.jclouds.io.Payloads;
+import org.jclouds.io.payloads.InputStreamPayload;
 
 /**
  * Tiered Storage Offloader that is backed by a JCloud Blob Store.
@@ -75,6 +80,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     //TODO need padding magic
     //TODO create new block when ending a ledger
     //TODO change offer result when segment closed
+    //TODO add meta info for every ledger in index builder
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -94,6 +100,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     private long maxSegmentLength = 1024 * 1024 * 1024; //TODO initialize by configuration
     private int streamingBlockSize = 64 * 1024 * 1024; //TODO initialize by configuration
     private AtomicLong writtenLength = new AtomicLong(0);
+    private ManagedLedgerImpl ml;
+    private StreamingOffloadIndexBlockBuilder streamingIndexBuilder;
 
     public static BlobStoreManagedLedgerOffloader create(TieredStorageConfiguration config,
                                                          Map<String, String> userMetadata,
@@ -259,15 +267,16 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     String streamingDataIndexKey;
     MultipartUpload streamingMpu = null;
     List<MultipartPart> streamingParts = Lists.newArrayList();
-    AtomicInteger partId = new AtomicInteger(1);
 
     @Override
-    public CompletableFuture<OffloaderHandle> streamingOffload(UUID uuid, long beginLedger, long beginEntry,
+    public CompletableFuture<OffloaderHandle> streamingOffload(ManagedLedger ml, UUID uuid, long beginLedger,
+                                                               long beginEntry,
                                                                Map<String, String> driverMetadata) {
+        this.ml = (ManagedLedgerImpl) ml;
         this.segmentInfo = new SegmentInfo(uuid, beginLedger, beginEntry, config.getDriver(), driverMetadata);
         this.offloadResult = new CompletableFuture<>();
         blobStore = blobStores.get(config.getBlobStoreLocation());
-
+        streamingIndexBuilder = new StreamingOffloadIndexBlockBuilderImpl();
         streamingDataBlockKey = segmentInfo.uuid.toString();
         streamingDataIndexKey = String.format("%s-index", segmentInfo.uuid);
         BlobBuilder blobBuilder = blobStore.blobBuilder(streamingDataBlockKey);
@@ -278,7 +287,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
 
         scheduler.chooseThread(segmentInfo).execute(() -> {
             log.info("start offloading segment: {}", segmentInfo);
-            streamingOffloadLoop();
+            streamingOffloadLoop(1, 0);
         });
 
         return CompletableFuture.completedFuture(new OffloaderHandle() {
@@ -304,7 +313,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         });
     }
 
-    private void streamingOffloadLoop() {
+    private void streamingOffloadLoop(int partId, int dataObjectLength) {
         if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
             offloadResult.complete(new OffloadResult());
             return;
@@ -324,25 +333,48 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         }
         final Entry peek = offloadBuffer.peek();
         //initialize payload when there is at least one entry
+        final long blockLedgerId = peek.getLedgerId();
+        final long blockEntryId = peek.getEntryId();
         payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer, segmentInfo,
-                peek.getLedgerId(), peek.getEntryId(), bufferLength);
+                blockLedgerId, blockEntryId, bufferLength);
+
+        try {
+            streamingIndexBuilder.addLedgerMeta(ml.getRawLedgerMetadata(peek.getLedgerId()).get());
+            streamingIndexBuilder.withDataBlockHeaderLength(StreamingDataBlockHeaderImpl.getDataStartOffset());
+        } catch (InterruptedException | ExecutionException e) {
+            offloadResult.completeExceptionally(e);
+        }
 
         Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
         partPayload.getContentMetadata().setContentType("application/octet-stream");
-        int partId = this.partId.getAndIncrement();
         streamingParts.add(blobStore.uploadMultipartPart(streamingMpu, partId, partPayload));
+        streamingIndexBuilder.addBlock(blockLedgerId, blockEntryId, partId, streamingBlockSize);
+
         log.debug("UploadMultipartPart. container: {}, blobName: {}, partId: {}, mpu: {}",
                 config.getBucket(), streamingDataBlockKey, partId, streamingMpu.id());
         if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
             try {
                 blobStore.completeMultipartUpload(streamingMpu, streamingParts);
+                streamingIndexBuilder.withDataObjectLength(dataObjectLength + streamingBlockSize);
+                final StreamingOffloadIndexBlock index = streamingIndexBuilder.build();
+                final StreamingOffloadIndexBlock.IndexInputStream indexStream = index.toStream();
+                final BlobBuilder indexBlobBuilder = blobStore.blobBuilder(streamingDataIndexKey);
+                final InputStreamPayload indexPayLoad = Payloads.newInputStreamPayload(indexStream);
+                indexPayLoad.getContentMetadata().setContentLength(indexStream.getStreamSize());
+                indexPayLoad.getContentMetadata().setContentType("application/octet-stream");
+                final Blob indexBlob = indexBlobBuilder.payload(indexPayLoad)
+                        .contentLength(indexStream.getStreamSize())
+                        .build();
+                blobStore.putBlob(config.getBucket(), indexBlob);
+
                 offloadResult.complete(new OffloadResult());
             } catch (Exception e) {
                 log.error("streaming offload failed", e);
                 offloadResult.completeExceptionally(e);
             }
         } else {
-            scheduler.chooseThread(segmentInfo).execute(this::streamingOffloadLoop);
+            scheduler.chooseThread(segmentInfo)
+                    .execute(() -> streamingOffloadLoop(partId + 1, dataObjectLength + streamingBlockSize));
         }
     }
 
