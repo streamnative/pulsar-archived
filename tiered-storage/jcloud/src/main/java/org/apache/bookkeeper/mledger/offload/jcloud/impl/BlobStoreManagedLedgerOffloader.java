@@ -309,7 +309,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             return;
         }
         final BufferedOffloadStream payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
-                segmentInfo);
+                segmentInfo, bufferLength);
         Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
         partPayload.getContentMetadata().setContentType("application/octet-stream");
         int partId = this.partId.getAndIncrement();

@@ -5,6 +5,7 @@ import io.netty.buffer.CompositeByteBuf;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfo;
@@ -14,6 +15,7 @@ import org.apache.pulsar.common.allocator.PulsarByteBufAllocator;
 public class BufferedOffloadStream extends InputStream {
     private static final int[] BLOCK_END_PADDING = BlockAwareSegmentInputStreamImpl.BLOCK_END_PADDING;
     private final SegmentInfo segmentInfo;
+    private AtomicLong bufferLength;
     static final int ENTRY_HEADER_SIZE = 4 /* entry size */ + 8 /* entry id */;
 
     private final long blockSize;
@@ -26,10 +28,12 @@ public class BufferedOffloadStream extends InputStream {
 
     public BufferedOffloadStream(int blockSize,
                                  ConcurrentLinkedQueue<Entry> entryBuffer,
-                                 SegmentInfo segmentInfo) {
+                                 SegmentInfo segmentInfo,
+                                 AtomicLong bufferLength) {
         this.blockSize = blockSize;
         this.entryBuffer = entryBuffer;
         this.segmentInfo = segmentInfo;
+        this.bufferLength = bufferLength;
         this.blockHead = StreamingDataBlockHeaderImpl.of(blockSize, segmentInfo.beginLedger, segmentInfo.beginEntry)
                 .toStream();
     }
@@ -80,6 +84,7 @@ public class BufferedOffloadStream extends InputStream {
                 + headEntry.getLength()) {
             entryBuffer.poll();
             final int entryLength = headEntry.getLength();
+            bufferLength.getAndAdd(-entryLength);
             final long entryId = headEntry.getEntryId();
             CompositeByteBuf entryBuf = PulsarByteBufAllocator.DEFAULT.compositeBuffer(2);
             ByteBuf entryHeaderBuf = PulsarByteBufAllocator.DEFAULT.buffer(ENTRY_HEADER_SIZE, ENTRY_HEADER_SIZE);
