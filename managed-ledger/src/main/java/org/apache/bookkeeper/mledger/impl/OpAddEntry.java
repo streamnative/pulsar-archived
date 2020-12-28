@@ -303,9 +303,6 @@ public class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallba
     public State getState() {
         return state;
     }
-public ByteBuf getData() {
-        return data;
-    }
 
     public int getNumberOfMessages() {
         return numberOfMessages;

@@ -48,17 +48,17 @@ public interface LedgerOffloader {
             this.driverMetadata = driverMetadata;
         }
 
-        class LedgerInSegment {
-            long ledgerId;
-            long beginEntryId;
-            long endEntryId;
-            long beginTs;
+        public class LedgerInSegment {
+            public long ledgerId;
+            public long beginEntryId;
+            public long endEntryId;
+            public long beginTs;
         }
 
-        final UUID uuid;
-        final long beginLedger;
-        final long beginEntry;
-        String driverName;
+        public final UUID uuid;
+        public final long beginLedger;
+        public final long beginEntry;
+        public final String driverName;
 
         public boolean isClosed() {
             return closed;
@@ -69,9 +69,9 @@ public interface LedgerOffloader {
         }
 
         volatile boolean closed = false;
-        Map<String, String> driverMetadata;
+        public Map<String, String> driverMetadata;
 
-        List<LedgerInSegment> ledgers;
+        public List<LedgerInSegment> ledgers;
 
         @Override
         public String toString() {
