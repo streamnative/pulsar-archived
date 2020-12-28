@@ -74,6 +74,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     //TODO buffer should not less than max message size
     //TODO need padding magic
     //TODO create new block when ending a ledger
+    //TODO change offer result when segment closed
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -308,8 +309,24 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             offloadResult.complete(new OffloadResult());
             return;
         }
-        final BufferedOffloadStream payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
-                segmentInfo, bufferLength);
+        final BufferedOffloadStream payloadStream;
+
+        while (offloadBuffer.isEmpty()) {
+            if (segmentInfo.isClosed()) {
+                offloadResult.complete(new OffloadResult());
+            } else {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        final Entry peek = offloadBuffer.peek();
+        //initialize payload when there is at least one entry
+        payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
+                peek.getLedgerId(), peek.getEntryId(), bufferLength);
+
         Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
         partPayload.getContentMetadata().setContentType("application/octet-stream");
         int partId = this.partId.getAndIncrement();

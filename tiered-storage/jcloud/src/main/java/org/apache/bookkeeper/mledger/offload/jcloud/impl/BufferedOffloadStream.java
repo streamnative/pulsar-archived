@@ -28,13 +28,13 @@ public class BufferedOffloadStream extends InputStream {
 
     public BufferedOffloadStream(int blockSize,
                                  ConcurrentLinkedQueue<Entry> entryBuffer,
-                                 SegmentInfo segmentInfo,
+                                 long beginLedgerId,
+                                 long beginEntryId,
                                  AtomicLong bufferLength) {
         this.blockSize = blockSize;
         this.entryBuffer = entryBuffer;
-        this.segmentInfo = segmentInfo;
         this.bufferLength = bufferLength;
-        this.blockHead = StreamingDataBlockHeaderImpl.of(blockSize, segmentInfo.beginLedger, segmentInfo.beginEntry)
+        this.blockHead = StreamingDataBlockHeaderImpl.of(blockSize, beginLedgerId, beginEntryId)
                 .toStream();
     }
 
