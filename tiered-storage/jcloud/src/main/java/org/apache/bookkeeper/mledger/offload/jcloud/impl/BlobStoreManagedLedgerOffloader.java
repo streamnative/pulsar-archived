@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.api.ReadHandle;
@@ -90,6 +91,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     private volatile PositionImpl lastOfferedPosition = PositionImpl.latest;
     private Instant segmentCloseTime = Instant.now().plusSeconds(600); //TODO initialize by configuration
     private long maxSegmentLength = 1024 * 1024 * 1024; //TODO initialize by configuration
+    private int streamingBlockSize = 64 * 1024 * 1024; //TODO initialize by configuration
     private AtomicLong writtenLength = new AtomicLong(0);
 
     public static BlobStoreManagedLedgerOffloader create(TieredStorageConfiguration config,
@@ -251,12 +253,33 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
+    BlobStore blobStore;
+    String streamingDataBlockKey;
+    String streamingDataIndexKey;
+    MultipartUpload streamingMpu = null;
+    List<MultipartPart> streamingParts = Lists.newArrayList();
+    AtomicInteger partId = new AtomicInteger(1);
+
     @Override
     public CompletableFuture<OffloaderHandle> streamingOffload(UUID uuid, long beginLedger, long beginEntry,
                                                                Map<String, String> driverMetadata) {
         this.segmentInfo = new SegmentInfo(uuid, beginLedger, beginEntry, config.getDriver(), driverMetadata);
-        scheduler.chooseThread(segmentInfo).execute(this::streamingOffloadLoop);
         this.offloadResult = new CompletableFuture<>();
+        blobStore = blobStores.get(config.getBlobStoreLocation());
+
+        streamingDataBlockKey = segmentInfo.uuid.toString();
+        streamingDataIndexKey = String.format("%s-index", segmentInfo.uuid);
+        BlobBuilder blobBuilder = blobStore.blobBuilder(streamingDataBlockKey);
+        DataBlockUtils.addVersionInfo(blobBuilder, userMetadata);
+        Blob blob = blobBuilder.build();
+        streamingMpu = blobStore
+                .initiateMultipartUpload(config.getBucket(), blob.getMetadata(), new PutOptions());
+
+        scheduler.chooseThread(segmentInfo).execute(() -> {
+            log.info("start offloading segment: {}", segmentInfo);
+            streamingOffloadLoop();
+        });
+
         return CompletableFuture.completedFuture(new OffloaderHandle() {
             @Override
             public boolean canOffer(long size) {
@@ -284,7 +307,25 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         if (offloadResult.isDone()) {
             return;
         }
-        log.info("start offloading segment: {}", segmentInfo);
+        final BufferedOffloadStream payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer,
+                segmentInfo);
+        Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
+        partPayload.getContentMetadata().setContentType("application/octet-stream");
+        int partId = this.partId.getAndIncrement();
+        streamingParts.add(blobStore.uploadMultipartPart(streamingMpu, partId, partPayload));
+        log.debug("UploadMultipartPart. container: {}, blobName: {}, partId: {}, mpu: {}",
+                config.getBucket(), streamingDataBlockKey, partId, streamingMpu.id());
+        if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
+            try {
+                blobStore.completeMultipartUpload(streamingMpu, streamingParts);
+                offloadResult.complete(new OffloadResult());
+            } catch (Exception e) {
+                log.error("streaming offload failed", e);
+                offloadResult.completeExceptionally(e);
+            }
+        } else {
+            scheduler.chooseThread(segmentInfo).execute(this::streamingOffloadLoop);
+        }
     }
 
     private CompletableFuture<OffloadResult> getOffloadResultAsync() {
