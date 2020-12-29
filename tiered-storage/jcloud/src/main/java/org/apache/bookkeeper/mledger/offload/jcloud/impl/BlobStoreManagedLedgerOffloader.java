@@ -18,6 +18,7 @@
  */
 package org.apache.bookkeeper.mledger.offload.jcloud.impl;
 
+import static org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -74,13 +75,8 @@ import org.jclouds.io.payloads.InputStreamPayload;
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     //TODO read offloaded
-    //TODO delete offloaded
     //TODO buffer should not less than max message size
-
-    //TODO create new block when ending a ledger
     //TODO update segment info
-    //TODO change offer result when segment closed
-    //TODO add meta info for every ledger in index builder
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -303,7 +299,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             }
 
             @Override
-            public boolean offerEntry(EntryImpl entry) {
+            public boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException {
                 return BlobStoreManagedLedgerOffloader.this.offerEntry(entry);
             }
 
@@ -383,10 +379,9 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return this.offloadResult;
     }
 
-    private boolean offerEntry(EntryImpl entry) {
+    private boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException {
         if (segmentInfo.isClosed()) {
-            //TODO return enum to deal with segment closed
-            return false;
+            throw new OffloadSegmentClosedException("Segment already closed " + segmentInfo);
         } else {
             entry.retain();
             offloadBuffer.add(entry);
@@ -465,6 +460,27 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
+    @Override
+    public CompletableFuture<Void> deleteOffloaded(UUID uid, Map<String, String> offloadDriverMetadata) {
+        BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        String readBucket = bsKey.getBucket(offloadDriverMetadata);
+        BlobStore readBlobstore = blobStores.get(config.getBlobStoreLocation());
+
+        CompletableFuture<Void> promise = new CompletableFuture<>();
+        scheduler.submit(() -> {
+            try {
+                readBlobstore.removeBlobs(readBucket,
+                        ImmutableList.of(uid.toString(),
+                                DataBlockUtils.indexBlockOffloadKey(uid)));
+                promise.complete(null);
+            } catch (Throwable t) {
+                log.error("Failed delete Blob", t);
+                promise.completeExceptionally(t);
+            }
+        });
+
+        return promise;
+    }
 
     @Override
     public OffloadPolicies getOffloadPolicies() {

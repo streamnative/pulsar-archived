@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
 import org.apache.bookkeeper.mledger.impl.EntryImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
@@ -107,7 +108,7 @@ public interface LedgerOffloader {
 
         PositionImpl lastOffered();
 
-        boolean offerEntry(EntryImpl entry);
+        boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException;
 
         CompletableFuture<OffloadResult> getOffloadResultAsync();
     }
@@ -217,6 +218,11 @@ public interface LedgerOffloader {
      */
     CompletableFuture<Void> deleteOffloaded(long ledgerId, UUID uid,
                                             Map<String, String> offloadDriverMetadata);
+
+    default CompletableFuture<Void> deleteOffloaded(UUID uid,
+                                                    Map<String, String> offloadDriverMetadata) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Get offload policies of this LedgerOffloader
