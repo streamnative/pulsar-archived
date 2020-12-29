@@ -21,8 +21,10 @@ package org.apache.bookkeeper.mledger.offload.jcloud.impl;
 import static com.google.common.base.Preconditions.checkState;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
@@ -34,10 +36,10 @@ import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlockBu
  */
 public class StreamingOffloadIndexBlockBuilderImpl implements StreamingOffloadIndexBlockBuilder {
 
-    private LedgerMetadata ledgerMetadata;
+    private final Map<Long, LedgerMetadata> ledgerMetadata = new HashMap<>();
     private long dataObjectLength;
     private long dataHeaderLength;
-    private SortedMap<Long, List<OffloadIndexEntryImpl>> entryMap;
+    private final SortedMap<Long, List<OffloadIndexEntryImpl>> entryMap;
     private long offset = 0;
     private int lastBlockSize;
 
@@ -58,8 +60,8 @@ public class StreamingOffloadIndexBlockBuilderImpl implements StreamingOffloadIn
     }
 
     @Override
-    public StreamingOffloadIndexBlockBuilder addLedgerMeta(LedgerMetadata metadata) {
-        this.ledgerMetadata = metadata;
+    public StreamingOffloadIndexBlockBuilder addLedgerMeta(Long ledgerId, LedgerMetadata metadata) {
+        this.ledgerMetadata.put(ledgerId, metadata);
         return this;
     }
 

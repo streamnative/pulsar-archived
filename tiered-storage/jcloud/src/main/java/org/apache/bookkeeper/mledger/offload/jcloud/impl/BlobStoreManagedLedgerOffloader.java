@@ -339,7 +339,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
                 blockLedgerId, blockEntryId, bufferLength);
 
         try {
-            streamingIndexBuilder.addLedgerMeta(ml.getRawLedgerMetadata(peek.getLedgerId()).get());
+            streamingIndexBuilder.addLedgerMeta(blockLedgerId, ml.getRawLedgerMetadata(blockLedgerId).get());
             streamingIndexBuilder.withDataBlockHeaderLength(StreamingDataBlockHeaderImpl.getDataStartOffset());
         } catch (InterruptedException | ExecutionException e) {
             offloadResult.completeExceptionally(e);

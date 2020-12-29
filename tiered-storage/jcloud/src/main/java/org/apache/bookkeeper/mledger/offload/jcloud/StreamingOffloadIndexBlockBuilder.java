@@ -35,9 +35,10 @@ public interface StreamingOffloadIndexBlockBuilder {
     /**
      * Build index block with the passed in ledger metadata.
      *
+     * @param ledgerId
      * @param metadata the ledger metadata
      */
-    StreamingOffloadIndexBlockBuilder addLedgerMeta(LedgerMetadata metadata);
+    StreamingOffloadIndexBlockBuilder addLedgerMeta(Long ledgerId, LedgerMetadata metadata);
 
     /**
      * Add one payload block related information into index block.
