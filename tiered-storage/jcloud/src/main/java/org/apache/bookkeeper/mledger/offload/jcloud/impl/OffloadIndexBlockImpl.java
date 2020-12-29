@@ -72,7 +72,7 @@ public class OffloadIndexBlockImpl implements OffloadIndexBlock {
                                             List<OffloadIndexEntryImpl> entries) {
         OffloadIndexBlockImpl block = RECYCLER.get();
         block.indexEntries = Maps.newTreeMap();
-        entries.forEach(entry -> block.indexEntries.putIfAbsent(entry.getEntryId(), entry));
+        entries.forEach(entry -> block.indexEntries.putIfAbsent(entry.getFirstEntryId(), entry));
         checkState(entries.size() == block.indexEntries.size());
         block.segmentMetadata = metadata;
         block.dataObjectLength = dataObjectLength;
@@ -164,7 +164,7 @@ public class OffloadIndexBlockImpl implements OffloadIndexBlock {
 
         // write entries
         this.indexEntries.entrySet().forEach(entry ->
-            out.writeLong(entry.getValue().getEntryId())
+                out.writeLong(entry.getValue().getFirstEntryId())
                 .writeInt(entry.getValue().getPartId())
                 .writeLong(entry.getValue().getOffset()));
 

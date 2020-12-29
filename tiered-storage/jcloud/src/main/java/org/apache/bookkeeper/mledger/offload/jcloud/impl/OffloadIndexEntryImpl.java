@@ -24,34 +24,37 @@ import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexEntry;
  * The Index Entry in OffloadIndexBlock.
  */
 public class OffloadIndexEntryImpl implements OffloadIndexEntry {
-    public static OffloadIndexEntryImpl of(long entryId, int partId, long offset, long blockHeaderSize) {
-        return new OffloadIndexEntryImpl(entryId, partId, offset, blockHeaderSize);
+    public static OffloadIndexEntryImpl of(long firstEntryId, int partId, long offset, long blockHeaderSize) {
+        return new OffloadIndexEntryImpl(firstEntryId, partId, offset, blockHeaderSize);
     }
 
-    private final long entryId;
+    private final long firstEntryId;
     private final int partId;
     private final long offset;
     private final long blockHeaderSize;
 
     @Override
-    public long getEntryId() {
-        return entryId;
+    public long getFirstEntryId() {
+        return firstEntryId;
     }
+
     @Override
     public int getPartId() {
         return partId;
     }
+
     @Override
     public long getOffset() {
         return offset;
     }
+
     @Override
     public long getDataOffset() {
         return offset + blockHeaderSize;
     }
 
-    private OffloadIndexEntryImpl(long entryId, int partId, long offset, long blockHeaderSize) {
-        this.entryId = entryId;
+    private OffloadIndexEntryImpl(long firstEntryId, int partId, long offset, long blockHeaderSize) {
+        this.firstEntryId = firstEntryId;
         this.partId = partId;
         this.offset = offset;
         this.blockHeaderSize = blockHeaderSize;
@@ -60,7 +63,7 @@ public class OffloadIndexEntryImpl implements OffloadIndexEntry {
     @Override
     public String toString() {
         return String.format("[eid:%d, part:%d, offset:%d, doffset:%d]",
-                entryId, partId, offset, getDataOffset());
+                firstEntryId, partId, offset, getDataOffset());
     }
 }
 

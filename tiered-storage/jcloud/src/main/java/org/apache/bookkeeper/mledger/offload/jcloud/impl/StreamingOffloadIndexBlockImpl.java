@@ -28,6 +28,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -48,10 +49,12 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
 
     private static final int INDEX_MAGIC_WORD = 0x3D1FB0BC;
 
-    private LedgerMetadata segmentMetadata;
+    private Map<Long, LedgerMetadata> segmentMetadata;
     private long dataObjectLength;
     private long dataHeaderLength;
-//    private TreeMap<Long, OffloadIndexEntryImpl> indexEntries;
+    //    private TreeMap<Long, OffloadIndexEntryImpl> indexEntries;
+    private Map<Long, TreeMap<Long, OffloadIndexEntryImpl>> indexEntries;
+
 
     private final Handle<StreamingOffloadIndexBlockImpl> recyclerHandle;
 
@@ -61,17 +64,25 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
             return new StreamingOffloadIndexBlockImpl(handle);
         }
     };
-    private Map<Long, List<OffloadIndexEntryImpl>> entries;
 
     private StreamingOffloadIndexBlockImpl(Handle<StreamingOffloadIndexBlockImpl> recyclerHandle) {
         this.recyclerHandle = recyclerHandle;
     }
 
-    public static StreamingOffloadIndexBlockImpl get(LedgerMetadata metadata, long dataObjectLength,
+    public static StreamingOffloadIndexBlockImpl get(Map<Long, LedgerMetadata> metadata, long dataObjectLength,
                                                      long dataHeaderLength,
                                                      Map<Long, List<OffloadIndexEntryImpl>> entries) {
         StreamingOffloadIndexBlockImpl block = RECYCLER.get();
-        block.entries = entries;
+        block.indexEntries = new HashMap<>();
+        entries.forEach((ledgerId, list) -> {
+            final TreeMap<Long, OffloadIndexEntryImpl> inLedger = block.indexEntries
+                    .getOrDefault(ledgerId, new TreeMap<>());
+            list.forEach(indexEntry -> {
+                inLedger.put(indexEntry.getFirstEntryId(), indexEntry);
+            });
+            block.indexEntries.put(ledgerId, inLedger);
+        });
+
         block.segmentMetadata = metadata;
         block.dataObjectLength = dataObjectLength;
         block.dataHeaderLength = dataHeaderLength;
@@ -80,7 +91,7 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
 
     public static StreamingOffloadIndexBlockImpl get(InputStream stream) throws IOException {
         StreamingOffloadIndexBlockImpl block = RECYCLER.get();
-        block.entries = Maps.newTreeMap();
+        block.indexEntries = Maps.newTreeMap();
         block.fromStream(stream);
         return block;
     }
@@ -89,23 +100,24 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
         dataObjectLength = -1;
         dataHeaderLength = -1;
         segmentMetadata = null;
-        entries.clear();
-        entries = null;
+        indexEntries.clear();
+        indexEntries = null;
         if (recyclerHandle != null) {
             recyclerHandle.recycle(this);
         }
     }
 
     @Override
-    public OffloadIndexEntry getIndexEntryForEntry(long messageEntryId) throws IOException {
-        if (messageEntryId > segmentMetadata.getLastEntryId()) {
+    public OffloadIndexEntry getIndexEntryForEntry(long ledgerId, long messageEntryId) throws IOException {
+        //TODO deal with data exists in another object
+        if (messageEntryId > segmentMetadata.get(ledgerId).getLastEntryId()) {
             log.warn("Try to get entry: {}, which beyond lastEntryId {}, return null",
-                    messageEntryId, segmentMetadata.getLastEntryId());
+                    messageEntryId, segmentMetadata.get(ledgerId).getLastEntryId());
             throw new IndexOutOfBoundsException("Entry index: " + messageEntryId
-                    + " beyond lastEntryId: " + segmentMetadata.getLastEntryId());
+                    + " beyond lastEntryId: " + segmentMetadata.get(ledgerId).getLastEntryId());
         }
         // find the greatest mapping Id whose entryId <= messageEntryId
-        return this.indexEntries.floorEntry(messageEntryId).getValue();
+        return this.indexEntries.get(ledgerId).floorEntry(messageEntryId).getValue();
     }
 
     @Override
@@ -114,7 +126,7 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
     }
 
     @Override
-    public LedgerMetadata getLedgerMetadata() {
+    public Map<Long, LedgerMetadata> getLedgerMetadata() {
         return this.segmentMetadata;
     }
 
@@ -162,7 +174,7 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
 
         // write entries
         this.indexEntries.entrySet().forEach(entry ->
-                out.writeLong(entry.getValue().getEntryId())
+                out.writeLong(entry.getValue().getFirstEntryId())
                         .writeInt(entry.getValue().getPartId())
                         .writeLong(entry.getValue().getOffset()));
 

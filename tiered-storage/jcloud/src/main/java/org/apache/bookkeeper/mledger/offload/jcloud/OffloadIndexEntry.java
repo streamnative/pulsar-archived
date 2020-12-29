@@ -33,7 +33,7 @@ public interface OffloadIndexEntry {
     /**
      * Get the entryId that this entry contains.
      */
-    long getEntryId();
+    long getFirstEntryId();
 
     /**
      * Get the block part id of code storage.

@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Unstable;
 
@@ -46,7 +47,7 @@ public interface StreamingOffloadIndexBlock extends Closeable {
      *                      the entry id of message
      * @return the offload index entry
      */
-    OffloadIndexEntry getIndexEntryForEntry(long messageEntryId) throws IOException;
+    OffloadIndexEntry getIndexEntryForEntry(long ledgerId, long messageEntryId) throws IOException;
 
     /**
      * Get the entry count that contained in this index Block.
@@ -56,7 +57,7 @@ public interface StreamingOffloadIndexBlock extends Closeable {
     /**
      * Get LedgerMetadata.
      */
-    LedgerMetadata getLedgerMetadata();
+    Map<Long, LedgerMetadata> getLedgerMetadata();
 
     /**
      * Get the total size of the data object.
