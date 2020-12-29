@@ -148,35 +148,52 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
      */
     @Override
     public StreamingOffloadIndexBlock.IndexInputStream toStream() throws IOException {
-        int indexEntryCount = this.indexEntries.size();
-        byte[] ledgerMetadataByte = buildLedgerMetadataFormat(this.segmentMetadata);
-        int segmentMetadataLength = ledgerMetadataByte.length;
+//        int indexEntryCount = this.indexEntries.size();
+//        byte[] ledgerMetadataByte = buildLedgerMetadataFormat(this.segmentMetadata);
+//        int segmentMetadataLength = ledgerMetadataByte.length;
 
         int indexBlockLength = 4 /* magic header */
                 + 4 /* index block length */
                 + 8 /* data object length */
-                + 8 /* data header length */
-                + 4 /* index entry count */
-                + 4 /* segment metadata length */
-                + segmentMetadataLength
-                + indexEntryCount * (8 + 4 + 8); /* messageEntryId + blockPartId + blockOffset */
+                + 8;/* data header length */
+
+        Map<Long, byte[]> metaBytesMap = new HashMap<>();
+        for (Map.Entry<Long, TreeMap<Long, OffloadIndexEntryImpl>> e : this.indexEntries.entrySet()) {
+            Long ledgerId = e.getKey();
+            TreeMap<Long, OffloadIndexEntryImpl> ledgerIndexEntries = e.getValue();
+            int indexEntryCount = ledgerIndexEntries.size();
+            byte[] ledgerMetadataByte = buildLedgerMetadataFormat(this.segmentMetadata.get(ledgerId));
+            int segmentMetadataLength = ledgerMetadataByte.length;
+            indexBlockLength += 8 /* ledger id length */
+                    + 4 /* index entry count */
+                    + 4 /* segment metadata length */
+                    + segmentMetadataLength
+                    + indexEntryCount * (8 + 4 + 8);
+            metaBytesMap.put(ledgerId, ledgerMetadataByte);
+        }
 
         ByteBuf out = PulsarByteBufAllocator.DEFAULT.buffer(indexBlockLength, indexBlockLength);
 
         out.writeInt(INDEX_MAGIC_WORD)
                 .writeInt(indexBlockLength)
                 .writeLong(dataObjectLength)
-                .writeLong(dataHeaderLength)
-                .writeInt(indexEntryCount)
-                .writeInt(segmentMetadataLength);
-        // write metadata
-        out.writeBytes(ledgerMetadataByte);
+                .writeLong(dataHeaderLength);
 
-        // write entries
-        this.indexEntries.entrySet().forEach(entry ->
-                out.writeLong(entry.getValue().getFirstEntryId())
-                        .writeInt(entry.getValue().getPartId())
-                        .writeLong(entry.getValue().getOffset()));
+        for (Map.Entry<Long, TreeMap<Long, OffloadIndexEntryImpl>> e : this.indexEntries.entrySet()) {
+            Long ledgerId = e.getKey();
+            TreeMap<Long, OffloadIndexEntryImpl> ledgerIndexEntries = e.getValue();
+            int indexEntryCount = ledgerIndexEntries.size();
+            byte[] ledgerMetadataByte = metaBytesMap.get(ledgerId);
+            out.writeLong(ledgerId)
+                    .writeInt(indexEntryCount)
+                    .writeInt(ledgerMetadataByte.length)
+                    .writeBytes(ledgerMetadataByte);
+            ledgerIndexEntries.values().forEach(idxEntry -> {
+                out.writeLong(idxEntry.getFirstEntryId())
+                        .writeInt(idxEntry.getPartId())
+                        .writeLong(idxEntry.getOffset());
+            });
+        }
 
         return new StreamingOffloadIndexBlock.IndexInputStream(new ByteBufInputStream(out, true), indexBlockLength);
     }
@@ -347,21 +364,27 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
         dis.readInt(); // no used index block length
         this.dataObjectLength = dis.readLong();
         this.dataHeaderLength = dis.readLong();
-        int indexEntryCount = dis.readInt();
-        int segmentMetadataLength = dis.readInt();
+        while (dis.available() > 0) {
+            long ledgerId = dis.readLong();
+            int indexEntryCount = dis.readInt();
+            int segmentMetadataLength = dis.readInt();
 
-        byte[] metadataBytes = new byte[segmentMetadataLength];
+            byte[] metadataBytes = new byte[segmentMetadataLength];
 
-        if (segmentMetadataLength != dis.read(metadataBytes)) {
-            log.error("Read ledgerMetadata from bytes failed");
-            throw new IOException("Read ledgerMetadata from bytes failed");
-        }
-        this.segmentMetadata = parseLedgerMetadata(metadataBytes);
+            if (segmentMetadataLength != dis.read(metadataBytes)) {
+                log.error("Read ledgerMetadata from bytes failed");
+                throw new IOException("Read ledgerMetadata from bytes failed");
+            }
+            final LedgerMetadata segmentMetadata = parseLedgerMetadata(metadataBytes);
+            this.segmentMetadata.put(ledgerId, segmentMetadata);
+            final TreeMap<Long, OffloadIndexEntryImpl> indexEntries = new TreeMap<>();
 
-        for (int i = 0; i < indexEntryCount; i++) {
-            long entryId = dis.readLong();
-            this.indexEntries.putIfAbsent(entryId, OffloadIndexEntryImpl.of(entryId, dis.readInt(),
-                    dis.readLong(), dataHeaderLength));
+            for (int i = 0; i < indexEntryCount; i++) {
+                long entryId = dis.readLong();
+                indexEntries.putIfAbsent(entryId, OffloadIndexEntryImpl.of(entryId, dis.readInt(),
+                        dis.readLong(), dataHeaderLength));
+            }
+            this.indexEntries.put(ledgerId, indexEntries);
         }
 
         return this;
