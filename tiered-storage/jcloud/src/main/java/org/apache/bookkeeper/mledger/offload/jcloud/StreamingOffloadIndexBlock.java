@@ -49,6 +49,8 @@ public interface StreamingOffloadIndexBlock extends Closeable {
      */
     OffloadIndexEntry getIndexEntryForEntry(long ledgerId, long messageEntryId) throws IOException;
 
+    public long getStartEntryId(long ledgerId);
+
     /**
      * Get the entry count that contained in this index Block.
      */

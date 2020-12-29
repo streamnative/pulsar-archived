@@ -29,6 +29,7 @@ import org.apache.bookkeeper.common.annotation.InterfaceStability;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
 import org.apache.bookkeeper.mledger.impl.EntryImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
 /**
@@ -218,6 +219,11 @@ public interface LedgerOffloader {
      */
     CompletableFuture<Void> deleteOffloaded(long ledgerId, UUID uid,
                                             Map<String, String> offloadDriverMetadata);
+
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId, MLDataFormats.OffloadContext ledgerContext,
+                                                        Map<String, String> offloadDriverMetadata) {
+        throw new UnsupportedClassVersionError();
+    }
 
     default CompletableFuture<Void> deleteOffloaded(UUID uid,
                                                     Map<String, String> offloadDriverMetadata) {

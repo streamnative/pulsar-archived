@@ -120,6 +120,10 @@ public class StreamingOffloadIndexBlockImpl implements StreamingOffloadIndexBloc
         return this.indexEntries.get(ledgerId).floorEntry(messageEntryId).getValue();
     }
 
+    public long getStartEntryId(long ledgerId) {
+        return this.indexEntries.get(ledgerId).firstEntry().getValue().getFirstEntryId();
+    }
+
     @Override
     public int getEntryCount() {
         return this.indexEntries.size();

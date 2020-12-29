@@ -50,6 +50,7 @@ import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlock;
 import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlockBuilder;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.BlobStoreLocation;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.TieredStorageConfiguration;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
@@ -74,7 +75,6 @@ import org.jclouds.io.payloads.InputStreamPayload;
  */
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
-    //TODO read offloaded
     //TODO buffer should not less than max message size
     //TODO update segment info
 
@@ -428,12 +428,45 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
                                                                  readBlobstore,
                                                                  readBucket, key, indexKey,
                                                                  DataBlockUtils.VERSION_CHECK,
-                                                                 ledgerId, config.getReadBufferSizeInBytes()));
+                            ledgerId, config.getReadBufferSizeInBytes()));
                 } catch (Throwable t) {
                     log.error("Failed readOffloaded: ", t);
                     promise.completeExceptionally(t);
                 }
-            });
+        });
+        return promise;
+    }
+
+    @Override
+    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, MLDataFormats.OffloadContext ledgerContext,
+                                                       Map<String, String> offloadDriverMetadata) {
+        BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        String readBucket = bsKey.getBucket();
+        BlobStore readBlobstore = blobStores.get(config.getBlobStoreLocation());
+        CompletableFuture<ReadHandle> promise = new CompletableFuture<>();
+        final List<MLDataFormats.OffloadSegment> offloadSegmentList = ledgerContext.getOffloadSegmentList();
+        List<String> keys = Lists.newLinkedList();
+        List<String> indexKeys = Lists.newLinkedList();
+        offloadSegmentList.forEach(seg -> {
+            final UUID uuid = new UUID(seg.getUidMsb(), seg.getUidLsb());
+            final String key = uuid.toString();
+            final String indexKey = DataBlockUtils.indexBlockOffloadKey(uuid);
+            keys.add(key);
+            indexKeys.add(indexKey);
+        });
+
+        scheduler.chooseThread(ledgerId).submit(() -> {
+            try {
+                promise.complete(StreamingBlobStoreBackedReadHandleImpl.open(scheduler.chooseThread(ledgerId),
+                        readBlobstore,
+                        readBucket, keys, indexKeys,
+                        DataBlockUtils.VERSION_CHECK,
+                        ledgerId, config.getReadBufferSizeInBytes()));
+            } catch (Throwable t) {
+                log.error("Failed readOffloaded: ", t);
+                promise.completeExceptionally(t);
+            }
+        });
         return promise;
     }
 
@@ -448,8 +481,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         scheduler.chooseThread(ledgerId).submit(() -> {
             try {
                 readBlobstore.removeBlobs(readBucket,
-                    ImmutableList.of(DataBlockUtils.dataBlockOffloadKey(ledgerId, uid),
-                                     DataBlockUtils.indexBlockOffloadKey(ledgerId, uid)));
+                        ImmutableList.of(DataBlockUtils.dataBlockOffloadKey(ledgerId, uid),
+                                DataBlockUtils.indexBlockOffloadKey(ledgerId, uid)));
                 promise.complete(null);
             } catch (Throwable t) {
                 log.error("Failed delete Blob", t);
