@@ -73,12 +73,12 @@ import org.jclouds.io.payloads.InputStreamPayload;
  */
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
-    //TODO start offloading
     //TODO read offloaded
     //TODO delete offloaded
     //TODO buffer should not less than max message size
-    //TODO need padding magic
+
     //TODO create new block when ending a ledger
+    //TODO update segment info
     //TODO change offer result when segment closed
     //TODO add meta info for every ledger in index builder
 
@@ -98,7 +98,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     private volatile PositionImpl lastOfferedPosition = PositionImpl.latest;
     private Instant segmentCloseTime = Instant.now().plusSeconds(600); //TODO initialize by configuration
     private long maxSegmentLength = 1024 * 1024 * 1024; //TODO initialize by configuration
-    private int streamingBlockSize = 64 * 1024 * 1024; //TODO initialize by configuration
+    private final int streamingBlockSize;
     private AtomicLong writtenLength = new AtomicLong(0);
     private ManagedLedgerImpl ml;
     private StreamingOffloadIndexBlockBuilder streamingIndexBuilder;
@@ -116,6 +116,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         this.scheduler = scheduler;
         this.userMetadata = userMetadata;
         this.config = config;
+        this.streamingBlockSize = config.getMaxBlockSizeInBytes();
 
         if (!Strings.isNullOrEmpty(config.getRegion())) {
             this.writeLocation = new LocationBuilder()

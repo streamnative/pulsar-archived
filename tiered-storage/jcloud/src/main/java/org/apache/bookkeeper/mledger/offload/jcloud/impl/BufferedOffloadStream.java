@@ -33,6 +33,7 @@ import org.apache.pulsar.common.allocator.PulsarByteBufAllocator;
 public class BufferedOffloadStream extends InputStream {
     static final int[] BLOCK_END_PADDING = BlockAwareSegmentInputStreamImpl.BLOCK_END_PADDING;
     private final SegmentInfo segmentInfo;
+    private final long ledgerId;
     private AtomicLong bufferLength;
     static final int ENTRY_HEADER_SIZE = 4 /* entry size */ + 8 /* entry id */;
 
@@ -47,14 +48,15 @@ public class BufferedOffloadStream extends InputStream {
     public BufferedOffloadStream(int blockSize,
                                  ConcurrentLinkedQueue<Entry> entryBuffer,
                                  SegmentInfo segmentInfo,
-                                 long beginLedgerId,
+                                 long ledgerId,
                                  long beginEntryId,
                                  AtomicLong bufferLength) {
+        this.ledgerId = ledgerId;
         this.blockSize = blockSize;
         this.segmentInfo = segmentInfo;
         this.entryBuffer = entryBuffer;
         this.bufferLength = bufferLength;
-        this.blockHead = StreamingDataBlockHeaderImpl.of(blockSize, beginLedgerId, beginEntryId)
+        this.blockHead = StreamingDataBlockHeaderImpl.of(blockSize, ledgerId, beginEntryId)
                 .toStream();
     }
 
@@ -97,6 +99,14 @@ public class BufferedOffloadStream extends InputStream {
                     log.error("sleep failed", e);
                 }
             }
+        }
+
+        //create new block when a ledger end
+        if (headEntry.getLedgerId() != this.ledgerId) {
+            if (validDataOffset == NOT_INITIALIZED) {
+                validDataOffset = offset;
+            }
+            return read();
         }
 
         if (blockSize >= offset
