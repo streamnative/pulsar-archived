@@ -56,7 +56,7 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
     private final List<DataInputStream> dataStreams;
     private final ExecutorService executor;
 
-    class GroupedReader {
+    static class GroupedReader {
         long ledgerId;
         long firstEntry;
         long lastEntry;
@@ -146,7 +146,8 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
                         int length = groupedReader.dataStream.readInt();
                         if (length < 0) { // hit padding or new block
                             groupedReader.inputStream
-                                    .seek(groupedReader.index.getIndexEntryForEntry(ledgerId, nextExpectedId)
+                                    .seek(groupedReader.index
+                                            .getIndexEntryForEntry(groupedReader.ledgerId, nextExpectedId)
                                             .getDataOffset());
                             continue;
                         }
@@ -163,14 +164,17 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
                             nextExpectedId++;
                         } else if (entryId > nextExpectedId) {
                             groupedReader.inputStream
-                                    .seek(groupedReader.index.getIndexEntryForEntry(ledgerId, nextExpectedId)
+                                    .seek(groupedReader.index
+                                            .getIndexEntryForEntry(groupedReader.ledgerId, nextExpectedId)
                                             .getDataOffset());
                             continue;
                         } else if (entryId < nextExpectedId
-                                && !groupedReader.index.getIndexEntryForEntry(ledgerId, nextExpectedId).equals(
-                                groupedReader.index.getIndexEntryForEntry(ledgerId, entryId))) {
+                                && !groupedReader.index.getIndexEntryForEntry(groupedReader.ledgerId, nextExpectedId)
+                                .equals(
+                                        groupedReader.index.getIndexEntryForEntry(groupedReader.ledgerId, entryId))) {
                             groupedReader.inputStream
-                                    .seek(groupedReader.index.getIndexEntryForEntry(ledgerId, nextExpectedId)
+                                    .seek(groupedReader.index
+                                            .getIndexEntryForEntry(groupedReader.ledgerId, nextExpectedId)
                                             .getDataOffset());
                             continue;
                         } else if (entryId > groupedReader.lastEntry) {

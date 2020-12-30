@@ -91,21 +91,21 @@ public class OffloadPrefixReadTest extends MockedBookKeeperTestCase {
             Assert.assertEquals(new String(e.getData()), "entry-" + i++);
         }
         verify(offloader, times(1))
-            .readOffloaded(anyLong(), any(), anyMap());
+                .readOffloaded(anyLong(), (UUID) any(), anyMap());
         verify(offloader).readOffloaded(anyLong(), eq(firstLedgerUUID), anyMap());
 
         for (Entry e : cursor.readEntries(10)) {
             Assert.assertEquals(new String(e.getData()), "entry-" + i++);
         }
         verify(offloader, times(2))
-            .readOffloaded(anyLong(), any(), anyMap());
+                .readOffloaded(anyLong(), (UUID) any(), anyMap());
         verify(offloader).readOffloaded(anyLong(), eq(secondLedgerUUID), anyMap());
 
         for (Entry e : cursor.readEntries(5)) {
             Assert.assertEquals(new String(e.getData()), "entry-" + i++);
         }
         verify(offloader, times(2))
-            .readOffloaded(anyLong(), any(), anyMap());
+                .readOffloaded(anyLong(), (UUID) any(), anyMap());
     }
 
     static class MockLedgerOffloader implements LedgerOffloader {
