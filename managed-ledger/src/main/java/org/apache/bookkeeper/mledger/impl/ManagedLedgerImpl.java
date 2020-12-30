@@ -110,6 +110,8 @@ import org.apache.bookkeeper.mledger.ManagedLedgerException.ManagedLedgerTermina
 import org.apache.bookkeeper.mledger.ManagedLedgerException.MetaStoreException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.MetadataNotFoundException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.NonRecoverableLedgerException;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadNotConsecutiveException;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.TooManyRequestsException;
 import org.apache.bookkeeper.mledger.ManagedLedgerMXBean;
 import org.apache.bookkeeper.mledger.Position;
@@ -1011,7 +1013,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                             addOperation.getData());
             try {
                 final boolean used = currentOffloaderHandle.offerEntry(entry);
-            } catch (ManagedLedgerException.OffloadSegmentClosedException e) {
+            } catch (OffloadSegmentClosedException | OffloadNotConsecutiveException e) {
                 e.printStackTrace();
                 //TODO deal with closed
             }
@@ -1049,7 +1051,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                             .create(entry.getLedgerId(), entry.getEntryId(), entry.getDataAndRelease());
                     try {
                         offloaderHandle.offerEntry(entryImpl);
-                    } catch (ManagedLedgerException.OffloadSegmentClosedException e) {
+                    } catch (OffloadSegmentClosedException e) {
                         e.printStackTrace();
                         //TODO deal with
                     }

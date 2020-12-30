@@ -78,7 +78,6 @@ import org.jclouds.io.payloads.InputStreamPayload;
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     //TODO buffer should not less than max message size
-    //TODO add naive check entry consecutive
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -408,8 +407,15 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     }
 
     private boolean naiveCheckConsecutive(PositionImpl lastOfferedPosition, PositionImpl offeringPosition) {
-        //TODO implement
-        return true;
+        if (offeringPosition.getLedgerId() == lastOfferedPosition.getLedgerId()
+                && offeringPosition.getEntryId() == lastOfferedPosition.getEntryId() + 1) {
+            return true;
+        } else if (offeringPosition.getEntryId() == 0) {
+            return true;
+        } else {
+            // lastOfferedPosition not initialized
+            return lastOfferedPosition == PositionImpl.latest;
+        }
     }
 
     private PositionImpl lastOffered() {
