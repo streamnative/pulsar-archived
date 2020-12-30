@@ -1051,7 +1051,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                             .create(entry.getLedgerId(), entry.getEntryId(), entry.getDataAndRelease());
                     try {
                         offloaderHandle.offerEntry(entryImpl);
-                    } catch (OffloadSegmentClosedException e) {
+                    } catch (OffloadSegmentClosedException | OffloadNotConsecutiveException e) {
                         e.printStackTrace();
                         //TODO deal with
                     }
