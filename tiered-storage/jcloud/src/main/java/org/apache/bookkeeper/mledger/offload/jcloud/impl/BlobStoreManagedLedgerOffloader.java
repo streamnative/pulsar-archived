@@ -77,7 +77,6 @@ import org.jclouds.io.payloads.InputStreamPayload;
  */
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
-    //TODO buffer should not less than max message size
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -423,7 +422,12 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     }
 
     private boolean canOffer(long size) {
-        return maxBufferLength >= bufferLength.get() + size;
+        if (maxBufferLength >= bufferLength.get() + size) {
+            return true;
+        } else {
+            //if single message size larger than full buffer size, then ok to offer
+            return size > maxBufferLength && offloadBuffer.isEmpty();
+        }
     }
 
     /**
