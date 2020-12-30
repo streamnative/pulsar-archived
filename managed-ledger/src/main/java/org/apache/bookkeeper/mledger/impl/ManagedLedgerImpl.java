@@ -509,9 +509,22 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
+
+    public class LedgerInSegment {
+        public long ledgerId;
+        public long beginEntryId;
+        public long endEntryId;
+        public long beginTs;
+    }
+
+    private List<LedgerInSegment> getLedgersInseg(SegmentInfo segmentInfo) {
+        //TODO implement
+        return null;
+    }
+
     private void updatedMetaForOffloaded(SegmentInfo segmentInfo) {
         final HashMap<Long, LedgerInfoTransformation> ledgerForTrans = new HashMap<>();
-        for (SegmentInfo.LedgerInSegment ledgerInSeg : segmentInfo.ledgers) {
+        for (LedgerInSegment ledgerInSeg : getLedgersInseg(segmentInfo)) {
             ledgerForTrans.put(ledgerInSeg.ledgerId, (ledgerInfo) -> {
 
                 final LedgerInfo.Builder newBuilder = ledgerInfo.toBuilder();
@@ -996,7 +1009,12 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             final EntryImpl entry = EntryImpl
                     .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
                             addOperation.getData());
-            final boolean used = currentOffloaderHandle.offerEntry(entry);
+            try {
+                final boolean used = currentOffloaderHandle.offerEntry(entry);
+            } catch (ManagedLedgerException.OffloadSegmentClosedException e) {
+                e.printStackTrace();
+                //TODO deal with closed
+            }
             entry.release();
 
         } else if (offloadEntryFillTask == null || offloadEntryFillTask.isDone()) {
@@ -1029,7 +1047,12 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     //TODO maybe we can add retain to interface Entry to avoid  copy data
                     final EntryImpl entryImpl = EntryImpl
                             .create(entry.getLedgerId(), entry.getEntryId(), entry.getDataAndRelease());
-                    offloaderHandle.offerEntry(entryImpl);
+                    try {
+                        offloaderHandle.offerEntry(entryImpl);
+                    } catch (ManagedLedgerException.OffloadSegmentClosedException e) {
+                        e.printStackTrace();
+                        //TODO deal with
+                    }
                     entryImpl.release();
 
                     //TODO deal with offer failed

@@ -19,10 +19,10 @@
 package org.apache.bookkeeper.mledger;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import lombok.ToString;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
@@ -39,7 +39,9 @@ import org.apache.pulsar.common.policies.data.OffloadPolicies;
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
 
+    @ToString
     class SegmentInfo {
+
         //TODO will pass cross threads, how to keep all content async safe?
         public SegmentInfo(UUID uuid, long beginLedger, long beginEntry, String driverName,
                            Map<String, String> driverMetadata) {
@@ -50,48 +52,44 @@ public interface LedgerOffloader {
             this.driverMetadata = driverMetadata;
         }
 
-        public class LedgerInSegment {
-            public long ledgerId;
-            public long beginEntryId;
-            public long endEntryId;
-            public long beginTs;
-        }
 
         public final UUID uuid;
         public final long beginLedger;
         public final long beginEntry;
         public final String driverName;
+        volatile private long endLedger;
+        volatile private long endEntry;
+        volatile boolean closed = false;
+        public final Map<String, String> driverMetadata;
 
         public boolean isClosed() {
             return closed;
         }
 
-        public void setClosed(boolean closed) {
-            this.closed = closed;
+        public void closeSegment(long endLedger, long endEntry) {
+            this.endLedger = endLedger;
+            this.endEntry = endEntry;
+            this.closed = true;
         }
 
-        volatile boolean closed = false;
-        public Map<String, String> driverMetadata;
-
-        public List<LedgerInSegment> ledgers;
-
-        @Override
-        public String toString() {
-            return "SegmentInfo{" +
-                    "uuid=" + uuid +
-                    ", beginLedger=" + beginLedger +
-                    ", beginEntry=" + beginEntry +
-                    ", driverName='" + driverName + '\'' +
-                    ", closed=" + closed +
-                    ", driverMetadata=" + driverMetadata +
-                    ", ledgers=" + ledgers +
-                    '}';
+        public OffloadResult result() {
+            return new OffloadResult(beginLedger, beginEntry, endLedger, endEntry);
         }
     }
 
 
     class OffloadResult {
+        public final long beginLedger;
+        public final long beginEntry;
+        public final long endLedger;
+        public final long endEntry;
 
+        public OffloadResult(long beginLedger, long beginEntry, long endLedger, long endEntry) {
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+            this.endLedger = endLedger;
+            this.endEntry = endEntry;
+        }
     }
 
     /**
@@ -109,7 +107,8 @@ public interface LedgerOffloader {
 
         PositionImpl lastOffered();
 
-        boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException;
+        boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+                ManagedLedgerException.OffloadNotConsecutiveException;
 
         CompletableFuture<OffloadResult> getOffloadResultAsync();
     }

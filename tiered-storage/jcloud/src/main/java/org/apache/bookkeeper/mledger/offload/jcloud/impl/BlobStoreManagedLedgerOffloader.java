@@ -23,7 +23,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.api.ReadHandle;
@@ -40,6 +41,7 @@ import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.ManagedLedger;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadNotConsecutiveException;
 import org.apache.bookkeeper.mledger.impl.EntryImpl;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
@@ -76,7 +78,7 @@ import org.jclouds.io.payloads.InputStreamPayload;
 @Slf4j
 public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     //TODO buffer should not less than max message size
-    //TODO update segment info
+    //TODO add naive check entry consecutive
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
@@ -88,14 +90,14 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     private final ConcurrentMap<BlobStoreLocation, BlobStore> blobStores = new ConcurrentHashMap<>();
     private SegmentInfo segmentInfo;
     private AtomicLong bufferLength = new AtomicLong(0);
+    private AtomicLong segmentLength = new AtomicLong(0);
     final private long maxBufferLength = 10 * 1024 * 1024; //TODO initialize by configuration
     final private ConcurrentLinkedQueue<Entry> offloadBuffer = new ConcurrentLinkedQueue<>();
     private CompletableFuture<OffloadResult> offloadResult;
     private volatile PositionImpl lastOfferedPosition = PositionImpl.latest;
-    private Instant segmentCloseTime = Instant.now().plusSeconds(600); //TODO initialize by configuration
+    private Duration segmentCloseTime = Duration.ofMinutes(10); //TODO initialize by configuration
     private long maxSegmentLength = 1024 * 1024 * 1024; //TODO initialize by configuration
     private final int streamingBlockSize;
-    private AtomicLong writtenLength = new AtomicLong(0);
     private ManagedLedgerImpl ml;
     private StreamingOffloadIndexBlockBuilder streamingIndexBuilder;
 
@@ -286,6 +288,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             log.info("start offloading segment: {}", segmentInfo);
             streamingOffloadLoop(1, 0);
         });
+        scheduler.schedule(this::closeSegment, segmentCloseTime.toMillis(), TimeUnit.MILLISECONDS);
 
         return CompletableFuture.completedFuture(new OffloaderHandle() {
             @Override
@@ -299,7 +302,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             }
 
             @Override
-            public boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException {
+            public boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+                    OffloadNotConsecutiveException {
                 return BlobStoreManagedLedgerOffloader.this.offerEntry(entry);
             }
 
@@ -312,14 +316,14 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
 
     private void streamingOffloadLoop(int partId, int dataObjectLength) {
         if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
-            offloadResult.complete(new OffloadResult());
+            offloadResult.complete(segmentInfo.result());
             return;
         }
         final BufferedOffloadStream payloadStream;
 
         while (offloadBuffer.isEmpty()) {
             if (segmentInfo.isClosed()) {
-                offloadResult.complete(new OffloadResult());
+                offloadResult.complete(segmentInfo.result());
             } else {
                 try {
                     Thread.sleep(100);
@@ -364,7 +368,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
                         .build();
                 blobStore.putBlob(config.getBucket(), indexBlob);
 
-                offloadResult.complete(new OffloadResult());
+                offloadResult.complete(segmentInfo.result());
             } catch (Exception e) {
                 log.error("streaming offload failed", e);
                 offloadResult.completeExceptionally(e);
@@ -379,15 +383,33 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return this.offloadResult;
     }
 
-    private boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException {
+    private synchronized boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+            OffloadNotConsecutiveException {
         if (segmentInfo.isClosed()) {
             throw new OffloadSegmentClosedException("Segment already closed " + segmentInfo);
         } else {
+            if (naiveCheckConsecutive(lastOfferedPosition, entry.getPosition())) {
+                throw new OffloadNotConsecutiveException("");
+            }
             entry.retain();
             offloadBuffer.add(entry);
             bufferLength.getAndAdd(entry.getLength());
+            segmentLength.getAndAdd(entry.getLength());
+            lastOfferedPosition = entry.getPosition();
+            if (segmentLength.get() >= maxSegmentLength) {
+                closeSegment();
+            }
             return true;
         }
+    }
+
+    private synchronized void closeSegment() {
+        this.segmentInfo.closeSegment(lastOfferedPosition.getLedgerId(), lastOfferedPosition.getEntryId());
+    }
+
+    private boolean naiveCheckConsecutive(PositionImpl lastOfferedPosition, PositionImpl offeringPosition) {
+        //TODO implement
+        return true;
     }
 
     private PositionImpl lastOffered() {
