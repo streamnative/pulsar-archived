@@ -18,8 +18,12 @@
  */
 package org.apache.bookkeeper.mledger.offload.jcloud.impl;
 
+import com.google.common.io.CountingInputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.io.InputStream;
 import org.apache.bookkeeper.mledger.offload.jcloud.DataBlockHeader;
 import org.apache.pulsar.common.allocator.PulsarByteBufAllocator;
@@ -40,6 +44,11 @@ public class StreamingDataBlockHeaderImpl implements DataBlockHeader {
             + 8 /* first entry id */
             + 8 /* ledger id */;
     private static final byte[] PADDING = new byte[HEADER_MAX_SIZE - HEADER_BYTES_USED];
+
+    public long getLedgerId() {
+        return ledgerId;
+    }
+
     private final long ledgerId;
 
     public static StreamingDataBlockHeaderImpl of(int blockLength, long ledgerId, long firstEntryId) {
@@ -73,11 +82,33 @@ public class StreamingDataBlockHeaderImpl implements DataBlockHeader {
         return this.firstEntryId;
     }
 
-    public StreamingDataBlockHeaderImpl(long headerLength, long blockLength, long firstEntryId, long ledgerId) {
+    public StreamingDataBlockHeaderImpl(long headerLength, long blockLength, long ledgerId, long firstEntryId) {
         this.headerLength = headerLength;
         this.blockLength = blockLength;
         this.firstEntryId = firstEntryId;
         this.ledgerId = ledgerId;
+    }
+
+    // Construct DataBlockHeader from InputStream, which contains `HEADER_MAX_SIZE` bytes readable.
+    public static StreamingDataBlockHeaderImpl fromStream(InputStream stream) throws IOException {
+        CountingInputStream countingStream = new CountingInputStream(stream);
+        DataInputStream dis = new DataInputStream(countingStream);
+        int magic = dis.readInt();
+        if (magic != MAGIC_WORD) {
+            throw new IOException("Data block header magic word not match. read: " + magic
+                    + " expected: " + MAGIC_WORD);
+        }
+
+        long headerLen = dis.readLong();
+        long blockLen = dis.readLong();
+        long firstEntryId = dis.readLong();
+        long ledgerId = dis.readLong();
+        long toSkip = headerLen - countingStream.getCount();
+        if (dis.skip(toSkip) != toSkip) {
+            throw new EOFException("Header was too small");
+        }
+
+        return new StreamingDataBlockHeaderImpl(headerLen, blockLen, ledgerId, firstEntryId);
     }
 
     /**

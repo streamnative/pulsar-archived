@@ -24,6 +24,7 @@ import static java.lang.Math.min;
 import static org.apache.bookkeeper.mledger.util.Errors.isNoSuchLedgerExistsException;
 import static org.apache.bookkeeper.mledger.util.SafeRun.safeRun;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -65,7 +66,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import io.netty.util.ReferenceCountUtil;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
@@ -131,6 +131,7 @@ import org.apache.bookkeeper.mledger.util.CallbackMutex;
 import org.apache.bookkeeper.mledger.util.Futures;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
+import org.apache.pulsar.common.policies.data.OffloadPolicies.OffloadedReadPriority;
 import org.apache.pulsar.common.util.collections.ConcurrentLongHashMap;
 import org.apache.pulsar.metadata.api.Stat;
 import org.slf4j.Logger;
@@ -186,6 +187,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     final EntryCache entryCache;
 
     private ScheduledFuture<?> timeoutTask;
+    private ScheduledFuture<?> checkLedgerRollTask;
 
     /**
      * This lock is held while the ledgers list or propertiesMap is updated asynchronously on the metadata store. Since we use the store
@@ -398,6 +400,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         });
 
         scheduleTimeoutTask();
+
+        scheduleRollOverLedgerTask();
     }
 
     /**
@@ -1624,6 +1628,10 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             this.timeoutTask.cancel(false);
         }
 
+        if (this.checkLedgerRollTask != null) {
+            this.checkLedgerRollTask.cancel(false);
+        }
+
     }
 
     private void closeAllCursors(CloseCallback callback, final Object ctx) {
@@ -1672,6 +1680,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         } else {
             log.info("[{}] Created new ledger {}", name, lh.getId());
             ledgers.put(lh.getId(), LedgerInfo.newBuilder().setLedgerId(lh.getId()).setTimestamp(0).build());
+            final long previousEntries = currentLedgerEntries;
+            final long previousLedgerId = currentLedger.getId();
             currentLedger = lh;
             currentLedgerEntries = 0;
             currentLedgerSize = 0;
@@ -1688,6 +1698,14 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     synchronized (ManagedLedgerImpl.this) {
                         mbean.addLedgerSwitchLatencySample(System.currentTimeMillis() - lastLedgerCreationInitiationTimestamp,
                                 TimeUnit.MILLISECONDS);
+                    }
+                    // Move cursor read point to new ledger
+                    for (ManagedCursor cursor : cursors) {
+                        PositionImpl markDeletedPosition = (PositionImpl) cursor.getMarkDeletedPosition();
+                        if (markDeletedPosition.getLedgerId() == previousLedgerId && markDeletedPosition.getEntryId() + 1 >= previousEntries) {
+                            // All entries in last ledger are marked delete, move read point to the new ledger
+                            updateCursor((ManagedCursorImpl) cursor, PositionImpl.get(currentLedger.getId(), -1));
+                        }
                     }
                 }
 
@@ -1856,6 +1874,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         asyncCreateLedger(bookKeeper, config, digestType, this, Collections.emptyMap());
     }
 
+    @VisibleForTesting
     @Override
     public void rollCurrentLedgerIfFull() {
         log.info("[{}] Start checking if current ledger is full", name);
@@ -1869,7 +1888,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                             lh.getId());
 
                     if (rc == BKException.Code.OK) {
-                        log.debug("Successfuly closed ledger {}", lh.getId());
+                        log.debug("Successfully closed ledger {}", lh.getId());
                     } else {
                         log.warn("Error when closing ledger {}. Status={}", lh.getId(), BKException.getMessage(rc));
                     }
@@ -1974,8 +1993,18 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         return getLedgerHandle(ledgerId).thenApply(rh -> rh.getLedgerMetadata().toSafeString());
     }
 
-    public CompletableFuture<LedgerMetadata> getRawLedgerMetadata(long ledgerId) {
-        return getLedgerHandle(ledgerId).thenApply(org.apache.bookkeeper.client.api.Handle::getLedgerMetadata);
+    @Override
+    public CompletableFuture<LedgerInfo> getClosedLedgerInfo(long ledgerId) throws ManagedLedgerException {
+        final LedgerInfo ledgerInfo = ledgers.get(ledgerId);
+        if (ledgerInfo == null) {
+            throw new ManagedLedgerException(
+                    Strings.lenientFormat("ledger with id %s not found", ledgerId));
+        } else if (ledgerInfo.getSize() == 0 || ledgerInfo.getEntries() == 0) {
+            throw new ManagedLedgerException(
+                    Strings.lenientFormat("ledger with id %s has not closed yet", ledgerId));
+        }
+
+        return CompletableFuture.completedFuture(ledgerInfo);
     }
 
     CompletableFuture<ReadHandle> getLedgerHandle(long ledgerId) {
@@ -1996,7 +2025,18 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
             LedgerInfo info = ledgers.get(ledgerId);
             CompletableFuture<ReadHandle> openFuture = new CompletableFuture<>();
-            if (info != null && info.hasOffloadContext() && info.getOffloadContext().getComplete()) {
+
+            if (config.getLedgerOffloader() != null
+                    && config.getLedgerOffloader().getOffloadPolicies() != null
+                    && config.getLedgerOffloader().getOffloadPolicies()
+                    .getManagedLedgerOffloadedReadPriority() == OffloadedReadPriority.BOOKKEEPER_FIRST
+                    && info != null && info.hasOffloadContext()
+                    && !info.getOffloadContext().getBookkeeperDeleted()) {
+                openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
+                        .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();
+
+            } else if (info != null && info.hasOffloadContext() && info.getOffloadContext().getComplete()) {
+
                 UUID uid = new UUID(info.getOffloadContext().getUidMsb(), info.getOffloadContext().getUidLsb());
                 // TODO: improve this to load ledger offloader by driver name recorded in metadata
                 Map<String, String> offloadDriverMetadata = OffloadUtils.getOffloadDriverMetadata(info);
@@ -3846,6 +3886,15 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 checkAddTimeout();
                 checkReadTimeout();
             }), timeoutSec, timeoutSec, TimeUnit.SECONDS);
+        }
+    }
+
+    private void scheduleRollOverLedgerTask() {
+        if (config.getMaximumRolloverTimeMs() > 0) {
+            long interval = config.getMaximumRolloverTimeMs();
+            this.checkLedgerRollTask = this.scheduledExecutor.scheduleAtFixedRate(safeRun(() -> {
+                rollCurrentLedgerIfFull();
+            }), interval, interval, TimeUnit.MILLISECONDS);
         }
     }
 

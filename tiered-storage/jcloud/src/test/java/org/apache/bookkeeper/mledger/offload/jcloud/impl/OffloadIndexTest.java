@@ -38,6 +38,7 @@ import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlock;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlockBuilder;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexEntry;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.testng.annotations.Test;
@@ -52,12 +53,12 @@ public class OffloadIndexTest {
         OffloadIndexEntryImpl entry2 = OffloadIndexEntryImpl.of(100, 3, 1234, 20);
 
         // verify OffloadIndexEntryImpl get
-        assertEquals(entry1.getFirstEntryId(), 0L);
+        assertEquals(entry1.getEntryId(), 0L);
         assertEquals(entry1.getPartId(), 2);
         assertEquals(entry1.getOffset(), 0L);
         assertEquals(entry1.getDataOffset(), 20L);
 
-        assertEquals(entry2.getFirstEntryId(), 100L);
+        assertEquals(entry2.getEntryId(), 100L);
         assertEquals(entry2.getPartId(), 3);
         assertEquals(entry2.getOffset(), 1234L);
         assertEquals(entry2.getDataOffset(), 1254L);
@@ -81,7 +82,7 @@ public class OffloadIndexTest {
 //        }
 //    }
 
-    private LedgerMetadata createLedgerMetadata(long id) throws Exception {
+    public static LedgerMetadata createLedgerMetadata(long id) throws Exception {
 
         Map<String, byte[]> metadataCustom = Maps.newHashMap();
         metadataCustom.put("key1", "value1".getBytes(UTF_8));
@@ -97,6 +98,15 @@ public class OffloadIndexTest {
                 .withCustomMetadata(metadataCustom).withClosedState().withLastEntryId(5000).withLength(100)
                 .newEnsembleEntry(0L, bookies).withId(id).build();
 
+    }
+
+    public static LedgerInfo createLedgerInfo(long id) throws Exception {
+
+        Map<String, byte[]> metadataCustom = Maps.newHashMap();
+        metadataCustom.put("key1", "value1".getBytes(UTF_8));
+        metadataCustom.put("key7", "value7".getBytes(UTF_8));
+
+        return LedgerInfo.newBuilder().setLedgerId(id).setEntries(5001).setSize(10000).build();
     }
 
     // prepare metadata, then use builder to build a OffloadIndexBlockImpl
@@ -120,7 +130,7 @@ public class OffloadIndexTest {
 
         // verify getIndexEntryForEntry
         OffloadIndexEntry entry1 = indexBlock.getIndexEntryForEntry(0);
-        assertEquals(entry1.getFirstEntryId(), 0);
+        assertEquals(entry1.getEntryId(), 0);
         assertEquals(entry1.getPartId(), 2);
         assertEquals(entry1.getOffset(), 0);
 
@@ -128,7 +138,7 @@ public class OffloadIndexTest {
         assertEquals(entry11, entry1);
 
         OffloadIndexEntry entry2 = indexBlock.getIndexEntryForEntry(1000);
-        assertEquals(entry2.getFirstEntryId(), 1000);
+        assertEquals(entry2.getEntryId(), 1000);
         assertEquals(entry2.getPartId(), 3);
         assertEquals(entry2.getOffset(), 64 * 1024 * 1024);
 
@@ -137,7 +147,7 @@ public class OffloadIndexTest {
 
         OffloadIndexEntry entry3 = indexBlock.getIndexEntryForEntry(2000);
 
-        assertEquals(entry3.getFirstEntryId(), 2000);
+        assertEquals(entry3.getEntryId(), 2000);
         assertEquals(entry3.getPartId(), 4);
         assertEquals(entry3.getOffset(), 2 * 64 * 1024 * 1024);
 
@@ -184,15 +194,15 @@ public class OffloadIndexTest {
         OffloadIndexEntry e3 = OffloadIndexEntryImpl.of(wrapper.readLong(), wrapper.readInt(),
                                                         wrapper.readLong(), dataHeaderLength);
 
-        assertEquals(e1.getFirstEntryId(), entry1.getFirstEntryId());
+        assertEquals(e1.getEntryId(), entry1.getEntryId());
         assertEquals(e1.getPartId(), entry1.getPartId());
         assertEquals(e1.getOffset(), entry1.getOffset());
         assertEquals(e1.getDataOffset(), entry1.getDataOffset());
-        assertEquals(e2.getFirstEntryId(), entry2.getFirstEntryId());
+        assertEquals(e2.getEntryId(), entry2.getEntryId());
         assertEquals(e2.getPartId(), entry2.getPartId());
         assertEquals(e2.getOffset(), entry2.getOffset());
         assertEquals(e2.getDataOffset(), entry2.getDataOffset());
-        assertEquals(e3.getFirstEntryId(), entry3.getFirstEntryId());
+        assertEquals(e3.getEntryId(), entry3.getEntryId());
         assertEquals(e3.getPartId(), entry3.getPartId());
         assertEquals(e3.getOffset(), entry3.getOffset());
         assertEquals(e3.getDataOffset(), entry3.getDataOffset());
@@ -202,7 +212,7 @@ public class OffloadIndexTest {
         InputStream out2 = indexBlock.toStream();
         int streamLength = out2.available();
         out2.mark(0);
-        OffloadIndexBlock indexBlock2 = blockBuilder.fromStream(out2);
+        OffloadIndexBlock indexBlock2 = blockBuilder.indexFromStream(out2);
         // 1. verify metadata that got from inputstream success.
         LedgerMetadata metadata2 = indexBlock2.getLedgerMetadata();
         log.debug("built metadata: {}", metadata2.toString());
@@ -220,7 +230,7 @@ public class OffloadIndexTest {
         byte streamContent[] = new byte[streamLength];
         // stream with all 0, simulate junk data, should throw exception for header magic not match.
         try(InputStream stream3 = new ByteArrayInputStream(streamContent, 0, streamLength)) {
-            OffloadIndexBlock indexBlock3 = blockBuilder.fromStream(stream3);
+            OffloadIndexBlock indexBlock3 = blockBuilder.indexFromStream(stream3);
             fail("Should throw IOException");
         } catch (Exception e) {
             assertTrue(e instanceof IOException);
@@ -231,7 +241,7 @@ public class OffloadIndexTest {
         out2.read(streamContent);
         try(InputStream stream4 =
                 new ByteArrayInputStream(streamContent, 0, streamLength - 1)) {
-            OffloadIndexBlock indexBlock4 = blockBuilder.fromStream(stream4);
+            OffloadIndexBlock indexBlock4 = blockBuilder.indexFromStream(stream4);
             fail("Should throw EOFException");
         } catch (Exception e) {
             assertTrue(e instanceof java.io.EOFException);

@@ -51,7 +51,7 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
     private static final Logger log = LoggerFactory.getLogger(StreamingBlobStoreBackedReadHandleImpl.class);
 
     private final long ledgerId;
-    private final List<StreamingOffloadIndexBlock> indice;
+    private final List<StreamingOffloadIndexBlock> indices;
     private final List<BackedInputStream> inputStreams;
     private final List<DataInputStream> dataStreams;
     private final ExecutorService executor;
@@ -76,11 +76,11 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
         }
     }
 
-    private StreamingBlobStoreBackedReadHandleImpl(long ledgerId, List<StreamingOffloadIndexBlock> indice,
+    private StreamingBlobStoreBackedReadHandleImpl(long ledgerId, List<StreamingOffloadIndexBlock> indices,
                                                    List<BackedInputStream> inputStreams,
                                                    ExecutorService executor) {
         this.ledgerId = ledgerId;
-        this.indice = indice;
+        this.indices = indices;
         this.inputStreams = inputStreams;
         this.dataStreams = new LinkedList<>();
         for (BackedInputStream inputStream : inputStreams) {
@@ -96,7 +96,7 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
 
     @Override
     public LedgerMetadata getLedgerMetadata() {
-        return indice.get(0).getLedgerMetadata().get(ledgerId);
+        return indices.get(0).getLedgerMetadata(ledgerId);
     }
 
     @Override
@@ -104,7 +104,7 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
         CompletableFuture<Void> promise = new CompletableFuture<>();
         executor.submit(() -> {
             try {
-                for (StreamingOffloadIndexBlock indexBlock : indice) {
+                for (StreamingOffloadIndexBlock indexBlock : indices) {
                     indexBlock.close();
                 }
                 for (BackedInputStream inputStream : inputStreams) {
@@ -199,21 +199,20 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
 
     private List<GroupedReader> getGroupedReader(long firstEntry, long lastEntry) throws Exception {
         List<GroupedReader> groupedReaders = new LinkedList<>();
-        for (int i = indice.size() - 1; i >= 0 && firstEntry <= lastEntry; i--) {
-            final StreamingOffloadIndexBlock index = indice.get(i);
+        for (int i = indices.size() - 1; i >= 0 && firstEntry <= lastEntry; i--) {
+            final StreamingOffloadIndexBlock index = indices.get(i);
             final long startEntryId = index.getStartEntryId(ledgerId);
             if (startEntryId > lastEntry) {
-                throw new Exception("should not happen");
-            } else if (startEntryId > firstEntry) {
-                groupedReaders.add(new GroupedReader(ledgerId, startEntryId, lastEntry, index, inputStreams.get(i),
-                        dataStreams.get(i)));
-                lastEntry = startEntryId - 1;
+                log.debug("entries are in earlier indices, skip this segment ledger id: {}, begin entry id: {}",
+                        ledgerId, startEntryId);
             } else {
                 groupedReaders.add(new GroupedReader(ledgerId, startEntryId, lastEntry, index, inputStreams.get(i),
                         dataStreams.get(i)));
+                lastEntry = startEntryId - 1;
             }
         }
-        Preconditions.checkArgument(firstEntry - lastEntry == 1);
+
+        Preconditions.checkArgument(firstEntry > lastEntry);
         return groupedReaders;
     }
 
@@ -266,10 +265,12 @@ public class StreamingBlobStoreBackedReadHandleImpl implements ReadHandle {
         for (int i = 0; i < indexKeys.size(); i++) {
             String indexKey = indexKeys.get(i);
             String key = keys.get(i);
+            log.debug("open bucket: {} index key: {}", bucket, indexKey);
             Blob blob = blobStore.getBlob(bucket, indexKey);
+            log.debug("indexKey blob: {} {}", indexKey, blob);
             versionCheck.check(indexKey, blob);
             StreamingOffloadIndexBlockBuilder indexBuilder = StreamingOffloadIndexBlockBuilder.create();
-            StreamingOffloadIndexBlock index = indexBuilder.fromStream(blob.getPayload().openStream());
+            StreamingOffloadIndexBlock index = indexBuilder.streamingIndexFromStream(blob.getPayload().openStream());
 
             BackedInputStream inputStream = new BlobStoreBackedInputStreamImpl(blobStore, bucket, key,
                     versionCheck,

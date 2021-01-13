@@ -32,36 +32,35 @@ message OffloadDriverMetadata {
 }
 
 message OffloadContext {
-  optional int64 uidMsb = 1;
-  optional int64 uidLsb = 2;
-  optional bool complete = 3;
-  optional bool bookkeeperDeleted = 4;
-  optional int64 timestamp = 5;
-  optional OffloadDriverMetadata driverMetadata = 6;
-  repeated OffloadSegment offloadSegment = 7;
+    optional int64 uidMsb = 1;
+    optional int64 uidLsb = 2;
+    optional bool complete = 3;
+    optional bool bookkeeperDeleted = 4;
+    optional int64 timestamp = 5;
+    optional OffloadDriverMetadata driverMetadata = 6;
+    repeated OffloadSegment offloadSegment = 7;
 }
 
 message OffloadSegment {
-  optional int64 uidMsb = 1;
-  optional int64 uidLsb = 2;
-  optional bool complete = 3;
-  optional bool bookkeeperDeleted = 4;
-  optional int64 assignedTs = 5; //epoch millis
-  optional int64 offloadedTs = 6; //epoch millis
-  optional int64 endEntryId = 7;
-  optional OffloadDriverMetadata driverMetadata = 8;
+    optional int64 uidMsb = 1;
+    optional int64 uidLsb = 2;
+    optional bool complete = 3;
+    optional int64 assignedTimestamp = 4; //timestamp in millisecond
+    optional int64 offloadedTimestamp = 5; //timestamp in millisecond
+    optional int64 endEntryId = 6;
+    optional OffloadDriverMetadata driverMetadata = 7;
 }
 
 message ManagedLedgerInfo {
-  message LedgerInfo {
-    required int64 ledgerId = 1;
-    optional int64 entries = 2;
-    optional int64 size = 3;
-    optional int64 timestamp = 4;
-    optional OffloadContext offloadContext = 5;
-  }
+    message LedgerInfo {
+        required int64 ledgerId = 1;
+        optional int64 entries = 2;
+        optional int64 size = 3;
+        optional int64 timestamp = 4;
+        optional OffloadContext offloadContext = 5;
+    }
 
-    repeated LedgerInfo ledgerInfo = 1;
+  repeated LedgerInfo ledgerInfo = 1;
 
     // If present, it signals the managed ledger has been
     // terminated and this was the position of the last

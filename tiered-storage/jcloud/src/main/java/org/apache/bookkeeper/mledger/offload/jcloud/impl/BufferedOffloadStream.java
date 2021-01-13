@@ -26,17 +26,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.mledger.Entry;
-import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfo;
+import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfoImpl;
 import org.apache.pulsar.common.allocator.PulsarByteBufAllocator;
 
 @Slf4j
 public class BufferedOffloadStream extends InputStream {
     static final int[] BLOCK_END_PADDING = BlockAwareSegmentInputStreamImpl.BLOCK_END_PADDING;
-    private final SegmentInfo segmentInfo;
+    private final SegmentInfoImpl segmentInfo;
+
     private final long ledgerId;
+    private final long beginEntryId;
     private AtomicLong bufferLength;
     static final int ENTRY_HEADER_SIZE = 4 /* entry size */ + 8 /* entry id */;
-
     private final long blockSize;
     private final ConcurrentLinkedQueue<Entry> entryBuffer;
     private final InputStream blockHead;
@@ -45,13 +46,27 @@ public class BufferedOffloadStream extends InputStream {
     int validDataOffset = NOT_INITIALIZED;
     CompositeByteBuf currentEntry;
 
+    public long getLedgerId() {
+        return ledgerId;
+    }
+
+    public long getBeginEntryId() {
+        return beginEntryId;
+    }
+
+    public long getBlockSize() {
+        return blockSize;
+    }
+
+
     public BufferedOffloadStream(int blockSize,
                                  ConcurrentLinkedQueue<Entry> entryBuffer,
-                                 SegmentInfo segmentInfo,
+                                 SegmentInfoImpl segmentInfo,
                                  long ledgerId,
                                  long beginEntryId,
                                  AtomicLong bufferLength) {
         this.ledgerId = ledgerId;
+        this.beginEntryId = beginEntryId;
         this.blockSize = blockSize;
         this.segmentInfo = segmentInfo;
         this.entryBuffer = entryBuffer;
@@ -78,10 +93,10 @@ public class BufferedOffloadStream extends InputStream {
             }
         }
 
-        if (blockSize == offset) {
+        if (blockSize <= offset) {
             return -1;
         } else if (validDataOffset != NOT_INITIALIZED) {
-            return BLOCK_END_PADDING[offset++ - validDataOffset];
+            return BLOCK_END_PADDING[(offset++ - validDataOffset) % BLOCK_END_PADDING.length];
         }
 
         Entry headEntry;
@@ -119,9 +134,8 @@ public class BufferedOffloadStream extends InputStream {
             CompositeByteBuf entryBuf = PulsarByteBufAllocator.DEFAULT.compositeBuffer(2);
             ByteBuf entryHeaderBuf = PulsarByteBufAllocator.DEFAULT.buffer(ENTRY_HEADER_SIZE, ENTRY_HEADER_SIZE);
             entryHeaderBuf.writeInt(entryLength).writeLong(entryId);
-            entryBuf.addComponents(true, entryHeaderBuf, headEntry.getDataBuffer());
+            entryBuf.addComponents(true, entryHeaderBuf, headEntry.getDataBuffer().retain());
             currentEntry = entryBuf;
-
             return read();
         } else {
             //over sized, fill padding
