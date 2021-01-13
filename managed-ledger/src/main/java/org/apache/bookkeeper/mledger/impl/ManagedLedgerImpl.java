@@ -74,7 +74,6 @@ import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.Backoff;
 import org.apache.bookkeeper.common.util.JsonUtil;
@@ -95,8 +94,8 @@ import org.apache.bookkeeper.mledger.AsyncCallbacks.TerminateCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.UpdatePropertiesCallback;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
-import org.apache.bookkeeper.mledger.LedgerOffloader.OffloaderHandle;
-import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfo;
+import org.apache.bookkeeper.mledger.LedgerOffloader.OffloadHandle;
+import org.apache.bookkeeper.mledger.LedgerOffloader.SegmentInfoImpl;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedger;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
@@ -218,8 +217,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     protected static final int DEFAULT_LEDGER_DELETE_RETRIES = 3;
     protected static final int DEFAULT_LEDGER_DELETE_BACKOFF_TIME_SEC = 60;
     private LedgerOffloader offloader;
-    private ConcurrentLinkedQueue<SegmentInfo> offloadSegments;
-    private volatile OffloaderHandle currentOffloaderHandle;
+    private ConcurrentLinkedQueue<SegmentInfoImpl> offloadSegments;
+    private volatile OffloadHandle currentOffloadHandle;
 
 
     enum State {
@@ -449,7 +448,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
-                        .setAssignedTs(System.currentTimeMillis())
+                        .setAssignedTimestamp(System.currentTimeMillis())
                         .setComplete(false);
                 OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
                 final OffloadContext context = OffloadContext.newBuilder().addOffloadSegment(segment)
@@ -457,7 +456,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .build();
                 final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
                 entry.setValue(newLedgerInfo);
-                offloadSegments.add(new SegmentInfo(uuid, ledgerId, 0, driverName, driverMetadata));
+                offloadSegments.add(new SegmentInfoImpl(uuid, ledgerId, 0, driverName, driverMetadata));
                 break;
             } else if (!ledgerInfo.getOffloadContext().getComplete()) {
                 List<OffloadSegment> newSegments = Lists.newArrayList();
@@ -478,7 +477,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 final OffloadSegment.Builder segment = OffloadSegment.newBuilder()
                         .setUidLsb(uuid.getLeastSignificantBits())
                         .setUidMsb(uuid.getMostSignificantBits())
-                        .setAssignedTs(System.currentTimeMillis())
+                        .setAssignedTimestamp(System.currentTimeMillis())
                         .setComplete(false);
                 OffloadUtils.setOffloadDriverMetadata(segment, driverName, driverMetadata);
                 newSegments.add(segment.build());
@@ -486,7 +485,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .addAllOffloadSegment(newSegments).build();
                 final LedgerInfo newLedgerInfo = ledgerInfo.toBuilder().setOffloadContext(context).build();
                 entry.setValue(newLedgerInfo);
-                offloadSegments.add(new SegmentInfo(uuid, ledgerId, beginEntry, driverName, driverMetadata));
+                offloadSegments.add(new SegmentInfoImpl(uuid, ledgerId, beginEntry, driverName, driverMetadata));
                 break;
             }
         }
@@ -495,16 +494,16 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private synchronized void startOffload() {
         //TODO add mutex to verify only one offload
 
-        final SegmentInfo headSegment = offloadSegments.peek();
+        final SegmentInfoImpl headSegment = offloadSegments.peek();
         try {
-            this.currentOffloaderHandle = offloader
+            this.currentOffloadHandle = offloader
                     .streamingOffload(this, headSegment.uuid, headSegment.beginLedger, headSegment.beginEntry,
                             headSegment.driverMetadata).get();
-            this.currentOffloaderHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
+            this.currentOffloadHandle.getOffloadResultAsync().whenComplete((result, ex) -> {
                 if (ex != null) {
                     log.error("offload failed", ex);
                 } else {
-                    final SegmentInfo segmentInfo = offloadSegments.poll();
+                    final SegmentInfoImpl segmentInfo = offloadSegments.poll();
                     if (segmentInfo == null) {
                         throw new RuntimeException("An empty segment list, should not happen");
                     }
@@ -532,12 +531,12 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         public long beginTs;
     }
 
-    private List<LedgerInSegment> getLedgersInseg(SegmentInfo segmentInfo) {
+    private List<LedgerInSegment> getLedgersInseg(SegmentInfoImpl segmentInfo) {
         //TODO implement
         return null;
     }
 
-    private void updatedMetaForOffloaded(SegmentInfo segmentInfo) {
+    private void updatedMetaForOffloaded(SegmentInfoImpl segmentInfo) {
         final HashMap<Long, LedgerInfoTransformation> ledgerForTrans = new HashMap<>();
         for (LedgerInSegment ledgerInSeg : getLedgersInseg(segmentInfo)) {
             ledgerForTrans.put(ledgerInSeg.ledgerId, (ledgerInfo) -> {
@@ -548,8 +547,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     final OffloadSegment.Builder newSegmentMeta = OffloadSegment.newBuilder()
                             .setUidMsb(segmentInfo.uuid.getMostSignificantBits())
                             .setUidLsb(segmentInfo.uuid.getLeastSignificantBits())
-                            .setAssignedTs(ledgerInSeg.beginTs)
-                            .setOffloadedTs(System.currentTimeMillis())
+                            .setAssignedTimestamp(ledgerInSeg.beginTs)
+                            .setOffloadedTimestamp(System.currentTimeMillis())
                             .setComplete(true)
                             .setEndEntryId(ledgerInSeg.endEntryId);
                     OffloadUtils.setOffloadDriverMetadata(newSegmentMeta, segmentInfo.driverName,
@@ -574,7 +573,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         }
                         final OffloadSegment.Builder newLast = lastOffloadSegment.toBuilder()
                                 .setEndEntryId(ledgerInSeg.endEntryId)
-                                .setOffloadedTs(System.currentTimeMillis())
+                                .setOffloadedTimestamp(System.currentTimeMillis())
                                 .setComplete(true);
                         currentSegments.remove(lastOffloadSegment);
                         currentSegments.add(newLast.build());
@@ -591,8 +590,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         final OffloadSegment.Builder newSegmentMeta = OffloadSegment.newBuilder()
                                 .setUidMsb(segmentInfo.uuid.getMostSignificantBits())
                                 .setUidLsb(segmentInfo.uuid.getLeastSignificantBits())
-                                .setAssignedTs(ledgerInSeg.beginTs)
-                                .setOffloadedTs(System.currentTimeMillis())
+                                .setAssignedTimestamp(ledgerInSeg.beginTs)
+                                .setOffloadedTimestamp(System.currentTimeMillis())
                                 .setComplete(true)
                                 .setEndEntryId(ledgerInSeg.endEntryId);
                         OffloadUtils.setOffloadDriverMetadata(newSegmentMeta, segmentInfo.driverName,
@@ -1013,19 +1012,19 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
      */
     static private String ENTRY_FILL_LOOP = "entry_fill_loop";
     protected synchronized void addToOffload(OpAddEntry addOperation) {
-        if (currentOffloaderHandle == null) {
+        if (currentOffloadHandle == null) {
             return;
         }
-        final PositionImpl positionNextToOffered = getNextValidPosition(currentOffloaderHandle.lastOffered());
+        final PositionImpl positionNextToOffered = getNextValidPosition(currentOffloadHandle.lastOffered());
         if (positionNextToOffered
                 .equals(addOperation.getPosition())
-                && currentOffloaderHandle
+                && currentOffloadHandle
                 .canOffer(addOperation.getDataLength())) {
             final EntryImpl entry = EntryImpl
                     .create(PositionImpl.get(addOperation.ledger.getId(), addOperation.getEntryId()),
                             addOperation.getData());
             try {
-                final boolean used = currentOffloaderHandle.offerEntry(entry);
+                final boolean used = currentOffloadHandle.offerEntry(entry);
             } catch (OffloadSegmentClosedException | OffloadNotConsecutiveException e) {
                 e.printStackTrace();
                 //TODO deal with closed
@@ -1035,35 +1034,35 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         } else if (offloadEntryFillTask == null || offloadEntryFillTask.isDone()) {
             offloadEntryFillTask = new CompletableFuture<>();
             executor.executeOrdered(ENTRY_FILL_LOOP,
-                    safeRun(() -> entryFillLoop(currentOffloaderHandle, positionNextToOffered,
+                    safeRun(() -> entryFillLoop(currentOffloadHandle, positionNextToOffered,
                             PositionImpl.get(addOperation.getLedgerId(), addOperation.getEntryId()),
                             offloadEntryFillTask)));
         }
     }
 
-    private void entryFillLoop(OffloaderHandle offloaderHandle,
+    private void entryFillLoop(OffloadHandle OffloadHandle,
                                PositionImpl beginPosition, PositionImpl endPosition,
                                CompletableFuture<Void> offloadEntryFillTask) {
         asyncReadEntry(beginPosition, new ReadEntryCallback() {
-            void delayExecute(OffloaderHandle offloaderHandle,
+            void delayExecute(OffloadHandle OffloadHandle,
                               PositionImpl beginPosition, PositionImpl endPosition,
                               CompletableFuture<Void> offloadEntryFillTask) {
                 scheduledExecutor
-                        .schedule(() -> entryFillLoop(offloaderHandle, beginPosition, endPosition,
+                        .schedule(() -> entryFillLoop(OffloadHandle, beginPosition, endPosition,
                                 offloadEntryFillTask)
                                 , 100, TimeUnit.MILLISECONDS);
             }
 
             @Override
             public void readEntryComplete(Entry entry, Object ctx) {
-                if (!offloaderHandle.canOffer(entry.getLength())) {
-                    delayExecute(offloaderHandle, beginPosition, endPosition, offloadEntryFillTask);
+                if (!OffloadHandle.canOffer(entry.getLength())) {
+                    delayExecute(OffloadHandle, beginPosition, endPosition, offloadEntryFillTask);
                 } else {
                     //TODO maybe we can add retain to interface Entry to avoid  copy data
                     final EntryImpl entryImpl = EntryImpl
                             .create(entry.getLedgerId(), entry.getEntryId(), entry.getDataAndRelease());
                     try {
-                        offloaderHandle.offerEntry(entryImpl);
+                        OffloadHandle.offerEntry(entryImpl);
                     } catch (OffloadSegmentClosedException | OffloadNotConsecutiveException e) {
                         e.printStackTrace();
                         //TODO deal with
@@ -1075,7 +1074,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     if (beginPosition == endPosition) {
                         offloadEntryFillTask.complete(null);
                         final PositionImpl nextPos = getNextValidPosition(beginPosition);
-                        entryFillLoop(offloaderHandle, nextPos, endPosition,
+                        entryFillLoop(OffloadHandle, nextPos, endPosition,
                                 offloadEntryFillTask);
                     }
                 }

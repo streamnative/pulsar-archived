@@ -47,7 +47,7 @@ public interface LedgerOffloader {
     }
 
     @ToString
-    class SegmentInfoImpl implements SegmentInfo {
+    public class SegmentInfoImpl implements SegmentInfo {
         public SegmentInfoImpl(UUID uuid, long beginLedger, long beginEntry, String driverName,
                                Map<String, String> driverMetadata) {
             this.uuid = uuid;
