@@ -18,26 +18,41 @@
  */
 package org.apache.bookkeeper.mledger.offload.jcloud.impl;
 
+import static org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
+import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
+import org.apache.bookkeeper.mledger.ManagedLedger;
+import org.apache.bookkeeper.mledger.ManagedLedgerException;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadNotConsecutiveException;
+import org.apache.bookkeeper.mledger.impl.EntryImpl;
+import org.apache.bookkeeper.mledger.impl.PositionImpl;
 import org.apache.bookkeeper.mledger.offload.jcloud.BlockAwareSegmentInputStream;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlock;
 import org.apache.bookkeeper.mledger.offload.jcloud.OffloadIndexBlockBuilder;
+import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlock;
+import org.apache.bookkeeper.mledger.offload.jcloud.StreamingOffloadIndexBlockBuilder;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.BlobStoreLocation;
 import org.apache.bookkeeper.mledger.offload.jcloud.provider.TieredStorageConfiguration;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.domain.Blob;
@@ -50,6 +65,7 @@ import org.jclouds.domain.LocationBuilder;
 import org.jclouds.domain.LocationScope;
 import org.jclouds.io.Payload;
 import org.jclouds.io.Payloads;
+import org.jclouds.io.payloads.InputStreamPayload;
 
 /**
  * Tiered Storage Offloader that is backed by a JCloud Blob Store.
@@ -70,10 +86,24 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     private final Map<String, String> userMetadata;
 
     private final ConcurrentMap<BlobStoreLocation, BlobStore> blobStores = new ConcurrentHashMap<>();
+    private SegmentInfoImpl segmentInfo;
+    private AtomicLong bufferLength = new AtomicLong(0);
+    private AtomicLong segmentLength = new AtomicLong(0);
+    final private long maxBufferLength = 10 * 1024 * 1024;
+    final private ConcurrentLinkedQueue<Entry> offloadBuffer = new ConcurrentLinkedQueue<>();
+    private CompletableFuture<OffloadResult> offloadResult;
+    private volatile PositionImpl lastOfferedPosition = PositionImpl.latest;
+    private final Duration maxSegmentCloseTime;
+    private final long minSegmentCloseTimeMillis;
+    private final long segmentBeginTimeMillis;
+    private final long maxSegmentLength;
+    private final int streamingBlockSize;
+    private ManagedLedger ml;
+    private StreamingOffloadIndexBlockBuilder streamingIndexBuilder;
 
     public static BlobStoreManagedLedgerOffloader create(TieredStorageConfiguration config,
-            Map<String, String> userMetadata,
-            OrderedScheduler scheduler) throws IOException {
+                                                         Map<String, String> userMetadata,
+                                                         OrderedScheduler scheduler) throws IOException {
 
         return new BlobStoreManagedLedgerOffloader(config, scheduler, userMetadata);
     }
@@ -84,13 +114,18 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         this.scheduler = scheduler;
         this.userMetadata = userMetadata;
         this.config = config;
+        this.streamingBlockSize = config.getMaxBlockSizeInBytes();
+        this.maxSegmentCloseTime = Duration.ofSeconds(config.getMaxSegmentTimeInSecond());
+        this.maxSegmentLength = config.getMaxSegmentSizeInBytes();
+        this.minSegmentCloseTimeMillis = Duration.ofSeconds(config.getMinSegmentTimeInSecond()).toMillis();
+        this.segmentBeginTimeMillis = System.currentTimeMillis();
 
         if (!Strings.isNullOrEmpty(config.getRegion())) {
             this.writeLocation = new LocationBuilder()
-                .scope(LocationScope.REGION)
-                .id(config.getRegion())
-                .description(config.getRegion())
-                .build();
+                    .scope(LocationScope.REGION)
+                    .id(config.getRegion())
+                    .description(config.getRegion())
+                    .build();
         } else {
             this.writeLocation = null;
         }
@@ -230,6 +265,187 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
+    BlobStore blobStore;
+    String streamingDataBlockKey;
+    String streamingDataIndexKey;
+    MultipartUpload streamingMpu = null;
+    List<MultipartPart> streamingParts = Lists.newArrayList();
+
+    @Override
+    public CompletableFuture<OffloadHandle> streamingOffload(ManagedLedger ml, UUID uuid, long beginLedger,
+                                                             long beginEntry,
+                                                             Map<String, String> driverMetadata) {
+        this.ml = ml;
+        this.segmentInfo = new SegmentInfoImpl(uuid, beginLedger, beginEntry, config.getDriver(), driverMetadata);
+        log.debug("begin offload with {}:{}", beginLedger, beginEntry);
+        this.offloadResult = new CompletableFuture<>();
+        blobStore = blobStores.get(config.getBlobStoreLocation());
+        streamingIndexBuilder = StreamingOffloadIndexBlockBuilder.create();
+        streamingDataBlockKey = segmentInfo.uuid.toString();
+        streamingDataIndexKey = String.format("%s-index", segmentInfo.uuid);
+        BlobBuilder blobBuilder = blobStore.blobBuilder(streamingDataBlockKey);
+        DataBlockUtils.addVersionInfo(blobBuilder, userMetadata);
+        Blob blob = blobBuilder.build();
+        streamingMpu = blobStore
+                .initiateMultipartUpload(config.getBucket(), blob.getMetadata(), new PutOptions());
+
+        scheduler.chooseThread(segmentInfo).execute(() -> {
+            log.info("start offloading segment: {}", segmentInfo);
+            streamingOffloadLoop(1, 0);
+        });
+        scheduler.schedule(this::closeSegment, maxSegmentCloseTime.toMillis(), TimeUnit.MILLISECONDS);
+
+        return CompletableFuture.completedFuture(new OffloadHandle() {
+            @Override
+            public boolean canOffer(long size) {
+                return BlobStoreManagedLedgerOffloader.this.canOffer(size);
+            }
+
+            @Override
+            public PositionImpl lastOffered() {
+                return BlobStoreManagedLedgerOffloader.this.lastOffered();
+            }
+
+            @Override
+            public boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+                    OffloadNotConsecutiveException {
+                return BlobStoreManagedLedgerOffloader.this.offerEntry(entry);
+            }
+
+            @Override
+            public CompletableFuture<OffloadResult> getOffloadResultAsync() {
+                return BlobStoreManagedLedgerOffloader.this.getOffloadResultAsync();
+            }
+        });
+    }
+
+    private void streamingOffloadLoop(int partId, int dataObjectLength) {
+        log.debug("streaming offload loop {} {}", partId, dataObjectLength);
+        if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
+            offloadResult.complete(segmentInfo.result());
+            return;
+        }
+        final BufferedOffloadStream payloadStream;
+
+        while (offloadBuffer.isEmpty()) {
+            if (segmentInfo.isClosed()) {
+                offloadResult.complete(segmentInfo.result());
+            } else {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        final Entry peek = offloadBuffer.peek();
+        //initialize payload when there is at least one entry
+        final long blockLedgerId = peek.getLedgerId();
+        final long blockEntryId = peek.getEntryId();
+        payloadStream = new BufferedOffloadStream(streamingBlockSize, offloadBuffer, segmentInfo,
+                blockLedgerId, blockEntryId, bufferLength);
+        try {
+            streamingIndexBuilder.addLedgerMeta(blockLedgerId, ml.getClosedLedgerInfo(blockLedgerId).get());
+            streamingIndexBuilder.withDataBlockHeaderLength(StreamingDataBlockHeaderImpl.getDataStartOffset());
+        } catch (InterruptedException | ExecutionException | ManagedLedgerException e) {
+            offloadResult.completeExceptionally(e);
+            return;
+        }
+        log.debug("begin upload payload");
+        Payload partPayload = Payloads.newInputStreamPayload(payloadStream);
+        partPayload.getContentMetadata().setContentType("application/octet-stream");
+        streamingParts.add(blobStore.uploadMultipartPart(streamingMpu, partId, partPayload));
+        streamingIndexBuilder.addBlock(blockLedgerId, blockEntryId, partId, streamingBlockSize);
+
+        log.debug("UploadMultipartPart. container: {}, blobName: {}, partId: {}, mpu: {}",
+                config.getBucket(), streamingDataBlockKey, partId, streamingMpu.id());
+        if (segmentInfo.isClosed() && offloadBuffer.isEmpty()) {
+            log.debug("segment closed, buffer is empty");
+            try {
+                blobStore.completeMultipartUpload(streamingMpu, streamingParts);
+                streamingIndexBuilder.withDataObjectLength(dataObjectLength + streamingBlockSize);
+                final StreamingOffloadIndexBlock index = streamingIndexBuilder.buildStreaming();
+                final StreamingOffloadIndexBlock.IndexInputStream indexStream = index.toStream();
+                final BlobBuilder indexBlobBuilder = blobStore.blobBuilder(streamingDataIndexKey);
+                DataBlockUtils.addVersionInfo(indexBlobBuilder, userMetadata);
+                final InputStreamPayload indexPayLoad = Payloads.newInputStreamPayload(indexStream);
+                indexPayLoad.getContentMetadata().setContentLength(indexStream.getStreamSize());
+                indexPayLoad.getContentMetadata().setContentType("application/octet-stream");
+                final Blob indexBlob = indexBlobBuilder.payload(indexPayLoad)
+                        .contentLength(indexStream.getStreamSize())
+                        .build();
+                blobStore.putBlob(config.getBucket(), indexBlob);
+
+                offloadResult.complete(segmentInfo.result());
+            } catch (Exception e) {
+                log.error("streaming offload failed", e);
+                offloadResult.completeExceptionally(e);
+            }
+            log.debug("offload done");
+        } else {
+            log.debug("continue offload loop");
+            scheduler.chooseThread(segmentInfo)
+                    .execute(() -> streamingOffloadLoop(partId + 1, dataObjectLength + streamingBlockSize));
+        }
+    }
+
+    private CompletableFuture<OffloadResult> getOffloadResultAsync() {
+        return this.offloadResult;
+    }
+
+    private synchronized boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+            OffloadNotConsecutiveException {
+        if (segmentInfo.isClosed()) {
+            throw new OffloadSegmentClosedException("Segment already closed " + segmentInfo);
+        } else {
+            if (!naiveCheckConsecutive(lastOfferedPosition, entry.getPosition())) {
+                throw new OffloadNotConsecutiveException(
+                        Strings.lenientFormat("position %s and %s are not consecutive", lastOfferedPosition,
+                                entry.getPosition()));
+            }
+            entry.retain();
+            offloadBuffer.add(entry);
+            bufferLength.getAndAdd(entry.getLength());
+            segmentLength.getAndAdd(entry.getLength());
+            lastOfferedPosition = entry.getPosition();
+            if (segmentLength.get() >= maxSegmentLength
+                    && System.currentTimeMillis() - segmentBeginTimeMillis >= minSegmentCloseTimeMillis) {
+                closeSegment();
+            }
+            return true;
+        }
+    }
+
+    private synchronized void closeSegment() {
+        log.debug("close segment {} {}", lastOfferedPosition.getLedgerId(), lastOfferedPosition.getEntryId());
+        this.segmentInfo.closeSegment(lastOfferedPosition.getLedgerId(), lastOfferedPosition.getEntryId());
+    }
+
+    private static boolean naiveCheckConsecutive(PositionImpl lastOfferedPosition, PositionImpl offeringPosition) {
+        if (offeringPosition.getLedgerId() == lastOfferedPosition.getLedgerId()
+                && offeringPosition.getEntryId() == lastOfferedPosition.getEntryId() + 1) {
+            return true;
+        } else if (offeringPosition.getEntryId() == 0) {
+            return true;
+        } else {
+            // lastOfferedPosition not initialized
+            return lastOfferedPosition.equals(PositionImpl.latest);
+        }
+    }
+
+    private PositionImpl lastOffered() {
+        return lastOfferedPosition;
+    }
+
+    private boolean canOffer(long size) {
+        if (maxBufferLength >= bufferLength.get() + size) {
+            return true;
+        } else {
+            //if single message size larger than full buffer size, then ok to offer
+            return size > maxBufferLength && offloadBuffer.isEmpty();
+        }
+    }
+
     /**
      * Attempts to create a BlobStoreLocation from the values in the offloadDriverMetadata,
      * however, if no values are available, it defaults to the currently configured
@@ -255,17 +471,50 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         String key = DataBlockUtils.dataBlockOffloadKey(ledgerId, uid);
         String indexKey = DataBlockUtils.indexBlockOffloadKey(ledgerId, uid);
         scheduler.chooseThread(ledgerId).submit(() -> {
-                try {
-                    promise.complete(BlobStoreBackedReadHandleImpl.open(scheduler.chooseThread(ledgerId),
-                                                                 readBlobstore,
-                                                                 readBucket, key, indexKey,
-                                                                 DataBlockUtils.VERSION_CHECK,
-                                                                 ledgerId, config.getReadBufferSizeInBytes()));
-                } catch (Throwable t) {
-                    log.error("Failed readOffloaded: ", t);
-                    promise.completeExceptionally(t);
-                }
-            });
+            try {
+                promise.complete(BlobStoreBackedReadHandleImpl.open(scheduler.chooseThread(ledgerId),
+                        readBlobstore,
+                        readBucket, key, indexKey,
+                        DataBlockUtils.VERSION_CHECK,
+                        ledgerId, config.getReadBufferSizeInBytes()));
+            } catch (Throwable t) {
+                log.error("Failed readOffloaded: ", t);
+                promise.completeExceptionally(t);
+            }
+        });
+        return promise;
+    }
+
+    @Override
+    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, MLDataFormats.OffloadContext ledgerContext,
+                                                       Map<String, String> offloadDriverMetadata) {
+        BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        String readBucket = bsKey.getBucket();
+        BlobStore readBlobstore = blobStores.get(config.getBlobStoreLocation());
+        CompletableFuture<ReadHandle> promise = new CompletableFuture<>();
+        final List<MLDataFormats.OffloadSegment> offloadSegmentList = ledgerContext.getOffloadSegmentList();
+        List<String> keys = Lists.newLinkedList();
+        List<String> indexKeys = Lists.newLinkedList();
+        offloadSegmentList.forEach(seg -> {
+            final UUID uuid = new UUID(seg.getUidMsb(), seg.getUidLsb());
+            final String key = uuid.toString();
+            final String indexKey = DataBlockUtils.indexBlockOffloadKey(uuid);
+            keys.add(key);
+            indexKeys.add(indexKey);
+        });
+
+        scheduler.chooseThread(ledgerId).submit(() -> {
+            try {
+                promise.complete(StreamingBlobStoreBackedReadHandleImpl.open(scheduler.chooseThread(ledgerId),
+                        readBlobstore,
+                        readBucket, keys, indexKeys,
+                        DataBlockUtils.VERSION_CHECK,
+                        ledgerId, config.getReadBufferSizeInBytes()));
+            } catch (Throwable t) {
+                log.error("Failed readOffloaded: ", t);
+                promise.completeExceptionally(t);
+            }
+        });
         return promise;
     }
 
@@ -292,6 +541,27 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         return promise;
     }
 
+    @Override
+    public CompletableFuture<Void> deleteOffloaded(UUID uid, Map<String, String> offloadDriverMetadata) {
+        BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        String readBucket = bsKey.getBucket(offloadDriverMetadata);
+        BlobStore readBlobstore = blobStores.get(config.getBlobStoreLocation());
+
+        CompletableFuture<Void> promise = new CompletableFuture<>();
+        scheduler.submit(() -> {
+            try {
+                readBlobstore.removeBlobs(readBucket,
+                        ImmutableList.of(uid.toString(),
+                                DataBlockUtils.indexBlockOffloadKey(uid)));
+                promise.complete(null);
+            } catch (Throwable t) {
+                log.error("Failed delete Blob", t);
+                promise.completeExceptionally(t);
+            }
+        });
+
+        return promise;
+    }
 
     @Override
     public OffloadPolicies getOffloadPolicies() {

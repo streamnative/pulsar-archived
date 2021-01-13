@@ -24,6 +24,7 @@ import static java.lang.Math.min;
 import static org.apache.bookkeeper.mledger.util.Errors.isNoSuchLedgerExistsException;
 import static org.apache.bookkeeper.mledger.util.SafeRun.safeRun;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -34,6 +35,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
+import io.netty.util.ReferenceCountUtil;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.HashMap;
@@ -64,7 +66,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import io.netty.util.ReferenceCountUtil;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
@@ -1683,6 +1684,20 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
     public CompletableFuture<String> getLedgerMetadata(long ledgerId) {
         return getLedgerHandle(ledgerId).thenApply(rh -> rh.getLedgerMetadata().toSafeString());
+    }
+
+    @Override
+    public CompletableFuture<LedgerInfo> getClosedLedgerInfo(long ledgerId) throws ManagedLedgerException {
+        final LedgerInfo ledgerInfo = ledgers.get(ledgerId);
+        if (ledgerInfo == null) {
+            throw new ManagedLedgerException(
+                    Strings.lenientFormat("ledger with id %s not found", ledgerId));
+        } else if (ledgerInfo.getSize() == 0 || ledgerInfo.getEntries() == 0) {
+            throw new ManagedLedgerException(
+                    Strings.lenientFormat("ledger with id %s has not closed yet", ledgerId));
+        }
+
+        return CompletableFuture.completedFuture(ledgerInfo);
     }
 
     CompletableFuture<ReadHandle> getLedgerHandle(long ledgerId) {

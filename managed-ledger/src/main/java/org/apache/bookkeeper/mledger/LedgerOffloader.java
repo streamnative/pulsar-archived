@@ -22,18 +22,114 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-
+import lombok.ToString;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadNotConsecutiveException;
+import org.apache.bookkeeper.mledger.ManagedLedgerException.OffloadSegmentClosedException;
+import org.apache.bookkeeper.mledger.impl.EntryImpl;
+import org.apache.bookkeeper.mledger.impl.PositionImpl;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats;
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 
 /**
- * Interface for offloading ledgers to long-term storage
+ * Interface for offloading ledgers to long-term storage.
  */
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
 public interface LedgerOffloader {
+
+    interface SegmentInfo {
+        boolean isClosed();
+
+        OffloadResult result();
+    }
+
+    @ToString
+    class SegmentInfoImpl implements SegmentInfo {
+        public SegmentInfoImpl(UUID uuid, long beginLedger, long beginEntry, String driverName,
+                               Map<String, String> driverMetadata) {
+            this.uuid = uuid;
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+            this.driverName = driverName;
+            this.driverMetadata = driverMetadata;
+        }
+
+
+        public final UUID uuid;
+        public final long beginLedger;
+        public final long beginEntry;
+        public final String driverName;
+        volatile private long endLedger;
+        volatile private long endEntry;
+        volatile boolean closed = false;
+        public final Map<String, String> driverMetadata;
+
+        public boolean isClosed() {
+            return closed;
+        }
+
+        public void closeSegment(long endLedger, long endEntry) {
+            this.endLedger = endLedger;
+            this.endEntry = endEntry;
+            this.closed = true;
+        }
+
+        public OffloadResult result() {
+            return new OffloadResult(beginLedger, beginEntry, endLedger, endEntry);
+        }
+    }
+
+
+    class OffloadResult {
+        public final long beginLedger;
+        public final long beginEntry;
+        public final long endLedger;
+        public final long endEntry;
+
+        public OffloadResult(long beginLedger, long beginEntry, long endLedger, long endEntry) {
+            this.beginLedger = beginLedger;
+            this.beginEntry = beginEntry;
+            this.endLedger = endLedger;
+            this.endEntry = endEntry;
+        }
+    }
+
+    /**
+     * Used to store driver info, buffer entries, mark progress, etc.
+     * Create one per second.
+     */
+    interface OffloadHandle {
+
+        /**
+         * return true when both buffer have enough size and ledger/entry id is next to the current one.
+         * @param size
+         * @return
+         */
+        boolean canOffer(long size);
+
+        default CompletableFuture<Boolean> asyncCanOffer(long size) {
+            return CompletableFuture.completedFuture(canOffer(size));
+        }
+
+        PositionImpl lastOffered();
+
+        default CompletableFuture<PositionImpl> asyncLastOffered() {
+            return CompletableFuture.completedFuture(lastOffered());
+        }
+
+        boolean offerEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+                OffloadNotConsecutiveException;
+
+        default CompletableFuture<Boolean> asyncOfferEntry(EntryImpl entry) throws OffloadSegmentClosedException,
+                OffloadNotConsecutiveException {
+            return CompletableFuture.completedFuture(offerEntry(entry));
+        }
+
+        CompletableFuture<OffloadResult> getOffloadResultAsync();
+    }
 
     // TODO: improve the user metadata in subsequent changes
     String METADATA_SOFTWARE_VERSION_KEY = "S3ManagedLedgerOffloaderSoftwareVersion";
@@ -86,6 +182,34 @@ public interface LedgerOffloader {
                                     Map<String, String> extraMetadata);
 
     /**
+     * Begin offload the passed in ledgers to longterm storage, it will finish
+     * when a segment reached it's size or time.
+     * Metadata passed in is for inspection purposes only and should be stored
+     * alongside the segment data.
+     *
+     * When the returned OffloaderHandle.getOffloadResultAsync completes, the corresponding
+     * ledgers has been persisted to the
+     * loadterm storage, so it is safe to delete the original copy in bookkeeper.
+     *
+     * The uid is used to identify an attempt to offload. The implementation should
+     * use this to deterministically generate a unique name for the offloaded object.
+     * This uid will be stored in the managed ledger metadata before attempting the
+     * call to offload(). If a subsequent or concurrent call to streamingOffload() finds
+     * a uid in the metadata, it will attempt to cleanup this attempt with a call
+     * to #deleteOffloaded(ReadHandle,UUID). Once the offload attempt completes,
+     * the managed ledger will update its metadata again, to record the completion,
+     * ensuring that subsequent calls will not attempt to offload the same ledger
+     * again.
+     *
+     * @return an OffloaderHandle, which when `completeFuture()` completed, denotes that the offload has been successful.
+     */
+    default CompletableFuture<OffloadHandle> streamingOffload(ManagedLedger ml, UUID uid, long beginLedger,
+                                                              long beginEntry,
+                                                              Map<String, String> driverMetadata) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Create a ReadHandle which can be used to read a ledger back from longterm
      * storage.
      *
@@ -114,6 +238,16 @@ public interface LedgerOffloader {
      */
     CompletableFuture<Void> deleteOffloaded(long ledgerId, UUID uid,
                                             Map<String, String> offloadDriverMetadata);
+
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId, MLDataFormats.OffloadContext ledgerContext,
+                                                        Map<String, String> offloadDriverMetadata) {
+        throw new UnsupportedOperationException();
+    }
+
+    default CompletableFuture<Void> deleteOffloaded(UUID uid,
+                                                    Map<String, String> offloadDriverMetadata) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Get offload policies of this LedgerOffloader
