@@ -30,7 +30,7 @@
 
   <groupId>org.apache.pulsar</groupId>
   <artifactId>buildtools</artifactId>
-  <version>2.7.0</version>
+  <version>branch-2.7.0.6-rc-202101281610</version>
   <packaging>jar</packaging>
   <name>Pulsar Build Tools</name>
 
