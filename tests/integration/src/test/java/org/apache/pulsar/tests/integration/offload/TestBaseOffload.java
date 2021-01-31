@@ -242,8 +242,8 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
         try (PulsarAdmin admin = PulsarAdmin.builder().serviceHttpUrl(adminUrl).build()) {
             firstLedger = admin.topics().getInternalStats(topic).ledgers.get(0).ledgerId;
 
-            // wait up to 30 seconds for offload to occur
-            for (int i = 0; i < 300 && !admin.topics().getInternalStats(topic).ledgers.get(0).offloaded; i++) {
+            // wait up to 60 seconds for offload to occur
+            for (int i = 0; i < 600 && !admin.topics().getInternalStats(topic).ledgers.get(0).offloaded; i++) {
                 Thread.sleep(100);
             }
 

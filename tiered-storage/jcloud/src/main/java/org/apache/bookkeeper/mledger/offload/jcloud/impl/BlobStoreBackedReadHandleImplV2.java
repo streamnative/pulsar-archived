@@ -131,7 +131,7 @@ public class BlobStoreBackedReadHandleImplV2 implements ReadHandle {
 
     @Override
     public CompletableFuture<LedgerEntries> readAsync(long firstEntry, long lastEntry) {
-        log.debug("Ledger {}: reading {} - {}", getId(), firstEntry, lastEntry);
+        log.info("Tiered Ledger {}: reading {} - {}", getId(), firstEntry, lastEntry);
         CompletableFuture<LedgerEntries> promise = new CompletableFuture<>();
         if (firstEntry > lastEntry
                 || firstEntry < 0
@@ -152,6 +152,7 @@ public class BlobStoreBackedReadHandleImplV2 implements ReadHandle {
             for (GroupedReader groupedReader : groupedReaders) {
                 long entriesToRead = (groupedReader.lastEntry - groupedReader.firstEntry) + 1;
                 long nextExpectedId = groupedReader.firstEntry;
+                log.info("grouped reader: {}", groupedReader);
                 try {
                     while (entriesToRead > 0) {
                         int length = groupedReader.dataStream.readInt();
@@ -167,6 +168,7 @@ public class BlobStoreBackedReadHandleImplV2 implements ReadHandle {
                         if (entryId == nextExpectedId) {
                             ByteBuf buf = PulsarByteBufAllocator.DEFAULT.buffer(length, length);
                             entries.add(LedgerEntryImpl.create(ledgerId, entryId, length, buf));
+                            log.info("entries add {} {}", ledgerId, entryId);
                             int toWrite = length;
                             while (toWrite > 0) {
                                 toWrite -= buf.writeBytes(groupedReader.dataStream, toWrite);
@@ -200,7 +202,7 @@ public class BlobStoreBackedReadHandleImplV2 implements ReadHandle {
                     promise.completeExceptionally(t);
                     entries.forEach(LedgerEntry::close);
                 }
-
+                log.info("ledger {} begin {} end {} entries size: {}", ledgerId, firstEntry, lastEntry, entries.size());
                 promise.complete(LedgerEntriesImpl.create(entries));
             }
         });
