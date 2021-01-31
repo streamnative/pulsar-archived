@@ -35,7 +35,6 @@ public class OffloadSegmentInfoImpl {
     volatile private long endLedgerId;
     volatile private long endEntryId;
     volatile boolean closed = false;
-    public final long beginTimestamp = System.currentTimeMillis();
     public final Map<String, String> driverMetadata;
 
     public OffloadSegmentInfoImpl(UUID uuid, long beginLedgerId, long beginEntryId, String driverName,
