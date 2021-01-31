@@ -43,7 +43,7 @@ import org.testng.annotations.Test;
 @Slf4j
 public class StreamingOffloadTest extends MockedBookKeeperTestCase {
 
-    BlobStoreManagedLedgerOffloaderStreamingTest offloaderGenerator = new BlobStoreManagedLedgerOffloaderStreamingTest();
+    final private BlobStoreManagedLedgerOffloaderStreamingTest offloaderGenerator = new BlobStoreManagedLedgerOffloaderStreamingTest();
 
     public StreamingOffloadTest() throws Exception {
     }

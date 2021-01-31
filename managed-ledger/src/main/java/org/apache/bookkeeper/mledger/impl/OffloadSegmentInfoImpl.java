@@ -26,16 +26,8 @@ import org.apache.bookkeeper.mledger.LedgerOffloader;
 
 @ToString
 public class OffloadSegmentInfoImpl {
-    public OffloadSegmentInfoImpl(UUID uuid, long beginLedgerId, long beginEntryId, String driverName,
-                                  Map<String, String> driverMetadata) {
-        this.uuid = uuid;
-        this.beginLedgerId = beginLedgerId;
-        this.beginEntryId = beginEntryId;
-        this.driverName = driverName;
-        this.driverMetadata = driverMetadata;
-    }
 
-
+    public final long beginTimestamp = System.currentTimeMillis();
     public final UUID uuid;
     public final long beginLedgerId;
     public final long beginEntryId;
@@ -45,6 +37,15 @@ public class OffloadSegmentInfoImpl {
     volatile boolean closed = false;
     public final long beginTimestamp = System.currentTimeMillis();
     public final Map<String, String> driverMetadata;
+
+    public OffloadSegmentInfoImpl(UUID uuid, long beginLedgerId, long beginEntryId, String driverName,
+                                  Map<String, String> driverMetadata) {
+        this.uuid = uuid;
+        this.beginLedgerId = beginLedgerId;
+        this.beginEntryId = beginEntryId;
+        this.driverName = driverName;
+        this.driverMetadata = driverMetadata;
+    }
 
     public boolean isClosed() {
         return closed;

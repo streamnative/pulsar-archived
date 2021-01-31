@@ -151,14 +151,9 @@ Configuration:
         AppenderRef:
           - ref: Console
 
-    # Logger to inject filter script
-#     - name: org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl
-#       level: debug
-#       additivity: false
-#       AppenderRef:
-#         ref: "${sys:pulsar.log.appender}"
-#         ScriptFilter:
-#           onMatch: ACCEPT
-#           onMisMatch: DENY
-#           ScriptRef:
-#             ref: filter.js
+      # Logger to inject filter script
+      - name: org.apache.pulsar.client.impl
+        level: debug
+        additivity: false
+        AppenderRef:
+          ref: "${sys:pulsar.log.appender}"

@@ -66,6 +66,7 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
                 "create", "--clusters", pulsarCluster.getClusterName(), namespace);
 
         long firstLedger = -1;
+        List<MessageId> ids = new LinkedList<>();
         try(PulsarClient client = PulsarClient.builder().serviceUrl(serviceUrl).build();
             Producer<byte[]> producer = client.newProducer().topic(topic)
                     .blockIfQueueFull(true).enableBatching(false).create();) {
@@ -74,7 +75,9 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
             // write enough to topic to make it roll
             int i = 0;
             for (; i < ENTRIES_PER_LEDGER * 1.5; i++) {
-                producer.sendAsync(buildEntry("offload-message" + i));
+                final CompletableFuture<MessageId> messageIdCompletableFuture = producer
+                        .sendAsync(buildEntry("offload-message" + i));
+                ids.add(messageIdCompletableFuture.get());
             }
             producer.flush();
         }
@@ -120,6 +123,7 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
             for (int i = 0; i < ENTRIES_PER_LEDGER * 1.5; i++) {
                 Message<byte[]> m = consumer.receive(1, TimeUnit.MINUTES);
                 Assert.assertEquals(buildEntry("offload-message" + i), m.getData());
+                Assert.assertEquals(ids.get(i), m.getMessageId());
             }
         }
     }
@@ -198,8 +202,8 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
 
     public void testStreamingOffload(String serviceUrl, String adminUrl) throws Exception {
         final String tenant = "offload-test-threshold-" + randomName(4);
-        final String namespace = tenant + "/ns2";
-        final String topic = "persistent://" + namespace + "/topic1";
+        final String namespace = tenant + "/nsstreaming";
+        final String topic = "persistent://" + namespace + "/testStreamingOffload";
 
         pulsarCluster.runAdminCommandOnAnyBroker("tenants",
                 "create", "--allowed-clusters", pulsarCluster.getClusterName(),
@@ -258,17 +262,25 @@ public abstract class TestBaseOffload extends PulsarTieredStorageTestSuite {
             admin.topics().unload(topic);
         }
 
-        log.info("Read back the data (which would be in that first ledger)");
+        log.info("Read back the data streaming offloaded");
         try (PulsarClient client = PulsarClient.builder().serviceUrl(serviceUrl).build();
              Consumer<byte[]> consumer =
                      client.newConsumer().topic(topic).subscriptionName("my-sub")
                              .startMessageIdInclusive().subscribe()) {
-            consumer.seek(MessageId.earliest);
+            log.info("Consumer seek {}", messageIds.get(0));
+            consumer.seek(messageIds.get(0));
             // read back from topic
             for (int i = 0; i < ENTRIES_PER_LEDGER * 2.5; i++) {
                 Message<byte[]> m = consumer.receive(1, TimeUnit.MINUTES);
+                final String expectStr = new String(buildEntry("offload-message" + i));
+                final String receivedStr = new String(m.getData());
+                log.info("i: {}", i);
+                log.info("expected str: {}", expectStr);
+                log.info("received str: {}", receivedStr);
+                log.info("expected id: {}", messageIds.get(i));
+                log.info("got id: {}", m.getMessageId());
                 Assert.assertEquals(messageIds.get(i), m.getMessageId());
-                Assert.assertEquals(new String(buildEntry("offload-message" + i)), new String(m.getData()));
+                Assert.assertEquals(expectStr, receivedStr);
             }
         }
     }

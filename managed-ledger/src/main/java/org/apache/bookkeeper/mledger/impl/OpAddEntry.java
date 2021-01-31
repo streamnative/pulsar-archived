@@ -94,18 +94,12 @@ public class OpAddEntry extends SafeRunnable implements AddCallback, CloseCallba
 
     public static OpAddEntry create(ManagedLedgerImpl ml, ByteBuf data, AddEntryCallback callback, Object ctx) {
         OpAddEntry op = createOpAddEntry(ml, data, callback, ctx);
-        if (log.isDebugEnabled()) {
-            log.debug("Created new OpAddEntry {}", op);
-        }
         return op;
     }
 
     public static OpAddEntry create(ManagedLedgerImpl ml, ByteBuf data, int numberOfMessages, AddEntryCallback callback, Object ctx) {
         OpAddEntry op = createOpAddEntry(ml, data, callback, ctx);
         op.numberOfMessages = numberOfMessages;
-        if (log.isDebugEnabled()) {
-            log.debug("Created new OpAddEntry {}", op);
-        }
         return op;
     }
 
