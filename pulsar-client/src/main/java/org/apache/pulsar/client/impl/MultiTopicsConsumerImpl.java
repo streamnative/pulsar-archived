@@ -983,9 +983,10 @@ public class MultiTopicsConsumerImpl<T> extends ConsumerBase<T> {
                 }
                 int numTopics = this.topics.values().stream().mapToInt(Integer::intValue).sum();
                 int currentAllTopicsPartitionsNumber = allTopicPartitionsNumber.get();
-                checkState(currentAllTopicsPartitionsNumber == numTopics,
-                    "allTopicPartitionsNumber " + currentAllTopicsPartitionsNumber
-                        + " not equals expected: " + numTopics);
+                if (currentAllTopicsPartitionsNumber != numTopics) {
+                    log.warn("Topic count mismatch: allTopicPartitionsNumber " + currentAllTopicsPartitionsNumber
+                            + " not equals expected: " + numTopics);
+                }
 
                 // We have successfully created new consumers, so we can start receiving messages for them
                 startReceivingMessages(
