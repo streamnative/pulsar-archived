@@ -19,12 +19,10 @@
 package org.apache.bookkeeper.mledger.impl;
 
 import static org.apache.bookkeeper.mledger.impl.OffloadPrefixTest.assertEventuallyTrue;
-
 import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedger;
@@ -32,12 +30,10 @@ import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats;
 import org.apache.bookkeeper.mledger.util.MockClock;
 import org.apache.bookkeeper.test.MockedBookKeeperTestCase;
-
 import org.apache.pulsar.common.policies.data.OffloadPolicies;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -221,7 +217,8 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         ManagedLedger managedLedger = factory.open("isOffloadedNeedsDeleteTest", config);
         Class<ManagedLedgerImpl> clazz = ManagedLedgerImpl.class;
-        Method method = clazz.getDeclaredMethod("isOffloadedNeedsDelete", MLDataFormats.OffloadContext.class);
+        Method method = clazz.getDeclaredMethod("isOffloadedNeedsDelete", Long.class,
+                MLDataFormats.ManagedLedgerInfo.LedgerInfo.class);
         method.setAccessible(true);
 
         MLDataFormats.OffloadContext offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -229,15 +226,19 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(true)
                 .setBookkeeperDeleted(false)
                 .build();
-        Boolean needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
+        final MLDataFormats.ManagedLedgerInfo.LedgerInfo info =
+                MLDataFormats.ManagedLedgerInfo.LedgerInfo.newBuilder()
+                        .setLedgerId(0L)
+                        .setOffloadContext(offloadContext).build();
+        Boolean needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
         Assert.assertFalse(needsDelete);
 
         offloadPolicies.setManagedLedgerOffloadDeletionLagInMillis(500L);
-        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
+        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
         Assert.assertTrue(needsDelete);
 
         offloadPolicies.setManagedLedgerOffloadDeletionLagInMillis(1000L * 2);
-        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
+        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
         Assert.assertFalse(needsDelete);
 
         offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -245,7 +246,7 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(false)
                 .setBookkeeperDeleted(false)
                 .build();
-        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
+        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
         Assert.assertFalse(needsDelete);
 
         offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -253,7 +254,7 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(true)
                 .setBookkeeperDeleted(true)
                 .build();
-        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
+        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
         Assert.assertFalse(needsDelete);
 
     }

@@ -20,12 +20,9 @@ package org.apache.bookkeeper.mledger.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.bookkeeper.mledger.ManagedLedgerException.getManagedLedgerException;
-
 import com.google.common.base.Predicates;
 import com.google.common.collect.Maps;
-
 import io.netty.util.concurrent.DefaultThreadFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +38,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
@@ -78,8 +74,8 @@ import org.apache.bookkeeper.mledger.util.Futures;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
-import org.apache.pulsar.common.util.DateFormatter;
 import org.apache.pulsar.common.policies.data.EnsemblePlacementPolicyConfig;
+import org.apache.pulsar.common.util.DateFormatter;
 import org.apache.pulsar.metadata.api.MetadataStore;
 import org.apache.pulsar.metadata.api.Stat;
 import org.apache.pulsar.metadata.impl.ZKMetadataStore;
@@ -88,13 +84,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
-    private final MetaStore store;
-    private final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
+    protected final MetaStore store;
+    protected final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
     private final boolean isBookkeeperManaged;
     private final ZooKeeper zookeeper;
     private final ManagedLedgerFactoryConfig config;
     protected final OrderedScheduler scheduledExecutor;
-    private final OrderedExecutor orderedExecutor;
+    protected final OrderedExecutor orderedExecutor;
 
     private final ExecutorService cacheEvictionExecutor;
 
@@ -381,12 +377,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         ledgers.computeIfAbsent(name, (mlName) -> {
             // Create the managed ledger
             CompletableFuture<ManagedLedgerImpl> future = new CompletableFuture<>();
-            final ManagedLedgerImpl newledger = new ManagedLedgerImpl(this,
-                    bookkeeperFactory.get(
-                            new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
-                                    config.getBookKeeperEnsemblePlacementPolicyProperties())),
-                    store, config, scheduledExecutor,
-                    orderedExecutor, name, mlOwnershipChecker);
+            final ManagedLedgerImpl newledger = createNewManagedLedger(name, config, mlOwnershipChecker);
             PendingInitializeManagedLedger pendingLedger = new PendingInitializeManagedLedger(newledger);
             pendingInitializeLedgers.put(name, pendingLedger);
             newledger.initialize(new ManagedLedgerInitializeLedgerCallback() {
@@ -428,10 +419,20 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         });
     }
 
+    protected ManagedLedgerImpl createNewManagedLedger(String name, ManagedLedgerConfig config,
+                                                       Supplier<Boolean> mlOwnershipChecker) {
+        return new ManagedLedgerImpl(this,
+                bookkeeperFactory.get(
+                        new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
+                                config.getBookKeeperEnsemblePlacementPolicyProperties())),
+                store, config, scheduledExecutor,
+                orderedExecutor, name, mlOwnershipChecker);
+    }
 
 
     @Override
-    public ReadOnlyCursor openReadOnlyCursor(String managedLedgerName, Position startPosition, ManagedLedgerConfig config)
+    public ReadOnlyCursor openReadOnlyCursor(String managedLedgerName, Position startPosition,
+                                             ManagedLedgerConfig config)
             throws InterruptedException, ManagedLedgerException {
         class Result {
             ReadOnlyCursor c = null;
