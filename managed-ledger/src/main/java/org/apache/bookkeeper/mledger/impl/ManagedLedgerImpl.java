@@ -149,7 +149,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     protected final NavigableMap<Long, LedgerInfo> ledgers = new ConcurrentSkipListMap<>();
     private volatile Stat ledgersStat;
 
-    private final ManagedCursorContainer cursors = new ManagedCursorContainer();
+    protected final ManagedCursorContainer cursors = new ManagedCursorContainer();
     private final ManagedCursorContainer activeCursors = new ManagedCursorContainer();
 
     // Ever increasing counter of entries added
@@ -190,7 +190,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private final CallbackMutex metadataMutex = new CallbackMutex();
     private final CallbackMutex trimmerMutex = new CallbackMutex();
 
-    private final CallbackMutex offloadMutex = new CallbackMutex();
+    protected final CallbackMutex offloadMutex = new CallbackMutex();
     private final static CompletableFuture<PositionImpl> NULL_OFFLOAD_PROMISE = CompletableFuture
             .completedFuture(PositionImpl.latest);
     private volatile LedgerHandle currentLedger;
@@ -2152,7 +2152,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         scheduledExecutor.schedule(safeRun(() -> trimConsumedLedgersInBackground(promise)), 100, TimeUnit.MILLISECONDS);
     }
 
-    private void maybeOffloadInBackground(CompletableFuture<PositionImpl> promise) {
+    protected void maybeOffloadInBackground(CompletableFuture<PositionImpl> promise) {
         if (config.getLedgerOffloader() != null
                 && config.getLedgerOffloader() != NullLedgerOffloader.INSTANCE
                 && config.getLedgerOffloader().getOffloadPolicies() != null

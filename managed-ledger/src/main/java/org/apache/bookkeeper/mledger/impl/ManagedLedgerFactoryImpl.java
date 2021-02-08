@@ -20,12 +20,9 @@ package org.apache.bookkeeper.mledger.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.bookkeeper.mledger.ManagedLedgerException.getManagedLedgerException;
-
 import com.google.common.base.Predicates;
 import com.google.common.collect.Maps;
-
 import io.netty.util.concurrent.DefaultThreadFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +38,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
@@ -78,8 +74,8 @@ import org.apache.bookkeeper.mledger.util.Futures;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
-import org.apache.pulsar.common.util.DateFormatter;
 import org.apache.pulsar.common.policies.data.EnsemblePlacementPolicyConfig;
+import org.apache.pulsar.common.util.DateFormatter;
 import org.apache.pulsar.metadata.api.MetadataStore;
 import org.apache.pulsar.metadata.api.Stat;
 import org.apache.pulsar.metadata.impl.ZKMetadataStore;
@@ -381,7 +377,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         ledgers.computeIfAbsent(name, (mlName) -> {
             // Create the managed ledger
             CompletableFuture<ManagedLedgerImpl> future = new CompletableFuture<>();
-            final ManagedLedgerImpl newledger = new ManagedLedgerImpl(this,
+            final ManagedLedgerTieredImpl newledger = new ManagedLedgerTieredImpl(this,
                     bookkeeperFactory.get(
                             new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
                                     config.getBookKeeperEnsemblePlacementPolicyProperties())),
@@ -394,6 +390,12 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
                 public void initializeComplete() {
                     log.info("[{}] Successfully initialize managed ledger", name);
                     pendingInitializeLedgers.remove(name, pendingLedger);
+                    try {
+                        newledger.initializeOffloadCursor();
+                    } catch (ManagedLedgerException | InterruptedException e) {
+                        log.error("[{}] Failed to initialize managed ledger", name, e);
+                        future.completeExceptionally(e);
+                    }
                     future.complete(newledger);
                 }
 
