@@ -137,6 +137,19 @@ public interface LedgerOffloader {
                                     UUID uid,
                                     Map<String, String> extraMetadata);
 
+    default CompletableFuture<Void> offloadALedger(ManagedCursor cursor,
+                                                   String managedLedgerName,
+                                                   long ledgerId,
+                                                   Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException(
+                String.format(
+                        "Your offloader %s not support offloadALedger,"
+                                + " implement it or use another one that support it",
+                        this.getClass()));
+    }
+
+    ;
+
     /**
      * Begin offload the passed in ledgers to longterm storage, it will finish
      * when a segment reached it's size or time.

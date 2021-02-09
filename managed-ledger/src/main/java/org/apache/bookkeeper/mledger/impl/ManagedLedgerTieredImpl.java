@@ -60,6 +60,7 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
         } else {
             offloadCursor = cursor;
         }
+        offloadCursor.setActive();
     }
 
     @Override
