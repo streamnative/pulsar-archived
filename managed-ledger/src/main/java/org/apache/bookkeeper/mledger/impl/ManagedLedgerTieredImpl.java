@@ -30,6 +30,7 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.mledger.AsyncCallbacks;
+import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.ManagedLedgerException;
@@ -96,9 +97,13 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
             return;
         }
         final Long head = ledgersToOffload.pop();
-        final CompletableFuture<Position> future = config.getLedgerOffloader()
-                .offloadALedger(offloadCursor, name, head, new HashMap<>());
-        future.whenComplete((offloadedPos, ex) -> {
+        final CompletableFuture<LedgerOffloader.OffloadResultV2> future = config.getLedgerOffloader()
+                .offloadV2(offloadCursor, name,
+                        new LedgerOffloader.OffloadOption(head, LedgerOffloader.OffloadMethod.LEGER_BASED,
+                                new HashMap<>()));
+        future.whenComplete((result, ex) -> {
+            //should always equal in written position
+            assert result.completePosition == result.wittenPosition;
             if (ex != null) {
                 callback.offloadFailed(new ManagedLedgerException("offload failed", ex), null);
                 offloadMutex.unlock();
@@ -106,7 +111,7 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
             }
 
             try {
-                offloadCursor.markDelete(offloadedPos);
+                offloadCursor.markDelete(result.completePosition);
             } catch (InterruptedException | ManagedLedgerException e) {
                 offloadMutex.unlock();
                 callback.offloadFailed(new ManagedLedgerException("mark delete failed", e), null);

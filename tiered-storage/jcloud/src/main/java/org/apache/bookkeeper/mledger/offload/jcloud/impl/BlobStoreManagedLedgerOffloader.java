@@ -273,12 +273,15 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     }
 
     @Override
-    public CompletableFuture<Position> offloadALedger(ManagedCursor cursor, String managedLedgerName, long ledgerId,
-                                                      Map<String, String> extraMetadata) {
+    public CompletableFuture<OffloadResultV2> offloadV2(ManagedCursor cursor,
+                                                        String managedLedgerName,
+                                                        OffloadOption option) {
+        assert option.offloadMethod == OffloadMethod.LEGER_BASED;
         //TODO is it a suitable value when we can't know the actual entry size?
         final int entriesPerRead = 100;
+        final Long ledgerId = option.ledgerId;
         final BlobStore writeBlobStore = blobStores.get(config.getBlobStoreLocation());
-        CompletableFuture<Position> promise = new CompletableFuture<>();
+        CompletableFuture<OffloadResultV2> promise = new CompletableFuture<>();
         String offloadKey = ledgerOffloadKey(managedLedgerName, ledgerId);
         String indexKey = ledgerOffloadIndexKey(managedLedgerName, ledgerId);
         scheduler.chooseThread(ledgerId).submit(() -> {
@@ -336,7 +339,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
                     dataObjectLength += blockSize;
                 }
                 buildIndexAndCompleteResult(dataObjectLength, blobStore, indexBuilder, mpu, offloadParts, indexKey);
-                promise.complete(PositionImpl.get(ledgerId, lastEntryId));
+                promise.complete(new OffloadResultV2(PositionImpl.get(ledgerId, lastEntryId),
+                        PositionImpl.get(ledgerId, lastEntryId)));
             } catch (Exception e) {
                 promise.completeExceptionally(e);
             }

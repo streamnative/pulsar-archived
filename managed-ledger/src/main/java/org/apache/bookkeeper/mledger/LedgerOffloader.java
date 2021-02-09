@@ -137,10 +137,40 @@ public interface LedgerOffloader {
                                     UUID uid,
                                     Map<String, String> extraMetadata);
 
-    default CompletableFuture<Position> offloadALedger(ManagedCursor cursor,
-                                                       String managedLedgerName,
-                                                       long ledgerId,
-                                                       Map<String, String> extraMetadata) {
+    enum OffloadMethod {
+        LEGER_BASED,
+        STREAMING,
+    }
+
+    class OffloadOption {
+        //only valid when using ledger-based offload
+        final public Long ledgerId;
+        final public OffloadMethod offloadMethod;
+
+        public OffloadOption(Long ledgerId, OffloadMethod offloadMethod,
+                             Map<String, Object> extraMetadata) {
+            this.ledgerId = ledgerId;
+            this.offloadMethod = offloadMethod;
+            this.extraMetadata = extraMetadata;
+        }
+
+        //threshold, options etc
+        final public Map<String, Object> extraMetadata;
+    }
+
+    class OffloadResultV2 {
+        final public Position wittenPosition;
+        final public Position completePosition;
+
+        public OffloadResultV2(Position wittenPosition, Position completePosition) {
+            this.wittenPosition = wittenPosition;
+            this.completePosition = completePosition;
+        }
+    }
+
+    default CompletableFuture<OffloadResultV2> offloadV2(ManagedCursor cursor,
+                                                         String managedLedgerName,
+                                                         OffloadOption option) {
         throw new UnsupportedOperationException(
                 String.format(
                         "Your offloader %s not support offloadALedger,"
