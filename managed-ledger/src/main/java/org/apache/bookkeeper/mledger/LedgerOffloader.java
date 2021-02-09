@@ -137,10 +137,10 @@ public interface LedgerOffloader {
                                     UUID uid,
                                     Map<String, String> extraMetadata);
 
-    default CompletableFuture<Void> offloadALedger(ManagedCursor cursor,
-                                                   String managedLedgerName,
-                                                   long ledgerId,
-                                                   Map<String, String> extraMetadata) {
+    default CompletableFuture<Position> offloadALedger(ManagedCursor cursor,
+                                                       String managedLedgerName,
+                                                       long ledgerId,
+                                                       Map<String, String> extraMetadata) {
         throw new UnsupportedOperationException(
                 String.format(
                         "Your offloader %s not support offloadALedger,"

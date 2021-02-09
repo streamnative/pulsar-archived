@@ -191,9 +191,9 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private final CallbackMutex trimmerMutex = new CallbackMutex();
 
     protected final CallbackMutex offloadMutex = new CallbackMutex();
-    private final static CompletableFuture<PositionImpl> NULL_OFFLOAD_PROMISE = CompletableFuture
+    private final static CompletableFuture<Position> NULL_OFFLOAD_PROMISE = CompletableFuture
             .completedFuture(PositionImpl.latest);
-    private volatile LedgerHandle currentLedger;
+    protected volatile LedgerHandle currentLedger;
     private long currentLedgerEntries = 0;
     private long currentLedgerSize = 0;
     private long lastLedgerCreatedTimestamp = 0;
@@ -238,7 +238,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             .newUpdater(ManagedLedgerImpl.class, State.class, "state");
     protected volatile State state = null;
 
-    private final OrderedScheduler scheduledExecutor;
+    protected final OrderedScheduler scheduledExecutor;
     private final OrderedExecutor executor;
     final ManagedLedgerFactoryImpl factory;
     protected final ManagedLedgerMBeanImpl mbean;
@@ -2152,7 +2152,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         scheduledExecutor.schedule(safeRun(() -> trimConsumedLedgersInBackground(promise)), 100, TimeUnit.MILLISECONDS);
     }
 
-    protected void maybeOffloadInBackground(CompletableFuture<PositionImpl> promise) {
+    private void maybeOffloadInBackground(CompletableFuture<Position> promise) {
         if (config.getLedgerOffloader() != null
                 && config.getLedgerOffloader() != NullLedgerOffloader.INSTANCE
                 && config.getLedgerOffloader().getOffloadPolicies() != null
@@ -2162,17 +2162,17 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
-    private void maybeOffload(CompletableFuture<PositionImpl> finalPromise) {
+    protected void maybeOffload(CompletableFuture<Position> finalPromise) {
         if (!offloadMutex.tryLock()) {
             scheduledExecutor.schedule(safeRun(() -> maybeOffloadInBackground(finalPromise)),
-                                       100, TimeUnit.MILLISECONDS);
+                    100, TimeUnit.MILLISECONDS);
         } else {
             CompletableFuture<PositionImpl> unlockingPromise = new CompletableFuture<>();
             unlockingPromise.whenComplete((res, ex) -> {
-                    offloadMutex.unlock();
-                    if (ex != null) {
-                        finalPromise.completeExceptionally(ex);
-                    } else {
+                offloadMutex.unlock();
+                if (ex != null) {
+                    finalPromise.completeExceptionally(ex);
+                } else {
                         finalPromise.complete(res);
                     }
                 });

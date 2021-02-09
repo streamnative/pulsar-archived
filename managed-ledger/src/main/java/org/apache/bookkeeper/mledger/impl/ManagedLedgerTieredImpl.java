@@ -18,8 +18,14 @@
  */
 package org.apache.bookkeeper.mledger.impl;
 
+import static org.apache.bookkeeper.mledger.util.SafeRun.safeRun;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
@@ -28,11 +34,12 @@ import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.ManagedLedgerException;
 import org.apache.bookkeeper.mledger.Position;
+import org.apache.bookkeeper.mledger.proto.MLDataFormats.ManagedLedgerInfo.LedgerInfo;
 import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
 
+@Slf4j
 public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
 
-    //TODO offload but not change meta
     //TODO rewrite check offloaded logic
     //TODO change read logic in cursor
     static final String offloadCursorName = "_offload_cursor";
@@ -65,13 +72,83 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
 
     @Override
     public void asyncOffloadPrefix(Position pos, AsyncCallbacks.OffloadCallback callback, Object ctx) {
-        //TODO rewrite
-        super.asyncOffloadPrefix(pos, callback, ctx);
+        if (!offloadMutex.tryLock()) {
+            callback.offloadFailed(new ManagedLedgerException("offloading in progress"), null);
+        }
+        final LinkedList<Long> ledgersToOffload = new LinkedList<>(
+                ledgers.subMap(offloadCursor.getMarkDeletedPosition().getLedgerId() + 1,
+                        Math.min(currentLedger.getId(), pos.getLedgerId())).keySet());
+        offloadLoop(ledgersToOffload, callback);
+    }
+
+    private void offloadLoop(LinkedList<Long> ledgersToOffload, AsyncCallbacks.OffloadCallback callback) {
+        if (ledgersToOffload.isEmpty()) {
+            callback.offloadComplete(offloadCursor.getMarkDeletedPosition(), null);
+            offloadMutex.unlock();
+            return;
+        }
+        final Long head = ledgersToOffload.pop();
+        final CompletableFuture<Position> future = config.getLedgerOffloader()
+                .offloadALedger(offloadCursor, name, head, new HashMap<>());
+        future.whenComplete((offloadedPos, ex) -> {
+            if (ex != null) {
+                callback.offloadFailed(new ManagedLedgerException("offload failed", ex), null);
+                offloadMutex.unlock();
+                return;
+            }
+
+            try {
+                offloadCursor.markDelete(offloadedPos);
+            } catch (InterruptedException | ManagedLedgerException e) {
+                offloadMutex.unlock();
+                callback.offloadFailed(new ManagedLedgerException("mark delete failed", e), null);
+                return;
+            }
+
+            offloadLoop(ledgersToOffload, callback);
+        });
     }
 
     @Override
-    protected void maybeOffloadInBackground(CompletableFuture<PositionImpl> promise) {
-        //TODO rewrite
-        super.maybeOffloadInBackground(promise);
+    protected void maybeOffload(CompletableFuture<Position> finalPromise) {
+        if (!offloadMutex.tryLock()) {
+            scheduledExecutor.schedule(safeRun(() -> maybeOffload(finalPromise)),
+                    100, TimeUnit.MILLISECONDS);
+        } else {
+            long threshold = config.getLedgerOffloader().getOffloadPolicies().getManagedLedgerOffloadThresholdInBytes();
+            long summedSize = 0;
+            LinkedList<Long> ledgersToOffload = new LinkedList<>();
+
+            //current ledger will not be offloaded because it's size is zero
+            for (Map.Entry<Long, LedgerInfo> idLedgerInfo : ledgers
+                    .descendingMap().entrySet()) {
+                final Long ledgerId = idLedgerInfo.getKey();
+                if (ledgerId <= offloadCursor.getMarkDeletedPosition().getLedgerId()) {
+                    //previous ledgers should be all offloaded
+                    break;
+                }
+                long size = idLedgerInfo.getValue().getSize();
+                summedSize += size;
+                if (summedSize > threshold) {
+                    ledgersToOffload.addFirst(ledgerId);
+                }
+            }
+
+            if (ledgersToOffload.size() > 0) {
+                log.info("begin offload for {}, ledgers {}, size in bytes {}", name, ledgersToOffload, summedSize);
+            }
+
+            offloadLoop(ledgersToOffload, new AsyncCallbacks.OffloadCallback() {
+                @Override
+                public void offloadComplete(Position pos, Object ctx) {
+                    finalPromise.complete(pos);
+                }
+
+                @Override
+                public void offloadFailed(ManagedLedgerException exception, Object ctx) {
+                    finalPromise.completeExceptionally(exception);
+                }
+            });
+        }
     }
 }
