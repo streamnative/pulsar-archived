@@ -214,9 +214,28 @@ public interface LedgerOffloader {
         throw new UnsupportedOperationException();
     }
 
+
+    default CompletableFuture<ReadHandle> readOffloaded(
+            String managedLedgerName,
+            long ledgerId,
+            Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException(
+                "You offloaded not implemented readOffloaded by topic name and ledger id"
+                        + " try use others instead: " + this.getClass());
+    }
+
     default CompletableFuture<Void> deleteOffloaded(UUID uid,
                                                     Map<String, String> offloadDriverMetadata) {
         throw new UnsupportedOperationException();
+    }
+
+    default CompletableFuture<ReadHandle> deleteOffloaded(
+            String managedLedgerName,
+            long ledgerId,
+            Map<String, String> extraMetadata) {
+        throw new UnsupportedOperationException(
+                "You offloaded not implemented delete offloaded by topic name and ledger id"
+                        + " try use others instead: " + this.getClass());
     }
 
     /**

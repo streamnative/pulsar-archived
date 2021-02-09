@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -641,6 +642,53 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
     }
 
     @Override
+    public CompletableFuture<ReadHandle> readOffloaded(String managedLedgerName, long ledgerId,
+                                                       Map<String, String> offloadDriverMetadata) {
+        final BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        final String readBucket = bsKey.getBucket();
+        final BlobStore readBlobStore = blobStores.get(config.getBlobStoreLocation());
+        CompletableFuture<ReadHandle> promise = new CompletableFuture<>();
+        final ArrayList<String> keys = Lists.newArrayList(ledgerOffloadKey(managedLedgerName, ledgerId));
+        final ArrayList<String> indexKeys = Lists.newArrayList(ledgerOffloadIndexKey(managedLedgerName, ledgerId));
+        scheduler.chooseThread(ledgerId).submit(() -> {
+            try {
+                promise.complete(BlobStoreBackedReadHandleImplV2.open(scheduler.chooseThread(ledgerId),
+                        readBlobStore,
+                        readBucket, keys, indexKeys,
+                        DataBlockUtils.VERSION_CHECK,
+                        ledgerId, config.getReadBufferSizeInBytes()));
+            } catch (Throwable t) {
+                log.error("Failed readOffloaded: ", t);
+                promise.completeExceptionally(t);
+            }
+        });
+        return promise;
+    }
+
+    @Override
+    public CompletableFuture<ReadHandle> deleteOffloaded(String managedLedgerName, long ledgerId,
+                                                         Map<String, String> offloadDriverMetadata) {
+        final BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
+        final String readBucket = bsKey.getBucket();
+        final BlobStore blobStore = blobStores.get(config.getBlobStoreLocation());
+        CompletableFuture<ReadHandle> promise = new CompletableFuture<>();
+
+        scheduler.chooseThread(ledgerId).submit(() -> {
+            try {
+                blobStore.removeBlobs(readBucket,
+                        ImmutableList.of(ledgerOffloadKey(managedLedgerName, ledgerId),
+                                ledgerOffloadIndexKey(managedLedgerName, ledgerId)));
+                promise.complete(null);
+            } catch (Throwable t) {
+                log.error("Failed delete Blob", t);
+                promise.completeExceptionally(t);
+            }
+        });
+
+        return promise;
+    }
+
+    @Override
     public CompletableFuture<Void> deleteOffloaded(long ledgerId, UUID uid,
                                                    Map<String, String> offloadDriverMetadata) {
         BlobStoreLocation bsKey = getBlobStoreLocation(offloadDriverMetadata);
@@ -651,8 +699,8 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
         scheduler.chooseThread(ledgerId).submit(() -> {
             try {
                 readBlobstore.removeBlobs(readBucket,
-                    ImmutableList.of(DataBlockUtils.dataBlockOffloadKey(ledgerId, uid),
-                                     DataBlockUtils.indexBlockOffloadKey(ledgerId, uid)));
+                        ImmutableList.of(DataBlockUtils.dataBlockOffloadKey(ledgerId, uid),
+                                DataBlockUtils.indexBlockOffloadKey(ledgerId, uid)));
                 promise.complete(null);
             } catch (Throwable t) {
                 log.error("Failed delete Blob", t);
