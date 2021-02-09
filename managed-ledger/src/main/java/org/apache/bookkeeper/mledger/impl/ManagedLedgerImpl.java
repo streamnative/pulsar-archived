@@ -1706,6 +1706,10 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         return result;
     }
 
+    public boolean isOffloadCompleted(Long ledgerId, LedgerInfo info) {
+        return info != null && info.hasOffloadContext() && info.getOffloadContext().getComplete();
+    }
+
     CompletableFuture<ReadHandle> getLedgerHandle(long ledgerId) {
         CompletableFuture<ReadHandle> ledgerHandle = ledgerCache.get(ledgerId);
         if (ledgerHandle != null) {
@@ -1734,14 +1738,17 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();
 
-            } else if (info != null && info.hasOffloadContext() && info.getOffloadContext().getComplete()) {
-
-                UUID uid = new UUID(info.getOffloadContext().getUidMsb(), info.getOffloadContext().getUidLsb());
-                // TODO: improve this to load ledger offloader by driver name recorded in metadata
-                Map<String, String> offloadDriverMetadata = OffloadUtils.getOffloadDriverMetadata(info);
-                offloadDriverMetadata.put("ManagedLedgerName", name);
-                openFuture = config.getLedgerOffloader().readOffloaded(ledgerId, uid,
-                        offloadDriverMetadata);
+            } else if (isOffloadCompleted(ledgerId, info)) {
+                if (info.hasOffloadContext()) {//offloaded by ledger
+                    UUID uid = new UUID(info.getOffloadContext().getUidMsb(), info.getOffloadContext().getUidLsb());
+                    // TODO: improve this to load ledger offloader by driver name recorded in metadata
+                    Map<String, String> offloadDriverMetadata = OffloadUtils.getOffloadDriverMetadata(info);
+                    offloadDriverMetadata.put("ManagedLedgerName", name);
+                    openFuture = config.getLedgerOffloader().readOffloaded(ledgerId, uid,
+                            offloadDriverMetadata);
+                } else {//offloaded by cursor
+                    openFuture = config.getLedgerOffloader().readOffloaded(name, ledgerId, new HashMap<>());
+                }
             } else {
                 openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();
@@ -2235,13 +2242,14 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 && TOTAL_SIZE_UPDATER.get(this) > config.getRetentionSizeInMB() * 1024 * 1024;
     }
 
-    private boolean isOffloadedNeedsDelete(OffloadContext offload) {
+    protected boolean isOffloadedNeedsDelete(Long ledgerId, LedgerInfo ledgerInfo) {
+        final OffloadContext offload = ledgerInfo.getOffloadContext();
         long elapsedMs = clock.millis() - offload.getTimestamp();
 
         if (config.getLedgerOffloader() != null && config.getLedgerOffloader() != NullLedgerOffloader.INSTANCE
                 && config.getLedgerOffloader().getOffloadPolicies() != null
                 && config.getLedgerOffloader().getOffloadPolicies()
-                    .getManagedLedgerOffloadDeletionLagInMillis() != null) {
+                .getManagedLedgerOffloadDeletionLagInMillis() != null) {
             return offload.getComplete() && !offload.getBookkeeperDeleted()
                     && elapsedMs > config.getLedgerOffloader()
                     .getOffloadPolicies().getManagedLedgerOffloadDeletionLagInMillis();
@@ -2323,11 +2331,14 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                     break;
                 }
             }
-            for (LedgerInfo ls : ledgers.values()) {
-                if (isOffloadedNeedsDelete(ls.getOffloadContext()) && !ledgersToDelete.contains(ls)) {
+
+            for (Map.Entry<Long, LedgerInfo> idLedger : ledgers.entrySet()) {
+                Long ledgerId = idLedger.getKey();
+                final LedgerInfo ledgerInfo = idLedger.getValue();
+                if (isOffloadedNeedsDelete(ledgerId, ledgerInfo) && !ledgersToDelete.contains(ledgerInfo)) {
                     log.debug("[{}] Ledger {} has been offloaded, bookkeeper ledger needs to be deleted", name,
-                            ls.getLedgerId());
-                    offloadedLedgersToDelete.add(ls);
+                            ledgerInfo.getLedgerId());
+                    offloadedLedgersToDelete.add(ledgerInfo);
                 }
             }
 
