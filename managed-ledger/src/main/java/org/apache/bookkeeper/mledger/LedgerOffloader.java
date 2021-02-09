@@ -159,7 +159,10 @@ public interface LedgerOffloader {
     }
 
     class OffloadResultV2 {
+        //Data written to tiered storage but not ready to serve because
+        //A full ledger is not offloaded yet
         final public Position wittenPosition;
+        //Full written ledger data, always point to the last entry of a ledger
         final public Position completePosition;
 
         public OffloadResultV2(Position wittenPosition, Position completePosition) {

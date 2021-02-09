@@ -341,7 +341,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
                 buildIndexAndCompleteResult(dataObjectLength, blobStore, indexBuilder, mpu, offloadParts, indexKey);
                 promise.complete(new OffloadResultV2(PositionImpl.get(ledgerId, lastEntryId),
                         PositionImpl.get(ledgerId, lastEntryId)));
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 promise.completeExceptionally(e);
             }
         });
@@ -502,7 +502,7 @@ public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
             indexBuilder.addLedgerMeta(blockLedgerId, ledgerInfoBuilder.build());
             log.debug("UploadMultipartPart. container: {}, blobName: {}, partId: {}, mpu: {}",
                     config.getBucket(), streamingDataBlockKey, partId, streamingMpu.id());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             blobStore.abortMultipartUpload(streamingMpu);
             throw e;
         }
