@@ -41,6 +41,27 @@ import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
 
 @Slf4j
 public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
+    @Override
+    protected synchronized void initialize(ManagedLedgerInitializeLedgerCallback callback, Object ctx) {
+        final ManagedLedgerInitializeLedgerCallback wrappedCalllback = new ManagedLedgerInitializeLedgerCallback() {
+            @Override
+            public void initializeComplete() {
+                try {
+                    initializeOffloadCursor();
+                } catch (ManagedLedgerException | InterruptedException e) {
+                    log.error("initialize offload cursor failed", e);
+                    callback.initializeFailed(new ManagedLedgerException(e));
+                }
+                callback.initializeComplete();
+            }
+
+            @Override
+            public void initializeFailed(ManagedLedgerException e) {
+                callback.initializeFailed(e);
+            }
+        };
+        super.initialize(wrappedCalllback, ctx);
+    }
 
     static final String offloadCursorName = "_offload_cursor";
     volatile ManagedCursor offloadCursor;

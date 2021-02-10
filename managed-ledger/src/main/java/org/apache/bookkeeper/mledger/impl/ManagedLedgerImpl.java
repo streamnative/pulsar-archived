@@ -307,7 +307,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
-    synchronized void initialize(final ManagedLedgerInitializeLedgerCallback callback, final Object ctx) {
+    protected synchronized void initialize(final ManagedLedgerInitializeLedgerCallback callback, final Object ctx) {
         log.info("Opening managed ledger {}", name);
 
         // Fetch the list of existing ledgers in the managed ledger

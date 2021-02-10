@@ -84,13 +84,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
-    private final MetaStore store;
-    private final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
+    protected final MetaStore store;
+    protected final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
     private final boolean isBookkeeperManaged;
     private final ZooKeeper zookeeper;
     private final ManagedLedgerFactoryConfig config;
     protected final OrderedScheduler scheduledExecutor;
-    private final OrderedExecutor orderedExecutor;
+    protected final OrderedExecutor orderedExecutor;
 
     private final ExecutorService cacheEvictionExecutor;
 
@@ -377,12 +377,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         ledgers.computeIfAbsent(name, (mlName) -> {
             // Create the managed ledger
             CompletableFuture<ManagedLedgerImpl> future = new CompletableFuture<>();
-            final ManagedLedgerTieredImpl newledger = new ManagedLedgerTieredImpl(this,
-                    bookkeeperFactory.get(
-                            new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
-                                    config.getBookKeeperEnsemblePlacementPolicyProperties())),
-                    store, config, scheduledExecutor,
-                    orderedExecutor, name, mlOwnershipChecker);
+            final ManagedLedgerImpl newledger = createNewManagedLedger(name, config, mlOwnershipChecker);
             PendingInitializeManagedLedger pendingLedger = new PendingInitializeManagedLedger(newledger);
             pendingInitializeLedgers.put(name, pendingLedger);
             newledger.initialize(new ManagedLedgerInitializeLedgerCallback() {
@@ -390,12 +385,6 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
                 public void initializeComplete() {
                     log.info("[{}] Successfully initialize managed ledger", name);
                     pendingInitializeLedgers.remove(name, pendingLedger);
-                    try {
-                        newledger.initializeOffloadCursor();
-                    } catch (ManagedLedgerException | InterruptedException e) {
-                        log.error("[{}] Failed to initialize managed ledger", name, e);
-                        future.completeExceptionally(e);
-                    }
                     future.complete(newledger);
                 }
 
@@ -430,10 +419,20 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         });
     }
 
+    protected ManagedLedgerImpl createNewManagedLedger(String name, ManagedLedgerConfig config,
+                                                       Supplier<Boolean> mlOwnershipChecker) {
+        return new ManagedLedgerImpl(this,
+                bookkeeperFactory.get(
+                        new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
+                                config.getBookKeeperEnsemblePlacementPolicyProperties())),
+                store, config, scheduledExecutor,
+                orderedExecutor, name, mlOwnershipChecker);
+    }
 
 
     @Override
-    public ReadOnlyCursor openReadOnlyCursor(String managedLedgerName, Position startPosition, ManagedLedgerConfig config)
+    public ReadOnlyCursor openReadOnlyCursor(String managedLedgerName, Position startPosition,
+                                             ManagedLedgerConfig config)
             throws InterruptedException, ManagedLedgerException {
         class Result {
             ReadOnlyCursor c = null;
