@@ -42,7 +42,7 @@ import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
 @Slf4j
 public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
     static private final String offloadCursorName = "_offload_cursor";
-    volatile ManagedCursor offloadCursor;
+    private volatile ManagedCursor offloadCursor;
 
     @Override
     protected synchronized void initialize(ManagedLedgerInitializeLedgerCallback callback, Object ctx) {
@@ -77,7 +77,7 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
     }
 
     @Override
-    protected boolean isOffloadedNeedsDelete(Long ledgerId, LedgerInfo ledgerInfo) {
+    public boolean isOffloadedNeedsDelete(Long ledgerId, LedgerInfo ledgerInfo) {
         //offloaded data will be deleted in bk instantly because no place to store offloaded time
         return ledgerId <= offloadCursor.getMarkDeletedPosition().getLedgerId();
     }

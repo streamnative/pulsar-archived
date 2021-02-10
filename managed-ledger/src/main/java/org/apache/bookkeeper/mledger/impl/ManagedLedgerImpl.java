@@ -2242,7 +2242,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 && TOTAL_SIZE_UPDATER.get(this) > config.getRetentionSizeInMB() * 1024 * 1024;
     }
 
-    protected boolean isOffloadedNeedsDelete(Long ledgerId, LedgerInfo ledgerInfo) {
+    public boolean isOffloadedNeedsDelete(Long ledgerId, LedgerInfo ledgerInfo) {
         final OffloadContext offload = ledgerInfo.getOffloadContext();
         long elapsedMs = clock.millis() - offload.getTimestamp();
 
