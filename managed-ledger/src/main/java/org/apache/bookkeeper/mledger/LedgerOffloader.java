@@ -137,7 +137,6 @@ public interface LedgerOffloader {
                                     UUID uid,
                                     Map<String, String> extraMetadata);
 
-
     /**
      * Begin offload the passed in ledgers to longterm storage, it will finish
      * when a segment reached it's size or time.
@@ -201,7 +200,6 @@ public interface LedgerOffloader {
                                                         Map<String, String> offloadDriverMetadata) {
         throw new UnsupportedOperationException();
     }
-
 
     default CompletableFuture<Void> deleteOffloaded(UUID uid,
                                                     Map<String, String> offloadDriverMetadata) {

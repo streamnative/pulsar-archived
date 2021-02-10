@@ -20,16 +20,18 @@ package org.apache.pulsar.broker;
 
 import org.apache.bookkeeper.mledger.ManagedLedgerFactoryConfig;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerFactoryImpl;
+import org.apache.bookkeeper.mledger.impl.ManagedLedgerFactoryImpl.BookkeeperFactoryForCustomEnsemblePlacementPolicy;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerTieredFactoryImpl;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.zookeeper.ZooKeeper;
 
 public class ManagedLedgerTieredClientFactory extends ManagedLedgerClientFactory {
     @Override
-    protected ManagedLedgerFactoryImpl createManagedLedgerFactory(ZooKeeper zkClient,
-                                                                  ManagedLedgerFactoryConfig managedLedgerFactoryConfig,
-                                                                  StatsLogger statsLogger,
-                                                                  ManagedLedgerFactoryImpl.BookkeeperFactoryForCustomEnsemblePlacementPolicy bkFactory) throws
+    protected ManagedLedgerFactoryImpl
+    createManagedLedgerFactory(ZooKeeper zkClient,
+                               ManagedLedgerFactoryConfig managedLedgerFactoryConfig,
+                               StatsLogger statsLogger,
+                               BookkeeperFactoryForCustomEnsemblePlacementPolicy bkFactory) throws
             Exception {
         return new ManagedLedgerTieredFactoryImpl(bkFactory, zkClient, managedLedgerFactoryConfig, statsLogger);
     }

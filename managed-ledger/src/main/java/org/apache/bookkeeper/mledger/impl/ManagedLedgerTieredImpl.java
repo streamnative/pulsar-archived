@@ -41,6 +41,9 @@ import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
 
 @Slf4j
 public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
+    static private final String offloadCursorName = "_offload_cursor";
+    volatile ManagedCursor offloadCursor;
+
     @Override
     protected synchronized void initialize(ManagedLedgerInitializeLedgerCallback callback, Object ctx) {
         final ManagedLedgerInitializeLedgerCallback wrappedCalllback = new ManagedLedgerInitializeLedgerCallback() {
@@ -62,9 +65,6 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
         };
         super.initialize(wrappedCalllback, ctx);
     }
-
-    static final String offloadCursorName = "_offload_cursor";
-    volatile ManagedCursor offloadCursor;
 
     @Override
     public CompletableFuture<ReadHandle> readOffloaded(Long ledgerId, LedgerInfo info) {
