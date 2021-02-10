@@ -146,6 +146,8 @@ public interface LedgerOffloader {
         //only valid when using ledger-based offload
         final public Long ledgerId;
         final public OffloadMethod offloadMethod;
+        //threshold, options etc
+        final public Map<String, Object> extraMetadata;
 
         public OffloadOption(Long ledgerId, OffloadMethod offloadMethod,
                              Map<String, Object> extraMetadata) {
@@ -153,9 +155,6 @@ public interface LedgerOffloader {
             this.offloadMethod = offloadMethod;
             this.extraMetadata = extraMetadata;
         }
-
-        //threshold, options etc
-        final public Map<String, Object> extraMetadata;
     }
 
     class OffloadResultV2 {
