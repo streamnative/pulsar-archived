@@ -27,10 +27,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.mledger.AsyncCallbacks;
-import org.apache.bookkeeper.mledger.LedgerOffloader;
+import org.apache.bookkeeper.mledger.LedgerOffloaderV2;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.ManagedLedgerException;
@@ -43,6 +44,11 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
 
     static final String offloadCursorName = "_offload_cursor";
     volatile ManagedCursor offloadCursor;
+
+    @Override
+    public CompletableFuture<ReadHandle> readOffloaded(Long ledgerId, LedgerInfo info) {
+        return ((LedgerOffloaderV2) this.config.getLedgerOffloader()).readOffloaded(name, ledgerId, new HashMap<>());
+    }
 
     @Override
     public boolean isOffloadCompleted(Long ledgerId, LedgerInfo info) {
@@ -98,9 +104,10 @@ public class ManagedLedgerTieredImpl extends ManagedLedgerImpl {
             return;
         }
         final Long head = ledgersToOffload.pop();
-        final CompletableFuture<LedgerOffloader.OffloadResultV2> future = config.getLedgerOffloader()
+        final CompletableFuture<LedgerOffloaderV2.OffloadResultV2> future = ((LedgerOffloaderV2) config
+                .getLedgerOffloader())
                 .offloadV2(offloadCursor, name,
-                        new LedgerOffloader.OffloadOption(head, LedgerOffloader.OffloadMethod.LEGER_BASED,
+                        new LedgerOffloaderV2.OffloadOption(head, LedgerOffloaderV2.OffloadMethod.LEGER_BASED,
                                 new HashMap<>()));
         future.whenComplete((result, ex) -> {
             //should always equal in written position

@@ -1710,6 +1710,15 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         return info != null && info.hasOffloadContext() && info.getOffloadContext().getComplete();
     }
 
+    public CompletableFuture<ReadHandle> readOffloaded(Long ledgerId, LedgerInfo info) {
+        assert info.hasOffloadContext();
+        UUID uid = new UUID(info.getOffloadContext().getUidMsb(), info.getOffloadContext().getUidLsb());
+        Map<String, String> offloadDriverMetadata = OffloadUtils.getOffloadDriverMetadata(info);
+        offloadDriverMetadata.put("ManagedLedgerName", name);
+        return config.getLedgerOffloader().readOffloaded(ledgerId, uid,
+                offloadDriverMetadata);
+    }
+
     CompletableFuture<ReadHandle> getLedgerHandle(long ledgerId) {
         CompletableFuture<ReadHandle> ledgerHandle = ledgerCache.get(ledgerId);
         if (ledgerHandle != null) {
@@ -1739,16 +1748,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();
 
             } else if (isOffloadCompleted(ledgerId, info)) {
-                if (info.hasOffloadContext()) {//offloaded by ledger
-                    UUID uid = new UUID(info.getOffloadContext().getUidMsb(), info.getOffloadContext().getUidLsb());
-                    // TODO: improve this to load ledger offloader by driver name recorded in metadata
-                    Map<String, String> offloadDriverMetadata = OffloadUtils.getOffloadDriverMetadata(info);
-                    offloadDriverMetadata.put("ManagedLedgerName", name);
-                    openFuture = config.getLedgerOffloader().readOffloaded(ledgerId, uid,
-                            offloadDriverMetadata);
-                } else {//offloaded by cursor
-                    openFuture = config.getLedgerOffloader().readOffloaded(name, ledgerId, new HashMap<>());
-                }
+                openFuture = readOffloaded(ledgerId, info);
             } else {
                 openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();

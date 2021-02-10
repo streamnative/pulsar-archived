@@ -43,6 +43,7 @@ import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.mledger.Entry;
 import org.apache.bookkeeper.mledger.LedgerOffloader;
 import org.apache.bookkeeper.mledger.LedgerOffloader.OffloadHandle.OfferEntryResult;
+import org.apache.bookkeeper.mledger.LedgerOffloaderV2;
 import org.apache.bookkeeper.mledger.ManagedCursor;
 import org.apache.bookkeeper.mledger.ManagedLedger;
 import org.apache.bookkeeper.mledger.Position;
@@ -81,7 +82,7 @@ import org.jclouds.io.payloads.InputStreamPayload;
  * </p>
  */
 @Slf4j
-public class BlobStoreManagedLedgerOffloader implements LedgerOffloader {
+public class BlobStoreManagedLedgerOffloader implements LedgerOffloader, LedgerOffloaderV2 {
 
     private final OrderedScheduler scheduler;
     private final TieredStorageConfiguration config;
