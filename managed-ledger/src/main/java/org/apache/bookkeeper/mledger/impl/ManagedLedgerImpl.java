@@ -3622,7 +3622,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     public long getOffloadedSize() {
         long offloadedSize = 0;
         for (LedgerInfo li : ledgers.values()) {
-            if (li.hasOffloadContext() && li.getOffloadContext().getComplete()) {
+            if (isOffloadCompleted(li.getLedgerId(), li)) {
                 offloadedSize += li.getSize();
             }
         }
