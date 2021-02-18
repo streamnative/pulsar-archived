@@ -84,13 +84,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
-    protected final MetaStore store;
-    protected final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
+    private final MetaStore store;
+    private final BookkeeperFactoryForCustomEnsemblePlacementPolicy bookkeeperFactory;
     private final boolean isBookkeeperManaged;
     private final ZooKeeper zookeeper;
     private final ManagedLedgerFactoryConfig config;
     protected final OrderedScheduler scheduledExecutor;
-    protected final OrderedExecutor orderedExecutor;
+    private final OrderedExecutor orderedExecutor;
 
     private final ExecutorService cacheEvictionExecutor;
 

@@ -67,9 +67,9 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         Assert.assertEquals(ledger.getLedgersInfoAsList().size(), 2);
         Assert.assertEquals(ledger.getLedgersInfoAsList().stream()
-                            .filter(e -> e.getOffloadContext().getComplete())
-                            .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
-                            offloader.offloadedLedgers());
+                        .filter(e -> e.getOffloadContext().getComplete())
+                        .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
+                offloader.offloadedLedgers());
         Assert.assertTrue(bkc.getLedgers().contains(firstLedgerId));
 
         clock.advance(2, TimeUnit.MINUTES);
@@ -88,9 +88,9 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         // ledger still exists in list
         Assert.assertEquals(ledger.getLedgersInfoAsList().stream()
-                            .filter(e -> e.getOffloadContext().getComplete())
-                            .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
-                            offloader.offloadedLedgers());
+                        .filter(e -> e.getOffloadContext().getComplete())
+                        .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
+                offloader.offloadedLedgers());
 
         // move past retention, should be deleted from offloaded also
         clock.advance(5, TimeUnit.MINUTES);
@@ -129,9 +129,9 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         Assert.assertEquals(ledger.getLedgersInfoAsList().size(), 2);
         Assert.assertEquals(ledger.getLedgersInfoAsList().stream()
-                            .filter(e -> e.getOffloadContext().getComplete())
-                            .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
-                            offloader.offloadedLedgers());
+                        .filter(e -> e.getOffloadContext().getComplete())
+                        .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
+                offloader.offloadedLedgers());
         Assert.assertTrue(bkc.getLedgers().contains(firstLedgerId));
 
         clock.advance(2, TimeUnit.MINUTES);
@@ -177,9 +177,9 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         Assert.assertEquals(ledger.getLedgersInfoAsList().size(), 2);
         Assert.assertEquals(ledger.getLedgersInfoAsList().stream()
-                            .filter(e -> e.getOffloadContext().getComplete())
-                            .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
-                            offloader.offloadedLedgers());
+                        .filter(e -> e.getOffloadContext().getComplete())
+                        .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
+                offloader.offloadedLedgers());
         Assert.assertTrue(bkc.getLedgers().contains(firstLedgerId));
 
         clock.advance(2, TimeUnit.MINUTES);
@@ -199,9 +199,9 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         // ledger still exists in list
         Assert.assertEquals(ledger.getLedgersInfoAsList().stream()
-                            .filter(e -> e.getOffloadContext().getComplete())
-                            .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
-                            offloader.offloadedLedgers());
+                        .filter(e -> e.getOffloadContext().getComplete())
+                        .map(e -> e.getLedgerId()).collect(Collectors.toSet()),
+                offloader.offloadedLedgers());
     }
 
     @Test
@@ -217,8 +217,7 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
 
         ManagedLedger managedLedger = factory.open("isOffloadedNeedsDeleteTest", config);
         Class<ManagedLedgerImpl> clazz = ManagedLedgerImpl.class;
-        Method method = clazz.getDeclaredMethod("isOffloadedNeedsDelete", Long.class,
-                MLDataFormats.ManagedLedgerInfo.LedgerInfo.class);
+        Method method = clazz.getDeclaredMethod("isOffloadedNeedsDelete", MLDataFormats.OffloadContext.class);
         method.setAccessible(true);
 
         MLDataFormats.OffloadContext offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -226,19 +225,15 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(true)
                 .setBookkeeperDeleted(false)
                 .build();
-        final MLDataFormats.ManagedLedgerInfo.LedgerInfo info =
-                MLDataFormats.ManagedLedgerInfo.LedgerInfo.newBuilder()
-                        .setLedgerId(0L)
-                        .setOffloadContext(offloadContext).build();
-        Boolean needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
+        Boolean needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
         Assert.assertFalse(needsDelete);
 
         offloadPolicies.setManagedLedgerOffloadDeletionLagInMillis(500L);
-        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
+        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
         Assert.assertTrue(needsDelete);
 
         offloadPolicies.setManagedLedgerOffloadDeletionLagInMillis(1000L * 2);
-        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
+        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
         Assert.assertFalse(needsDelete);
 
         offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -246,7 +241,7 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(false)
                 .setBookkeeperDeleted(false)
                 .build();
-        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
+        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
         Assert.assertFalse(needsDelete);
 
         offloadContext = MLDataFormats.OffloadContext.newBuilder()
@@ -254,7 +249,7 @@ public class OffloadLedgerDeleteTest extends MockedBookKeeperTestCase {
                 .setComplete(true)
                 .setBookkeeperDeleted(true)
                 .build();
-        needsDelete = (Boolean) method.invoke(managedLedger, 0L, info);
+        needsDelete = (Boolean) method.invoke(managedLedger, offloadContext);
         Assert.assertFalse(needsDelete);
 
     }
