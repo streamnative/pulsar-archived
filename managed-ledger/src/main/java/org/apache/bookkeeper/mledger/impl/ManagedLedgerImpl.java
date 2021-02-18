@@ -23,8 +23,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.Math.min;
 import static org.apache.bookkeeper.mledger.util.Errors.isNoSuchLedgerExistsException;
 import static org.apache.bookkeeper.mledger.util.SafeRun.safeRun;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.ImmutableMap;
@@ -77,7 +75,6 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.Retries;
@@ -310,7 +307,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
-    protected synchronized void initialize(final ManagedLedgerInitializeLedgerCallback callback, final Object ctx) {
+    public synchronized void initialize(final ManagedLedgerInitializeLedgerCallback callback, final Object ctx) {
         log.info("Opening managed ledger {}", name);
 
         // Fetch the list of existing ledgers in the managed ledger
@@ -2060,7 +2057,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         }
     }
 
-    void doCacheEviction(long maxTimestamp) {
+    public void doCacheEviction(long maxTimestamp) {
         // Always remove all entries already read by active cursors
         PositionImpl slowestReaderPos = getEarlierReadPositionForActiveCursors();
         if (slowestReaderPos != null) {
@@ -3390,12 +3387,6 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     public void setConfig(ManagedLedgerConfig config) {
         this.config = config;
         this.cursors.forEach(c -> c.setThrottleMarkDelete(config.getThrottleMarkDelete()));
-    }
-
-    interface ManagedLedgerInitializeLedgerCallback {
-        void initializeComplete();
-
-        void initializeFailed(ManagedLedgerException e);
     }
 
     // Expose internal values for debugging purposes

@@ -50,6 +50,7 @@ import org.apache.bookkeeper.mledger.AsyncCallbacks.ManagedLedgerInfoCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.OpenLedgerCallback;
 import org.apache.bookkeeper.mledger.AsyncCallbacks.OpenReadOnlyCursorCallback;
 import org.apache.bookkeeper.mledger.ManagedLedger;
+import org.apache.bookkeeper.mledger.ManagedLedger.ManagedLedgerInitializeLedgerCallback;
 import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.ManagedLedgerException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.MetaStoreException;
@@ -63,7 +64,6 @@ import org.apache.bookkeeper.mledger.ManagedLedgerInfo.MessageRangeInfo;
 import org.apache.bookkeeper.mledger.ManagedLedgerInfo.PositionInfo;
 import org.apache.bookkeeper.mledger.Position;
 import org.apache.bookkeeper.mledger.ReadOnlyCursor;
-import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl.ManagedLedgerInitializeLedgerCallback;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl.State;
 import org.apache.bookkeeper.mledger.impl.MetaStore.MetaStoreCallback;
 import org.apache.bookkeeper.mledger.proto.MLDataFormats;
@@ -96,9 +96,9 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
 
     protected final ManagedLedgerFactoryMBeanImpl mbean;
 
-    protected final ConcurrentHashMap<String, CompletableFuture<ManagedLedgerImpl>> ledgers = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<String, CompletableFuture<ManagedLedger>> ledgers = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, PendingInitializeManagedLedger> pendingInitializeLedgers =
-        new ConcurrentHashMap<>();
+            new ConcurrentHashMap<>();
     private final EntryCacheManager entryCacheManager;
 
     private long lastStatTimestamp = System.nanoTime();
@@ -112,10 +112,10 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
 
     private static class PendingInitializeManagedLedger {
 
-        private final ManagedLedgerImpl ledger;
+        private final ManagedLedger ledger;
         private final long createTimeMs;
 
-        PendingInitializeManagedLedger(ManagedLedgerImpl ledger) {
+        PendingInitializeManagedLedger(ManagedLedger ledger) {
             this.ledger = ledger;
             this.createTimeMs = System.currentTimeMillis();
         }
@@ -231,7 +231,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
     private synchronized void flushCursors() {
         ledgers.values().forEach(mlfuture -> {
             if (mlfuture.isDone() && !mlfuture.isCompletedExceptionally()) {
-                ManagedLedgerImpl ml = mlfuture.getNow(null);
+                ManagedLedger ml = mlfuture.getNow(null);
                 if (ml != null) {
                     ml.getCursors().forEach(c -> ((ManagedCursorImpl) c).flush());
                 }
@@ -246,9 +246,9 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         mbean.refreshStats(period, TimeUnit.NANOSECONDS);
         ledgers.values().forEach(mlfuture -> {
             if (mlfuture.isDone() && !mlfuture.isCompletedExceptionally()) {
-                ManagedLedgerImpl ml = mlfuture.getNow(null);
+                ManagedLedger ml = mlfuture.getNow(null);
                 if (ml != null) {
-                    ml.mbean.refreshStats(period, TimeUnit.NANOSECONDS);
+                    ((ManagedLedgerMBeanImpl) ml.getStats()).refreshStats(period, TimeUnit.NANOSECONDS);
                 }
             }
         });
@@ -279,7 +279,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
 
         ledgers.values().forEach(mlfuture -> {
             if (mlfuture.isDone() && !mlfuture.isCompletedExceptionally()) {
-                ManagedLedgerImpl ml = mlfuture.getNow(null);
+                ManagedLedger ml = mlfuture.getNow(null);
                 if (ml != null) {
                     ml.doCacheEviction(maxTimestamp);
                 }
@@ -292,7 +292,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
      *
      * @return
      */
-    public Map<String, ManagedLedgerImpl> getManagedLedgers() {
+    public Map<String, ManagedLedger> getManagedLedgers() {
         // Return a view of already created ledger by filtering futures not yet completed
         return Maps.filterValues(Maps.transformValues(ledgers, future -> future.getNow(null)), Predicates.notNull());
     }
@@ -343,11 +343,11 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
             Supplier<Boolean> mlOwnershipChecker, final Object ctx) {
 
         // If the ledger state is bad, remove it from the map.
-        CompletableFuture<ManagedLedgerImpl> existingFuture = ledgers.get(name);
+        CompletableFuture<ManagedLedger> existingFuture = ledgers.get(name);
         if (existingFuture != null) {
             if (existingFuture.isDone()) {
                 try {
-                    ManagedLedgerImpl l = existingFuture.get();
+                    ManagedLedger l = existingFuture.get();
                     if (l.getState().equals(State.Fenced.toString()) || l.getState().equals(State.Closed.toString())) {
                         // Managed ledger is in unusable state. Recreate it.
                         log.warn("[{}] Attempted to open ledger in {} state. Removing from the map to recreate it", name,
@@ -376,8 +376,13 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         // Ensure only one managed ledger is created and initialized
         ledgers.computeIfAbsent(name, (mlName) -> {
             // Create the managed ledger
-            CompletableFuture<ManagedLedgerImpl> future = new CompletableFuture<>();
-            final ManagedLedgerImpl newledger = createNewManagedLedger(name, config, mlOwnershipChecker);
+            CompletableFuture<ManagedLedger> future = new CompletableFuture<>();
+            final ManagedLedger newledger = new ManagedLedgerImpl(this,
+                    bookkeeperFactory.get(
+                            new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
+                                    config.getBookKeeperEnsemblePlacementPolicyProperties())),
+                    store, config, scheduledExecutor,
+                    orderedExecutor, name, mlOwnershipChecker);
             PendingInitializeManagedLedger pendingLedger = new PendingInitializeManagedLedger(newledger);
             pendingInitializeLedgers.put(name, pendingLedger);
             newledger.initialize(new ManagedLedgerInitializeLedgerCallback() {
@@ -418,17 +423,6 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
             return null;
         });
     }
-
-    protected ManagedLedgerImpl createNewManagedLedger(String name, ManagedLedgerConfig config,
-                                                       Supplier<Boolean> mlOwnershipChecker) {
-        return new ManagedLedgerImpl(this,
-                bookkeeperFactory.get(
-                        new EnsemblePlacementPolicyConfig(config.getBookKeeperEnsemblePlacementPolicyClassName(),
-                                config.getBookKeeperEnsemblePlacementPolicyProperties())),
-                store, config, scheduledExecutor,
-                orderedExecutor, name, mlOwnershipChecker);
-    }
-
 
     @Override
     public ReadOnlyCursor openReadOnlyCursor(String managedLedgerName, Position startPosition,
@@ -503,8 +497,8 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
         final CountDownLatch latch = new CountDownLatch(numLedgers);
         log.info("Closing {} ledgers", numLedgers);
 
-        for (CompletableFuture<ManagedLedgerImpl> ledgerFuture : ledgers.values()) {
-            ManagedLedgerImpl ledger = ledgerFuture.getNow(null);
+        for (CompletableFuture<ManagedLedger> ledgerFuture : ledgers.values()) {
+            ManagedLedger ledger = ledgerFuture.getNow(null);
             if (ledger == null) {
                 latch.countDown();
                 continue;
@@ -733,7 +727,7 @@ public class ManagedLedgerFactoryImpl implements ManagedLedgerFactory {
 
     @Override
     public void asyncDelete(String name, DeleteLedgerCallback callback, Object ctx) {
-        CompletableFuture<ManagedLedgerImpl> future = ledgers.get(name);
+        CompletableFuture<ManagedLedger> future = ledgers.get(name);
         if (future == null) {
             // Managed ledger does not exist and we're not currently trying to open it
             deleteManagedLedger(name, callback, ctx);

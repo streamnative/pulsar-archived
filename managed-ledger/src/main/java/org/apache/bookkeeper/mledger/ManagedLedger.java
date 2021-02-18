@@ -59,6 +59,19 @@ import org.apache.pulsar.common.api.proto.CommandSubscribe.InitialPosition;
 @InterfaceStability.Stable
 public interface ManagedLedger {
 
+    interface ManagedLedgerInitializeLedgerCallback {
+        void initializeComplete();
+
+        void initializeFailed(ManagedLedgerException e);
+    }
+
+    /**
+     * Make ManagedLedger ready to work
+     * @param callback
+     * @param ctx
+     */
+    void initialize(final ManagedLedgerInitializeLedgerCallback callback, final Object ctx);
+
     /**
      * @return the unique name of this ManagedLedger
      */
@@ -431,6 +444,13 @@ public interface ManagedLedger {
     ManagedLedgerMXBean getStats();
 
     /**
+     * Remove all entries already read by active cursors and
+     * remove entries older than the cutoff threshold
+     * @param maxTimestamp
+     */
+    void doCacheEviction(long maxTimestamp);
+
+    /**
      * Delete the ManagedLedger.
      *
      * @throws InterruptedException
@@ -503,6 +523,12 @@ public interface ManagedLedger {
      * @return the last confirmed entry id
      */
     Position getLastConfirmedEntry();
+
+    /**
+     * Get state of the managed ledger.
+     * @return
+     */
+    String getState();
 
     /**
      * Signaling managed ledger that we can resume after BK write failure
