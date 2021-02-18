@@ -3202,7 +3202,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
         return new PositionImpl(ledgerId, -1);
     }
 
-    PositionImpl getLastPosition() {
+    protected PositionImpl getLastPosition() {
         return lastConfirmedEntry;
     }
 
