@@ -48,7 +48,7 @@ printMlCommand = "print-managed-ledger"
 deleteMlLedgerIds = "delete-managed-ledger-ids"
 printCursorsCommands = "print-cursor"
 updateMakDeleteCursor = "update-mark-delete-cursor"
-clearOffloadStatusCommand = "clear-ledger-offload-status"
+clearOffloadStatus = "clear-ledger-offload-status"
 
 '''
 Returns managed-ledger info for given managed-leger path
@@ -254,6 +254,31 @@ def deleteMLLedgerIdsCommand(zk, mlPath, deleteLedgerIds):
         print('Failed to delete ml-ledger_ids {} due to {}'.format(mlPath, repr(e)))
 
 '''
+Clear ledger offloaded state of a managed-ledger and update it to zk
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+clearOffloadLedgerIds : str
+    comma separated clear offload ledger-ids (eg: 123,124)
+'''
+def clearOffloadStatusCommand(zk, mlPath, clearOffloadLedgerIds):
+    try:
+        if clearOffloadLedgerIds:
+            clearOffloadLedgerIds = set(deleteLedgerIds.split(","))
+            clearOffloadLedgerIdsSet = set()
+            for id in clearOffloadLedgerIds:
+                clearOffloadLedgerIdsSet.add(long(id))
+            clearOffloadStatusFromManagedLedgerInfo(zk, mlPath, clearOffloadLedgerIdsSet)
+        else:
+            print('Usage: --command {} [--ledgerIds]'.format(clearOffloadStatus))
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to clear offload status {} due to {}'.format(mlPath, repr(e)))
+
+'''
 Update mark-delete position of the given managed-cursor
 Parameters
 ----------
@@ -289,26 +314,49 @@ def updateMarkDeleteOfCursorCommand(zk, mlPath, cursorName, markDeletePosition):
         print('Failed to update ml-cursor {}/{} due to {}'.format(mlPath, cursorName, repr(e)))
 
 '''
-Clear the status
+Clear ledger offloaded state of a managed-ledger and update it to zk
 Parameters
 ----------
 zk : KazooClient
    Zookeeper-client instance to query zk-client.
 mlPath : str
     managed-ledger path
-ledgerIds: str
-    the ledger id to mark as no longer offloaded
-
-eg:
-clear-ledger-offload-status --zkServer localhost:2181 --managedLedgerPath sample/standalone/ns1/persistent/test --ledgerIds 1234,1235
+clearOffloadLedgerIds : set
 '''
-def clearOffloadStatus(zk, mlPath, cursorName, ledgerId):
-    # TODO this should read in the ledger and clear the offload context entirely, then update the ledger
+def clearOffloadStatusFromManagedLedgerInfo(zk, mlPath, clearOffloadLedgerIds):
+    try:
+        # get managed-ledger info
+        (mlData, mlStat) = zk.get(mlPath)
+        mlInfo = MLDataFormats_pb2.ManagedLedgerInfo()
+        isTextFormat = False
+        try:
+            mlInfo.ParseFromString(mlData)
+        except Exception as formatException:
+            Merge(mlData, mlInfo)
+            isTextFormat = True
 
+        ledgerInfoList = mlInfo.ledgerInfo
+
+        i = 0
+        while i < len(ledgerInfoList):
+            ledgerInfo = ledgerInfoList[i]
+            if ledgerInfo.ledgerId in clearOffloadLedgerIds:
+                if ledgerInfo.offloadContext is not None:
+                    ledgerInfo.offloadContext = None
+            else:
+                i += 1
+
+        updatedMlInfo = None
+        if isTextFormat:
+            updatedMlInfo = MessageToString(mlInfo, True)
+        else:
+            updatedMlInfo = mlInfo.SerializeToString();
+        zk.set(mlPath, updatedMlInfo, version=mlStat.version)
+        print('Updated {} with value\n{}'.format(mlPath, str(mlInfo)))
 
     except Exception as e:
         traceback.print_exc()
-        print('Failed to clear off status of ml {}/{} due to {}'.format(mlPath, ledgerId, repr(e)))
+        print('Failed to clear offload status {} due to {}'.format(mlPath, repr(e)))
 
 if __name__ in '__main__':
 
@@ -344,7 +392,7 @@ if __name__ in '__main__':
         printManagedCursorCommand(zk, mlPath, cursorName)
     elif command == updateMakDeleteCursor:
         updateMarkDeleteOfCursorCommand(zk, mlPath, cursorName, cursorMarkDelete)
-    elif command == clearOffloadStatusCommand
-        clearOffloadStatus(zk, mlPath, args.ledgerIds)
+    elif command == clearOffloadStatus:
+        clearOffloadStatusCommand(zk, mlPath, args.ledgerIds)
     else:
         print('{} command not found. supported {}, pass command as a first argument'.format(command, commandHelpText))
