@@ -7,7 +7,6 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
-from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -18,11 +17,234 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='MLDataFormats.proto',
   package='',
-  serialized_pb=_b('\n\x13MLDataFormats.proto\"\xc9\x01\n\x11ManagedLedgerInfo\x12\x31\n\nledgerInfo\x18\x01 \x03(\x0b\x32\x1d.ManagedLedgerInfo.LedgerInfo\x12/\n\x12terminatedPosition\x18\x02 \x01(\x0b\x32\x13.NestedPositionInfo\x1aP\n\nLedgerInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntries\x18\x02 \x01(\x03\x12\x0c\n\x04size\x18\x03 \x01(\x03\x12\x11\n\ttimestamp\x18\x04 \x01(\x03\"c\n\x0cPositionInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntryId\x18\x02 \x02(\x03\x12\x30\n\x19individualDeletedMessages\x18\x03 \x03(\x0b\x32\r.MessageRange\"7\n\x12NestedPositionInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntryId\x18\x02 \x02(\x03\"f\n\x0cMessageRange\x12*\n\rlowerEndpoint\x18\x01 \x02(\x0b\x32\x13.NestedPositionInfo\x12*\n\rupperEndpoint\x18\x02 \x02(\x0b\x32\x13.NestedPositionInfo\"\x95\x01\n\x11ManagedCursorInfo\x12\x17\n\x0f\x63ursorsLedgerId\x18\x01 \x02(\x03\x12\x1a\n\x12markDeleteLedgerId\x18\x02 \x01(\x03\x12\x19\n\x11markDeleteEntryId\x18\x03 \x01(\x03\x12\x30\n\x19individualDeletedMessages\x18\x04 \x03(\x0b\x32\r.MessageRangeB\'\n#org.apache.bookkeeper.mledger.protoH\x01')
+  syntax='proto2',
+  serialized_options=_b('\n#org.apache.bookkeeper.mledger.protoH\001'),
+  serialized_pb=_b('\n\x13MLDataFormats.proto\"&\n\x08KeyValue\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"D\n\x15OffloadDriverMetadata\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x1d\n\nproperties\x18\x02 \x03(\x0b\x32\t.KeyValue\"\xc9\x01\n\x0eOffloadContext\x12\x0e\n\x06uidMsb\x18\x01 \x01(\x03\x12\x0e\n\x06uidLsb\x18\x02 \x01(\x03\x12\x10\n\x08\x63omplete\x18\x03 \x01(\x08\x12\x19\n\x11\x62ookkeeperDeleted\x18\x04 \x01(\x08\x12\x11\n\ttimestamp\x18\x05 \x01(\x03\x12.\n\x0e\x64riverMetadata\x18\x06 \x01(\x0b\x32\x16.OffloadDriverMetadata\x12\'\n\x0eoffloadSegment\x18\x07 \x03(\x0b\x32\x0f.OffloadSegment\"\xbd\x01\n\x0eOffloadSegment\x12\x0e\n\x06uidMsb\x18\x01 \x01(\x03\x12\x0e\n\x06uidLsb\x18\x02 \x01(\x03\x12\x10\n\x08\x63omplete\x18\x03 \x01(\x08\x12\x19\n\x11\x61ssignedTimestamp\x18\x04 \x01(\x03\x12\x1a\n\x12offloadedTimestamp\x18\x05 \x01(\x03\x12\x12\n\nendEntryId\x18\x06 \x01(\x03\x12.\n\x0e\x64riverMetadata\x18\x07 \x01(\x0b\x32\x16.OffloadDriverMetadata\"\x91\x02\n\x11ManagedLedgerInfo\x12\x31\n\nledgerInfo\x18\x01 \x03(\x0b\x32\x1d.ManagedLedgerInfo.LedgerInfo\x12/\n\x12terminatedPosition\x18\x02 \x01(\x0b\x32\x13.NestedPositionInfo\x12\x1d\n\nproperties\x18\x03 \x03(\x0b\x32\t.KeyValue\x1ay\n\nLedgerInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntries\x18\x02 \x01(\x03\x12\x0c\n\x04size\x18\x03 \x01(\x03\x12\x11\n\ttimestamp\x18\x04 \x01(\x03\x12\'\n\x0eoffloadContext\x18\x05 \x01(\x0b\x32\x0f.OffloadContext\"\xcd\x01\n\x0cPositionInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntryId\x18\x02 \x02(\x03\x12\x30\n\x19individualDeletedMessages\x18\x03 \x03(\x0b\x32\r.MessageRange\x12!\n\nproperties\x18\x04 \x03(\x0b\x32\r.LongProperty\x12\x45\n\x1d\x62\x61tchedEntryDeletionIndexInfo\x18\x05 \x03(\x0b\x32\x1e.BatchedEntryDeletionIndexInfo\"7\n\x12NestedPositionInfo\x12\x10\n\x08ledgerId\x18\x01 \x02(\x03\x12\x0f\n\x07\x65ntryId\x18\x02 \x02(\x03\"f\n\x0cMessageRange\x12*\n\rlowerEndpoint\x18\x01 \x02(\x0b\x32\x13.NestedPositionInfo\x12*\n\rupperEndpoint\x18\x02 \x02(\x0b\x32\x13.NestedPositionInfo\"Y\n\x1d\x42\x61tchedEntryDeletionIndexInfo\x12%\n\x08position\x18\x01 \x02(\x0b\x32\x13.NestedPositionInfo\x12\x11\n\tdeleteSet\x18\x02 \x03(\x03\"+\n\x0cLongProperty\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\x03\"\x93\x02\n\x11ManagedCursorInfo\x12\x17\n\x0f\x63ursorsLedgerId\x18\x01 \x02(\x03\x12\x1a\n\x12markDeleteLedgerId\x18\x02 \x01(\x03\x12\x19\n\x11markDeleteEntryId\x18\x03 \x01(\x03\x12\x30\n\x19individualDeletedMessages\x18\x04 \x03(\x0b\x32\r.MessageRange\x12!\n\nproperties\x18\x05 \x03(\x0b\x32\r.LongProperty\x12\x12\n\nlastActive\x18\x06 \x01(\x03\x12\x45\n\x1d\x62\x61tchedEntryDeletionIndexInfo\x18\x07 \x03(\x0b\x32\x1e.BatchedEntryDeletionIndexInfoB\'\n#org.apache.bookkeeper.mledger.protoH\x01')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
+
+
+_KEYVALUE = _descriptor.Descriptor(
+  name='KeyValue',
+  full_name='KeyValue',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='KeyValue.key', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='KeyValue.value', index=1,
+      number=2, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=23,
+  serialized_end=61,
+)
+
+
+_OFFLOADDRIVERMETADATA = _descriptor.Descriptor(
+  name='OffloadDriverMetadata',
+  full_name='OffloadDriverMetadata',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='OffloadDriverMetadata.name', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='OffloadDriverMetadata.properties', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=63,
+  serialized_end=131,
+)
+
+
+_OFFLOADCONTEXT = _descriptor.Descriptor(
+  name='OffloadContext',
+  full_name='OffloadContext',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='uidMsb', full_name='OffloadContext.uidMsb', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='uidLsb', full_name='OffloadContext.uidLsb', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='complete', full_name='OffloadContext.complete', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='bookkeeperDeleted', full_name='OffloadContext.bookkeeperDeleted', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='timestamp', full_name='OffloadContext.timestamp', index=4,
+      number=5, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='driverMetadata', full_name='OffloadContext.driverMetadata', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='offloadSegment', full_name='OffloadContext.offloadSegment', index=6,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=134,
+  serialized_end=335,
+)
+
+
+_OFFLOADSEGMENT = _descriptor.Descriptor(
+  name='OffloadSegment',
+  full_name='OffloadSegment',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='uidMsb', full_name='OffloadSegment.uidMsb', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='uidLsb', full_name='OffloadSegment.uidLsb', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='complete', full_name='OffloadSegment.complete', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='assignedTimestamp', full_name='OffloadSegment.assignedTimestamp', index=3,
+      number=4, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='offloadedTimestamp', full_name='OffloadSegment.offloadedTimestamp', index=4,
+      number=5, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='endEntryId', full_name='OffloadSegment.endEntryId', index=5,
+      number=6, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='driverMetadata', full_name='OffloadSegment.driverMetadata', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=338,
+  serialized_end=527,
+)
 
 
 _MANAGEDLEDGERINFO_LEDGERINFO = _descriptor.Descriptor(
@@ -38,41 +260,49 @@ _MANAGEDLEDGERINFO_LEDGERINFO = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='entries', full_name='ManagedLedgerInfo.LedgerInfo.entries', index=1,
       number=2, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='size', full_name='ManagedLedgerInfo.LedgerInfo.size', index=2,
       number=3, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='timestamp', full_name='ManagedLedgerInfo.LedgerInfo.timestamp', index=3,
       number=4, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='offloadContext', full_name='ManagedLedgerInfo.LedgerInfo.offloadContext', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=145,
-  serialized_end=225,
+  serialized_start=682,
+  serialized_end=803,
 )
 
 _MANAGEDLEDGERINFO = _descriptor.Descriptor(
@@ -88,27 +318,35 @@ _MANAGEDLEDGERINFO = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='terminatedPosition', full_name='ManagedLedgerInfo.terminatedPosition', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='ManagedLedgerInfo.properties', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[_MANAGEDLEDGERINFO_LEDGERINFO, ],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=24,
-  serialized_end=225,
+  serialized_start=530,
+  serialized_end=803,
 )
 
 
@@ -125,34 +363,49 @@ _POSITIONINFO = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='entryId', full_name='PositionInfo.entryId', index=1,
       number=2, type=3, cpp_type=2, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='individualDeletedMessages', full_name='PositionInfo.individualDeletedMessages', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='PositionInfo.properties', index=3,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='batchedEntryDeletionIndexInfo', full_name='PositionInfo.batchedEntryDeletionIndexInfo', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=227,
-  serialized_end=326,
+  serialized_start=806,
+  serialized_end=1011,
 )
 
 
@@ -169,27 +422,28 @@ _NESTEDPOSITIONINFO = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='entryId', full_name='NestedPositionInfo.entryId', index=1,
       number=2, type=3, cpp_type=2, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=328,
-  serialized_end=383,
+  serialized_start=1013,
+  serialized_end=1068,
 )
 
 
@@ -206,27 +460,104 @@ _MESSAGERANGE = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='upperEndpoint', full_name='MessageRange.upperEndpoint', index=1,
       number=2, type=11, cpp_type=10, label=2,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=385,
-  serialized_end=487,
+  serialized_start=1070,
+  serialized_end=1172,
+)
+
+
+_BATCHEDENTRYDELETIONINDEXINFO = _descriptor.Descriptor(
+  name='BatchedEntryDeletionIndexInfo',
+  full_name='BatchedEntryDeletionIndexInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='position', full_name='BatchedEntryDeletionIndexInfo.position', index=0,
+      number=1, type=11, cpp_type=10, label=2,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deleteSet', full_name='BatchedEntryDeletionIndexInfo.deleteSet', index=1,
+      number=2, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1174,
+  serialized_end=1263,
+)
+
+
+_LONGPROPERTY = _descriptor.Descriptor(
+  name='LongProperty',
+  full_name='LongProperty',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='LongProperty.name', index=0,
+      number=1, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='LongProperty.value', index=1,
+      number=2, type=3, cpp_type=2, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1265,
+  serialized_end=1308,
 )
 
 
@@ -243,55 +574,123 @@ _MANAGEDCURSORINFO = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='markDeleteLedgerId', full_name='ManagedCursorInfo.markDeleteLedgerId', index=1,
       number=2, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='markDeleteEntryId', full_name='ManagedCursorInfo.markDeleteEntryId', index=2,
       number=3, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='individualDeletedMessages', full_name='ManagedCursorInfo.individualDeletedMessages', index=3,
       number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='ManagedCursorInfo.properties', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='lastActive', full_name='ManagedCursorInfo.lastActive', index=5,
+      number=6, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='batchedEntryDeletionIndexInfo', full_name='ManagedCursorInfo.batchedEntryDeletionIndexInfo', index=6,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
+  syntax='proto2',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=490,
-  serialized_end=639,
+  serialized_start=1311,
+  serialized_end=1586,
 )
 
+_OFFLOADDRIVERMETADATA.fields_by_name['properties'].message_type = _KEYVALUE
+_OFFLOADCONTEXT.fields_by_name['driverMetadata'].message_type = _OFFLOADDRIVERMETADATA
+_OFFLOADCONTEXT.fields_by_name['offloadSegment'].message_type = _OFFLOADSEGMENT
+_OFFLOADSEGMENT.fields_by_name['driverMetadata'].message_type = _OFFLOADDRIVERMETADATA
+_MANAGEDLEDGERINFO_LEDGERINFO.fields_by_name['offloadContext'].message_type = _OFFLOADCONTEXT
 _MANAGEDLEDGERINFO_LEDGERINFO.containing_type = _MANAGEDLEDGERINFO
 _MANAGEDLEDGERINFO.fields_by_name['ledgerInfo'].message_type = _MANAGEDLEDGERINFO_LEDGERINFO
 _MANAGEDLEDGERINFO.fields_by_name['terminatedPosition'].message_type = _NESTEDPOSITIONINFO
+_MANAGEDLEDGERINFO.fields_by_name['properties'].message_type = _KEYVALUE
 _POSITIONINFO.fields_by_name['individualDeletedMessages'].message_type = _MESSAGERANGE
+_POSITIONINFO.fields_by_name['properties'].message_type = _LONGPROPERTY
+_POSITIONINFO.fields_by_name['batchedEntryDeletionIndexInfo'].message_type = _BATCHEDENTRYDELETIONINDEXINFO
 _MESSAGERANGE.fields_by_name['lowerEndpoint'].message_type = _NESTEDPOSITIONINFO
 _MESSAGERANGE.fields_by_name['upperEndpoint'].message_type = _NESTEDPOSITIONINFO
+_BATCHEDENTRYDELETIONINDEXINFO.fields_by_name['position'].message_type = _NESTEDPOSITIONINFO
 _MANAGEDCURSORINFO.fields_by_name['individualDeletedMessages'].message_type = _MESSAGERANGE
+_MANAGEDCURSORINFO.fields_by_name['properties'].message_type = _LONGPROPERTY
+_MANAGEDCURSORINFO.fields_by_name['batchedEntryDeletionIndexInfo'].message_type = _BATCHEDENTRYDELETIONINDEXINFO
+DESCRIPTOR.message_types_by_name['KeyValue'] = _KEYVALUE
+DESCRIPTOR.message_types_by_name['OffloadDriverMetadata'] = _OFFLOADDRIVERMETADATA
+DESCRIPTOR.message_types_by_name['OffloadContext'] = _OFFLOADCONTEXT
+DESCRIPTOR.message_types_by_name['OffloadSegment'] = _OFFLOADSEGMENT
 DESCRIPTOR.message_types_by_name['ManagedLedgerInfo'] = _MANAGEDLEDGERINFO
 DESCRIPTOR.message_types_by_name['PositionInfo'] = _POSITIONINFO
 DESCRIPTOR.message_types_by_name['NestedPositionInfo'] = _NESTEDPOSITIONINFO
 DESCRIPTOR.message_types_by_name['MessageRange'] = _MESSAGERANGE
+DESCRIPTOR.message_types_by_name['BatchedEntryDeletionIndexInfo'] = _BATCHEDENTRYDELETIONINDEXINFO
+DESCRIPTOR.message_types_by_name['LongProperty'] = _LONGPROPERTY
 DESCRIPTOR.message_types_by_name['ManagedCursorInfo'] = _MANAGEDCURSORINFO
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+KeyValue = _reflection.GeneratedProtocolMessageType('KeyValue', (_message.Message,), dict(
+  DESCRIPTOR = _KEYVALUE,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:KeyValue)
+  ))
+_sym_db.RegisterMessage(KeyValue)
+
+OffloadDriverMetadata = _reflection.GeneratedProtocolMessageType('OffloadDriverMetadata', (_message.Message,), dict(
+  DESCRIPTOR = _OFFLOADDRIVERMETADATA,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:OffloadDriverMetadata)
+  ))
+_sym_db.RegisterMessage(OffloadDriverMetadata)
+
+OffloadContext = _reflection.GeneratedProtocolMessageType('OffloadContext', (_message.Message,), dict(
+  DESCRIPTOR = _OFFLOADCONTEXT,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:OffloadContext)
+  ))
+_sym_db.RegisterMessage(OffloadContext)
+
+OffloadSegment = _reflection.GeneratedProtocolMessageType('OffloadSegment', (_message.Message,), dict(
+  DESCRIPTOR = _OFFLOADSEGMENT,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:OffloadSegment)
+  ))
+_sym_db.RegisterMessage(OffloadSegment)
 
 ManagedLedgerInfo = _reflection.GeneratedProtocolMessageType('ManagedLedgerInfo', (_message.Message,), dict(
 
@@ -329,6 +728,20 @@ MessageRange = _reflection.GeneratedProtocolMessageType('MessageRange', (_messag
   ))
 _sym_db.RegisterMessage(MessageRange)
 
+BatchedEntryDeletionIndexInfo = _reflection.GeneratedProtocolMessageType('BatchedEntryDeletionIndexInfo', (_message.Message,), dict(
+  DESCRIPTOR = _BATCHEDENTRYDELETIONINDEXINFO,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:BatchedEntryDeletionIndexInfo)
+  ))
+_sym_db.RegisterMessage(BatchedEntryDeletionIndexInfo)
+
+LongProperty = _reflection.GeneratedProtocolMessageType('LongProperty', (_message.Message,), dict(
+  DESCRIPTOR = _LONGPROPERTY,
+  __module__ = 'MLDataFormats_pb2'
+  # @@protoc_insertion_point(class_scope:LongProperty)
+  ))
+_sym_db.RegisterMessage(LongProperty)
+
 ManagedCursorInfo = _reflection.GeneratedProtocolMessageType('ManagedCursorInfo', (_message.Message,), dict(
   DESCRIPTOR = _MANAGEDCURSORINFO,
   __module__ = 'MLDataFormats_pb2'
@@ -337,6 +750,5 @@ ManagedCursorInfo = _reflection.GeneratedProtocolMessageType('ManagedCursorInfo'
 _sym_db.RegisterMessage(ManagedCursorInfo)
 
 
-DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n#org.apache.bookkeeper.mledger.protoH\001'))
+DESCRIPTOR._options = None
 # @@protoc_insertion_point(module_scope)
