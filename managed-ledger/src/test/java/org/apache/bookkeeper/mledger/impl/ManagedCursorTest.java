@@ -86,6 +86,7 @@ import org.apache.pulsar.metadata.api.Stat;
 import org.apache.pulsar.common.api.proto.PulsarApi.IntRange;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.MockZooKeeper;
+import org.awaitility.Awaitility;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
