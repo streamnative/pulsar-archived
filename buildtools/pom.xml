@@ -23,7 +23,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.streamnative.org.apache</groupId>
+    <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
     <version>18</version>
   </parent>
