@@ -1178,7 +1178,7 @@ flexible messaging model and an intuitive client API.</description>
             </property>
             <property>
               <name>listener</name>
-              <value>org.apache.pulsar.tests.PulsarTestListener,org.apache.pulsar.tests.AnnotationListener</value>
+              <value>io.streamnative.org.apache.pulsar.tests.PulsarTestListener,org.apache.pulsar.tests.AnnotationListener</value>
             </property>
           </properties>
         </configuration>

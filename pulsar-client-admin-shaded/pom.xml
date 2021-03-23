@@ -63,10 +63,10 @@
 
               <artifactSet>
                 <includes>
-                  <include>org.apache.pulsar:pulsar-client-original</include>
-                  <include>org.apache.pulsar:pulsar-client-api</include>
-                  <include>org.apache.pulsar:pulsar-client-admin-original</include>
-                  <include>org.apache.pulsar:pulsar-client-admin-api</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-client-original</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-client-api</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-client-admin-original</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-client-admin-api</include>
                   <include>org.apache.commons:commons-lang3</include>
                   <include>commons-codec:commons-codec</include>
                   <include>commons-collections:commons-collections</include>
@@ -79,7 +79,7 @@
                   <include>com.google.code.gson:gson</include>
                   <include>com.fasterxml.jackson.core</include>
                   <include>io.netty:*</include>
-                  <include>org.apache.pulsar:pulsar-common</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-common</include>
                   <include>org.apache.bookkeeper:circe-checksum</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>org.glassfish.jersey*:*</include>
@@ -102,12 +102,12 @@
                   <include>io.swagger:*</include>
                   <include>org.apache.bookkeeper:bookkeeper-common-allocator</include>
                   <!-- Issue #6834, Since Netty ByteBuf shaded, we need also shade this module -->
-                  <include>org.apache.pulsar:pulsar-client-messagecrypto-bc</include>
+                  <include>io.streamnative.org.apache.pulsar:pulsar-client-messagecrypto-bc</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
-                  <artifact>org.apache.pulsar:pulsar-client-original</artifact>
+                  <artifact>io.streamnative.org.apache.pulsar:pulsar-client-original</artifact>
                   <includes>
                     <include>**</include>
                   </includes>
@@ -117,7 +117,7 @@
                   </excludes>
                 </filter>
                 <filter>
-                  <artifact>org.apache.pulsar:pulsar-client-admin-original</artifact>
+                  <artifact>io.streamnative.org.apache.pulsar:pulsar-client-admin-original</artifact>
                   <includes>
                     <include>**</include>
                   </includes>
@@ -130,114 +130,114 @@
               <relocations>
                <relocation>
                   <pattern>org.asynchttpclient</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.asynchttpclient</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.asynchttpclient</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.commons</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.apache.commons</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.google</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.com.google</shadedPattern>
                   <excludes>
                     <exclude>com.google.protobuf.*</exclude>
                   </excludes>
                 </relocation>
                 <relocation>
                   <pattern>com.fasterxml.jackson</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.fasterxml.jackson</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.com.fasterxml.jackson</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>io.netty</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.netty</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.io.netty</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.pulsar.policies</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.pulsar.policies</shadedPattern>
+                  <pattern>io.streamnative.org.apache.pulsar.policies</pattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.apache.pulsar.policies</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.pulsar.checksum</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.pulsar.checksum</shadedPattern>
+                  <pattern>io.streamnative.org.apache.pulsar.checksum</pattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.apache.pulsar.checksum</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.yahoo</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.com.yahoo</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.typesafe</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.typesafe</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.com.typesafe</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.glassfish</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.glassfish</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.ws</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.javax.ws</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.javax.ws</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.annotation</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.javax.annotation</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.javax.annotation</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>jersey</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.jersey</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.jersey</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.jvnet</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.jvnet</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.jvnet</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.aopalliance</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.aopalliance</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.aopalliance</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javassist</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.javassist</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.javassist</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.inject</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.javax.inject</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.javax.inject</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.reactivestreams</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.reactivestreams</shadedPattern>
+                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.reactivestreams</shadedPattern>
                 </relocation>
                   <relocation>
                       <pattern>io.grpc</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.io.grpc</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.io.grpc</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>okio</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.okio</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.okio</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>com.squareup</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.com.squareup</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.com.squareup</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>io.opencensus</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.io.opencensus</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.io.opencensus</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.eclipse.jetty</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.objenesis</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.org.objenesis</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.objenesis</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.yaml</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.org.yaml</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.yaml</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>io.swagger</pattern>
-                      <shadedPattern>org.apache.pulsar.shade.io.swagger</shadedPattern>
+                      <shadedPattern>io.streamnative.org.apache.pulsar.shade.io.swagger</shadedPattern>
                   </relocation>
                   <relocation>
                     <pattern>org.apache.bookkeeper</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
+                    <shadedPattern>io.streamnative.org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
                   </relocation>
               </relocations>
               <transformers>
