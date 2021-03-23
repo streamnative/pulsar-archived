@@ -23,7 +23,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>pulsar-io-jdbc</artifactId>
-    <groupId>org.apache.pulsar</groupId>
+     <groupId>io.streamnative.org.apache.pulsar</groupId>
     <version>2.8.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>

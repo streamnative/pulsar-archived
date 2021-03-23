@@ -34,7 +34,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+       <groupId>io.streamnative.org.apache.pulsar</groupId>
       <artifactId>pulsar-common</artifactId>
       <version>${project.version}</version>
     </dependency>
