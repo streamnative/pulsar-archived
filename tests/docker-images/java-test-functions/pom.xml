@@ -48,7 +48,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.pulsar</groupId>
+             <groupId>io.streamnative.org.apache.pulsar</groupId>
             <artifactId>pulsar-functions-api-examples</artifactId>
             <version>${project.version}</version>
         </dependency>

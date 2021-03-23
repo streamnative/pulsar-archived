@@ -45,7 +45,7 @@
           <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-          <groupId>org.apache.pulsar</groupId>
+           <groupId>io.streamnative.org.apache.pulsar</groupId>
           <artifactId>pulsar-all-docker-image</artifactId>
           <version>${project.parent.version}</version>
           <classifier>docker-info</classifier>
@@ -65,7 +65,7 @@
                 <configuration>
                   <artifactItems>
                     <artifactItem>
-                      <groupId>org.apache.pulsar.tests</groupId>
+                       <groupId>io.streamnative.org.apache.pulsar.tests</groupId>
                       <artifactId>java-test-functions</artifactId>
                       <version>${project.parent.version}</version>
                       <type>jar</type>

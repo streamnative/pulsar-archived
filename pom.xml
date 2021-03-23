@@ -1039,7 +1039,7 @@ flexible messaging model and an intuitive client API.</description>
   <dependencies>
     <!-- These dependencies are common to all the submodules -->
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+       <groupId>io.streamnative.org.apache.pulsar</groupId>
       <artifactId>buildtools</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -1117,7 +1117,7 @@ flexible messaging model and an intuitive client API.</description>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <dependencies>
           <dependency>
-            <groupId>org.apache.pulsar</groupId>
+             <groupId>io.streamnative.org.apache.pulsar</groupId>
             <artifactId>buildtools</artifactId>
             <version>${project.version}</version>
           </dependency>
@@ -1198,7 +1198,7 @@ flexible messaging model and an intuitive client API.</description>
             <configuration>
               <property>pulsar.basedir</property>
               <project>
-                <groupId>org.apache.pulsar</groupId>
+                 <groupId>io.streamnative.org.apache.pulsar</groupId>
                 <artifactId>pulsar</artifactId>
               </project>
             </configuration>
