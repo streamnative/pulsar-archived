@@ -117,7 +117,7 @@
       <outputFileNameMapping>${artifact.groupId}-${artifact.artifactId}-${artifact.version}${dashClassifier?}.${artifact.extension}</outputFileNameMapping>
 
       <excludes>
-        <exclude>io.streamnative.org.apache.pulsar:pulsar-functions-runtime-all</exclude>
+        <exclude>org.apache.pulsar:pulsar-functions-runtime-all</exclude>
 
         <!-- Already included in pulsar-zookeeper instrumented jar -->
         <exclude>org.apache.zookeeper:zookeeper</exclude>
@@ -129,7 +129,7 @@
         <exclude>org.projectlombok:lombok</exclude>
 
         <!-- prevent adding pulsar-functions-api-examples in lib -->
-        <exclude>io.streamnative.org.apache.pulsar:pulsar-functions-api-examples</exclude>
+        <exclude>org.apache.pulsar:pulsar-functions-api-examples</exclude>
         <!-- prevent adding any distribution .tar.gz files in lib -->
         <exclude>*:tar.gz</exclude>
       </excludes>

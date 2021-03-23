@@ -77,15 +77,15 @@
                             </transformers>
                             <artifactSet>
                                 <includes>
-                                    <include>io.streamnative.org.apache.pulsar:pulsar-client-original</include>
-                                    <include>io.streamnative.org.apache.pulsar:pulsar-client-api</include>
-                                    <include>io.streamnative.org.apache.pulsar:pulsar-client-admin-api</include>
-                                    <include>io.streamnative.org.apache.pulsar:pulsar-functions-api-examples</include>
+                                    <include>org.apache.pulsar:pulsar-client-original</include>
+                                    <include>org.apache.pulsar:pulsar-client-api</include>
+                                    <include>org.apache.pulsar:pulsar-client-admin-api</include>
+                                    <include>org.apache.pulsar:pulsar-functions-api-examples</include>
                                 </includes>
                             </artifactSet>
                             <filters>
                                 <filter>
-                                    <artifact>io.streamnative.org.apache.pulsar:pulsar-client-original</artifact>
+                                    <artifact>org.apache.pulsar:pulsar-client-original</artifact>
                                     <includes>
                                         <include>**</include>
                                     </includes>

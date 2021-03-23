@@ -59,13 +59,13 @@
 
               <artifactSet>
                 <includes>
-                  <include>io.streamnative.org.apache.pulsar:pulsar-client</include>
-                  <include>io.streamnative.org.apache.pulsar:pulsar-client-api</include>
+                  <include>org.apache.pulsar:pulsar-client</include>
+                  <include>org.apache.pulsar:pulsar-client-api</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
-                  <artifact>io.streamnative.org.apache.pulsar:pulsar-client</artifact>
+                  <artifact>org.apache.pulsar:pulsar-client</artifact>
                   <includes>
                     <include>**</include>
                   </includes>
@@ -77,15 +77,15 @@
               </filters>
               <relocations>
                 <relocation>
-                  <pattern>io.streamnative.org.apache.pulsar.client.api</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.shade.client.api.v2</shadedPattern>
+                  <pattern>org.apache.pulsar.client.api</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.client.api.v2</shadedPattern>
                   <includes>
-                    <include>io.streamnative.org.apache.pulsar.client.api.PulsarClient</include>
-                    <include>io.streamnative.org.apache.pulsar.client.api.Producer</include>
-                    <include>io.streamnative.org.apache.pulsar.client.api.Consumer</include>
-                    <include>io.streamnative.org.apache.pulsar.client.api.Reader</include>
-                    <include>io.streamnative.org.apache.pulsar.client.api.MessageListener</include>
-                    <include>io.streamnative.org.apache.pulsar.client.api.ReaderListener</include>
+                    <include>org.apache.pulsar.client.api.PulsarClient</include>
+                    <include>org.apache.pulsar.client.api.Producer</include>
+                    <include>org.apache.pulsar.client.api.Consumer</include>
+                    <include>org.apache.pulsar.client.api.Reader</include>
+                    <include>org.apache.pulsar.client.api.MessageListener</include>
+                    <include>org.apache.pulsar.client.api.ReaderListener</include>
                   </includes>
                 </relocation>
               </relocations>

@@ -96,35 +96,35 @@
                 </relocation>
                 <relocation>
                   <pattern>com.google</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.com.google</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.com.google</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.ws</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.javax.ws</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.javax.ws</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.jamesmurty.utils</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.com.jamesmurty.utils</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.com.jamesmurty.utils</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>aopalliance</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.aopalliance</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.aopalliance</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>net.iharder</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.net.iharder</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.net.iharder</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.inject</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.javax.inject</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.javax.inject</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.annotation</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.javax.annotation</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.javax.annotation</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google.errorprone</pattern>
-                  <shadedPattern>io.streamnative.org.apache.pulsar.jcloud.shade.com.google.errorprone</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.jcloud.shade.com.google.errorprone</shadedPattern>
                 </relocation>
 
               </relocations>

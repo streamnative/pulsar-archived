@@ -89,31 +89,31 @@
                     <relocations>
                         <relocation>
                             <pattern>io.confluent</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.io.confluent</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.io.confluent</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.apache.avro</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.avro</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.avro</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.codehaus.jackson</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.org.codehaus.jackson</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.org.codehaus.jackson</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>com.thoughtworks.paranamer</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.com.thoughtworks.paranamer</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.com.thoughtworks.paranamer</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.xerial.snappy</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.org.xerial.snappy</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.org.xerial.snappy</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.apache.commons</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.org.apache.commons</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.org.apache.commons</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.tukaani</pattern>
-                            <shadedPattern>io.streamnative.org.apache.pulsar.kafka.shade.org.tukaani</shadedPattern>
+                            <shadedPattern>org.apache.pulsar.kafka.shade.org.tukaani</shadedPattern>
                         </relocation>
                     </relocations>
                     <transformers>
