@@ -1488,7 +1488,7 @@ flexible messaging model and an intuitive client API.</description>
                       <runOnlyAtExecutionRoot>true</runOnlyAtExecutionRoot>
                       <descriptorRefs>
                           <!-- defined in Apache Parent Pom -->
-                          <descriptorRef>${sourceReleaseAssemblyDescriptor}</descriptorRef>
+                          <descriptorRef>source-release</descriptorRef>
                       </descriptorRefs>
                       <finalName>apache-pulsar-${project.version}-src</finalName>
                       <appendAssemblyId>false</appendAssemblyId>
