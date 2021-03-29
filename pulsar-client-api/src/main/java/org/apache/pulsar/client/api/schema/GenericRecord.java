@@ -48,7 +48,7 @@ public interface GenericRecord extends GenericObject {
      * Retrieve the value of the provided <tt>field</tt>.
      *
      * @param field the field to retrieve the value
-     * @return the value object
+     * @return the value objectpulsar
      */
     default Object getField(Field field) {
         return getField(field.getName());

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -21,6 +21,8 @@
 import argparse
 import traceback
 import sys
+import uuid
+import time
 try:
     from google.protobuf.text_format import Merge
     from google.protobuf.text_format import MessageToString
@@ -45,10 +47,13 @@ provides command line tool-access to execute these commands.
 '''
 managedLedgerPath = "/managed-ledgers/"
 printMlCommand = "print-managed-ledger"
+printMlUuidCommand = "print-managed-ledger-uuids"
 deleteMlLedgerIds = "delete-managed-ledger-ids"
 printCursorsCommands = "print-cursor"
 updateMakDeleteCursor = "update-mark-delete-cursor"
 clearOffloadStatus = "clear-ledger-offload-status"
+updateOffloadStatus = "update-ledger-offload-status"
+restoreManagedLedger = "restore-managed-ledger"
 
 '''
 Returns managed-ledger info for given managed-leger path
@@ -73,6 +78,40 @@ def getManagedLedgerInfo(zk, mlPath):
             traceback.print_exc()
             print('Failed to get data for {} due to {}'.format(mlPath, repr(e)))
 
+'''
+Returns uuid,ledger id pair
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+'''
+def getManagedLedgerPair(zk, mlPath):
+    try:
+        # get managed-ledger info
+        mlData = zk.get(mlPath)[0]
+        mlInfo = MLDataFormats_pb2.ManagedLedgerInfo()
+        try:
+            mlInfo.ParseFromString(mlData)
+        except Exception as formatException:
+            Merge(mlData, mlInfo)
+
+        ledgerInfoList = mlInfo.ledgerInfo
+        for li in ledgerInfoList:
+            if li.offloadContext != None and li.offloadContext.uidMsb:
+                msb = li.offloadContext.uidMsb
+                lsb = li.offloadContext.uidLsb
+                msbb = msb.to_bytes(8, 'big', signed=True)
+                lsbb = lsb.to_bytes(8, 'big', signed=True)
+                u = uuid.UUID(bytes=msbb+lsbb)
+
+
+                print(str(u) + "," + str(li.ledgerId))
+
+    except Exception as e:
+            traceback.print_exc()
+            print('Failed to get data for {} due to {}'.format(mlPath, repr(e)))
 
 '''
 Delete specific ledgerIds from the managed-ledger info and updates into zk
@@ -201,6 +240,21 @@ print-managed-ledger --zkServer localhost:2181 --managedLedgerPath sample/standa
 def printManagedLedgerCommand(zk, mlPath):
     print(getManagedLedgerInfo(zk, mlPath))
 
+'''
+print the uuids and index for a given managed ledger
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+
+eg:
+print-managed-ledger-uuids --zkServer localhost:2181 --managedLedgerPath sample/standalone/ns1/persistent/test
+'''
+def printManagedLedgerUuidCommand(zk, mlPath):
+    getManagedLedgerPair(zk, mlPath)
+
 
 '''
 print managed-ledger cursor info for given managed-cursor path
@@ -267,16 +321,70 @@ clearOffloadLedgerIds : str
 def clearOffloadStatusCommand(zk, mlPath, clearOffloadLedgerIds):
     try:
         if clearOffloadLedgerIds:
-            clearOffloadLedgerIds = set(deleteLedgerIds.split(","))
+            clearOffloadLedgerIds = set(clearOffloadLedgerIds.split(","))
             clearOffloadLedgerIdsSet = set()
             for id in clearOffloadLedgerIds:
-                clearOffloadLedgerIdsSet.add(long(id))
+                clearOffloadLedgerIdsSet.add(int(id, 10))
             clearOffloadStatusFromManagedLedgerInfo(zk, mlPath, clearOffloadLedgerIdsSet)
         else:
             print('Usage: --command {} [--ledgerIds]'.format(clearOffloadStatus))
     except Exception as e:
         traceback.print_exc()
         print('Failed to clear offload status {} due to {}'.format(mlPath, repr(e)))
+
+'''
+Set ledger offloaded state of a managed-ledger and update it to zk
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+ledgerId : str
+    a ledger-ids to update the status for (eg: 123)
+uuid : str
+    the uuid for the ledger, encoded as a string
+driverName : str
+    the name of the driver to use
+properties : str
+    a command seperated list of key-value pairs (eg: region=us-east-1,bucket=mybucket)
+
+'''
+def updateOffloadStatusCommand(zk, mlPath, ledgerId, uuidStr, driverName, properties):
+    try:
+        if ledgerId and uuid and driverName and properties:
+            ledgerIdNum = int(ledgerId.split(",")[0], 10)
+            parsedUuid = uuid.UUID(uuidStr)
+            propList = properties.split(",")
+            propDict = dict(p.split('=') for p in propList)
+            updateOffloadStatusFromManagedLedgerInfo(zk, mlPath, ledgerIdNum, parsedUuid, driverName, propDict)
+        else:
+            print('Usage: --command {} [--ledgerIds] [--uuid] [--driverName] [--offloadProperties]'.format(updateOffloadStatus))
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to clear offload status {} due to {}'.format(mlPath, repr(e)))
+
+'''
+Set ledger to the defined file
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+ledgerFile : str
+    the ledger file to restore
+
+'''
+def restoreManagedLedgerCommand(zk, mlPath, ledgerFile):
+    try:
+        if ledgerFile:
+            restoreManagedLedgerInfoFromFile(zk, mlPath, ledgerFile)
+        else:
+            print('Usage: --command {} [--ledgerPath]'.format(restoreManagedLedger))
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to set  {} due to {}'.format(mlPath, repr(e)))
 
 '''
 Update mark-delete position of the given managed-cursor
@@ -340,11 +448,11 @@ def clearOffloadStatusFromManagedLedgerInfo(zk, mlPath, clearOffloadLedgerIds):
         i = 0
         while i < len(ledgerInfoList):
             ledgerInfo = ledgerInfoList[i]
+            i += 1
             if ledgerInfo.ledgerId in clearOffloadLedgerIds:
                 if ledgerInfo.offloadContext is not None:
-                    ledgerInfo.offloadContext = None
-            else:
-                i += 1
+                    ledgerInfo.ClearField("offloadContext")
+                    #ledgerInfo.offloadContext = None
 
         updatedMlInfo = None
         if isTextFormat:
@@ -358,9 +466,113 @@ def clearOffloadStatusFromManagedLedgerInfo(zk, mlPath, clearOffloadLedgerIds):
         traceback.print_exc()
         print('Failed to clear offload status {} due to {}'.format(mlPath, repr(e)))
 
+'''
+Set ledger offloaded state of a managed-ledger and update it to zk
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+ledgerId : num
+uuid : str
+driverName : str
+propDict : dict
+'''
+def updateOffloadStatusFromManagedLedgerInfo(zk, mlPath, ledgerId, uuid, driverName, propDict):
+    try:
+        # get managed-ledger info
+        (mlData, mlStat) = zk.get(mlPath)
+        mlInfo = MLDataFormats_pb2.ManagedLedgerInfo()
+        isTextFormat = False
+        try:
+            mlInfo.ParseFromString(mlData)
+        except Exception as formatException:
+            Merge(mlData, mlInfo)
+            isTextFormat = True
+
+        ledgerInfoList = mlInfo.ledgerInfo
+
+        driverMetadata = MLDataFormats_pb2.OffloadDriverMetadata()
+        driverMetadata.name = driverName
+        for key in propDict:
+            kv = driverMetadata.properties.add(key=key, value=propDict[key])
+
+        oc = MLDataFormats_pb2.OffloadContext()
+        oc.uidMsb = int.from_bytes(uuid.bytes[:8], 'big', signed=True)
+        oc.uidLsb = int.from_bytes(uuid.bytes[8:], 'big', signed=True)
+        oc.complete = 1
+        oc.bookkeeperDeleted = 1
+        oc.timestamp = round(time.time() * 1000)
+        oc.driverMetadata.CopyFrom(driverMetadata)
+
+        origLedgerData = MLDataFormats_pb2.ManagedLedgerInfo.LedgerInfo()
+        i = 0
+        while i < len(ledgerInfoList):
+            ledgerInfo = ledgerInfoList[i]
+            i += 1
+            if ledgerInfo.ledgerId == ledgerId:
+                origLedgerData.CopyFrom(ledgerInfo)
+                ledgerInfo.offloadContext.CopyFrom(oc)
+                print('Updating {} to {}\n'.format(MessageToString(origLedgerData, True), MessageToString(ledgerInfo, True)))
+
+        updatedMlInfo = None
+        if isTextFormat:
+            updatedMlInfo = MessageToString(mlInfo, True)
+        else:
+            updatedMlInfo = mlInfo.SerializeToString();
+        zk.set(mlPath, updatedMlInfo, version=mlStat.version)
+        print('Updated {} with value\n{}'.format(mlPath, str(mlInfo)))
+
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to update offload status {} due to {}'.format(mlPath, repr(e)))
+
+'''
+Set ledger to contents from a file update it to zk
+Parameters
+----------
+zk : KazooClient
+   Zookeeper-client instance to query zk-client.
+mlPath : str
+    managed-ledger path
+ledgerPath : str
+'''
+def restoreManagedLedgerInfoFromFile(zk, mlPath, filePath):
+    try:
+        # get managed-ledger info
+        (mlData, mlStat) = zk.get(mlPath)
+        origMlInfo = MLDataFormats_pb2.ManagedLedgerInfo()
+        isTextFormat = False
+        try:
+            origMlInfo.ParseFromString(mlData)
+        except Exception as formatException:
+            Merge(mlData, origMlInfo)
+            isTextFormat = True
+
+        # get managed-ledger info
+        newMlInfo = MLDataFormats_pb2.ManagedLedgerInfo()
+        backupFileStr = open(filePath, 'r').read()
+        try:
+            newMlInfo.ParseFromString(backupFileStr)
+        except Exception as formatException:
+            Merge(backupFileStr, newMlInfo)
+
+        updatedMlInfo = None
+        if isTextFormat:
+            updatedMlInfo = MessageToString(newMlInfo, True)
+        else:
+            updatedMlInfo = newMlInfo.SerializeToString();
+        #zk.set(mlPath, updatedMlInfo, version=mlStat.version)
+        print('Updating {} from {} to value\n{}'.format(mlPath, origMlInfo, str(newMlInfo)))
+
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to update offload status {} due to {}'.format(mlPath, repr(e)))
+
 if __name__ in '__main__':
 
-    commandHelpText = 'Managed-ledger command: \n{}, {}, {}, {}'.format(printMlCommand, deleteMlLedgerIds, printCursorsCommands, updateMakDeleteCursor)
+    commandHelpText = 'Managed-ledger command: \n{}, {}, {}, {}, {}'.format(printMlCommand, printMlUuidCommand, deleteMlLedgerIds, printCursorsCommands, updateMakDeleteCursor)
 
     try:
         command = sys.argv[1]
@@ -373,6 +585,10 @@ if __name__ in '__main__':
     parser.add_argument("--ledgerIds", "-lid", required=False, help="Delete ledger ids: comma separated")
     parser.add_argument("--cursorName", "-cn", required=False, help="Managed-ledger cursor name")
     parser.add_argument("--cursorMarkDelete", "-cm", required=False, help="Cursor mark delete position: <ledger_id>:<entry_id>")
+    parser.add_argument("--uuid", "-u", required=False, help="The uuid to use for the offload ledger")
+    parser.add_argument("--driverName", "-dn", required=False, help="The driver name to set for the offloaded ledger")
+    parser.add_argument("--offloadProperties", "-op", required=False, help="The comma seperated list of key value pairs to use for the given ledger")
+    parser.add_argument("--backupFile", "-bf", required=False, help="The file to restore to the managed ledger")
     args = parser.parse_args(arguments)
 
     zkSrvr = args.zkServer
@@ -386,6 +602,8 @@ if __name__ in '__main__':
 
     if command == printMlCommand:
         printManagedLedgerCommand(zk, mlPath)
+    elif command == printMlUuidCommand:
+        printManagedLedgerUuidCommand(zk, mlPath)
     elif command == deleteMlLedgerIds:
         deleteMLLedgerIdsCommand(zk, mlPath, deleteLedgerIds)
     elif command == printCursorsCommands:
@@ -394,5 +612,10 @@ if __name__ in '__main__':
         updateMarkDeleteOfCursorCommand(zk, mlPath, cursorName, cursorMarkDelete)
     elif command == clearOffloadStatus:
         clearOffloadStatusCommand(zk, mlPath, args.ledgerIds)
+    elif command == updateOffloadStatus:
+        updateOffloadStatusCommand(zk, mlPath, args.ledgerIds, args.uuid, args.driverName, args.offloadProperties)
+    elif command == restoreManagedLedger:
+        #restoreManagedLedgerCommand(zk, mlPath, args.backupFile)
+        print("nope")
     else:
         print('{} command not found. supported {}, pass command as a first argument'.format(command, commandHelpText))
