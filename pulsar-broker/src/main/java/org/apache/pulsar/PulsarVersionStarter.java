@@ -16,30 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import common_job_properties
+package org.apache.pulsar;
 
-// This job deploys a snapshot of latest master to artifactory nightly
-mavenJob('pulsar_release_nightly_snapshot') {
-  description('runs a `mvn clean deploy` of the nightly snapshot for pulsar.')
+/**
+ * Pulsar version entry point.
+ */
+public class PulsarVersionStarter {
 
-  // Set common parameters.
-  common_job_properties.setTopLevelMainJobProperties(delegate)
-
-  // Sets that this is a PostCommit job.
-  common_job_properties.setPostCommit(
-      delegate,
-      'H 12 * * *',
-      false)
-
-  // Allows triggering this build against pull requests.
-  common_job_properties.enablePhraseTriggeringFromPullRequest(
-      delegate,
-      'Release Snapshot',
-      '/release-snapshot')
-
-  // Set maven parameters.
-  common_job_properties.setMavenConfig(delegate)
-
-  // Maven build project.
-  goals('clean package deploy -DskipTests')
+    public static void main(String args[]) {
+        System.out.println("Current version of pulsar is: " + PulsarVersion.getVersion());
+    }
 }
