@@ -23,7 +23,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.streamnative.org.apache.pulsar</groupId>
+    <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
     <version>2.8.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
@@ -98,7 +98,7 @@
               <target>
                 <!-- shade the AsyncHttpClient ahc-default.properties files -->
                 <replace token= "org.asynchttpclient."
-                         value="org.apache.pulsar.shade.org.asynchttpclient."
+                         value="io.streamnative.shade.org.asynchttpclient."
                          file="${project.build.directory}/classes/org/asynchttpclient/config/ahc-default.properties"/>
               </target>
             </configuration>
@@ -123,8 +123,8 @@
 
               <artifactSet>
                 <includes>
-                  <include>org.apache.pulsar:pulsar-client-original</include>
-                  <include>org.apache.pulsar:pulsar-client-api</include>
+                  <include>io.streamnative:pulsar-client-original</include>
+                  <include>io.streamnative:pulsar-client-api</include>
                   <include>org.apache.bookkeeper:bookkeeper-common-allocator</include>
                   <include>org.apache.commons:commons-lang3</include>
                   <include>commons-codec:commons-codec</include>
@@ -149,7 +149,7 @@
                   <include>commons-*:*</include>
                   <include>io.swagger:*</include>
 
-                  <include>org.apache.pulsar:pulsar-common</include>
+                  <include>io.streamnative:pulsar-common</include>
                   <include>org.apache.bookkeeper:circe-checksum</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>org.objenesis:*</include>
@@ -163,12 +163,12 @@
                   <include>org.apache.commons:commons-compress</include>
                   <include>org.tukaani:xz</include>
                   <!-- Issue #6834, Since Netty ByteBuf shaded, we need also shade this module -->
-                  <include>org.apache.pulsar:pulsar-client-messagecrypto-bc</include>
+                  <include>io.streamnative:pulsar-client-messagecrypto-bc</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
-                  <artifact>org.apache.pulsar:pulsar-client-original</artifact>
+                  <artifact>io.streamnative:pulsar-client-original</artifact>
                   <includes>
                     <include>**</include>
                   </includes>
@@ -181,70 +181,70 @@
               <relocations>
                 <relocation>
                   <pattern>org.asynchttpclient</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.asynchttpclient</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.asynchttpclient</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.commons</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.apache.commons</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.google</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.google</shadedPattern>
                   <excludes>
                     <exclude>com.google.protobuf.*</exclude>
                   </excludes>
                 </relocation>
                 <relocation>
                   <pattern>com.fasterxml.jackson</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.fasterxml.jackson</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.fasterxml.jackson</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>io.netty</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.netty</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.io.netty</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>io.swagger</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.swagger</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.io.swagger</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.pulsar.policies</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.pulsar.policies</shadedPattern>
+                  <pattern>io.streamnative.policies</pattern>
+                  <shadedPattern>io.streamnative.shade.io.streamnative.policies</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo.datasketches</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.yahoo.datasketches</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.yahoo.datasketches</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo.sketches</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.yahoo.sketches</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.yahoo.sketches</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.eclipse.jetty</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.eclipse</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.eclipse</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.reactivestreams</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.reactivestreams</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.reactivestreams</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.typesafe</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.typesafe</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.typesafe</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo.memory</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.yahoo.memory</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.yahoo.memory</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.objenesis</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.objenesis</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.objenesis</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.yaml</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.yaml</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.yaml</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.avro</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.avro</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.apache.avro</shadedPattern>
                   <excludes>
                     <exclude>org.apache.avro.reflect.AvroAlias</exclude>
                     <exclude>org.apache.avro.reflect.AvroDefault</exclude>
@@ -261,23 +261,23 @@
                 <!--Avro transitive dependencies-->
                 <relocation>
                   <pattern>org.codehaus.jackson</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.codehaus.jackson</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.codehaus.jackson</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.thoughtworks.paranamer</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.com.thoughtworks.paranamer</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.com.thoughtworks.paranamer</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.commons</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.apache.commons</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.tukaani</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.tukaani</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.tukaani</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.bookkeeper</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
+                  <shadedPattern>io.streamnative.shade.org.apache.bookkeeper</shadedPattern>
                 </relocation>
               </relocations>
               <transformers>

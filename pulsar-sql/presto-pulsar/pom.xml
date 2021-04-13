@@ -23,7 +23,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-         <groupId>io.streamnative.org.apache.pulsar</groupId>
+         <groupId>io.streamnative</groupId>
         <artifactId>pulsar-sql</artifactId>
         <version>2.8.0-SNAPSHOT</version>
     </parent>
@@ -122,14 +122,14 @@
         </dependency>
 
         <dependency>
-           <groupId>io.streamnative.org.apache.pulsar</groupId>
+           <groupId>io.streamnative</groupId>
           <artifactId>pulsar-broker</artifactId>
           <version>${project.version}</version>
           <scope>test</scope>
         </dependency>
 
         <dependency>
-           <groupId>io.streamnative.org.apache.pulsar</groupId>
+           <groupId>io.streamnative</groupId>
           <artifactId>pulsar-broker</artifactId>
           <version>${project.version}</version>
           <scope>test</scope>
@@ -137,7 +137,7 @@
         </dependency>
 
         <dependency>
-           <groupId>io.streamnative.org.apache.pulsar</groupId>
+           <groupId>io.streamnative</groupId>
           <artifactId>testmocks</artifactId>
           <version>${project.version}</version>
           <scope>test</scope>
@@ -169,10 +169,10 @@
 
                             <artifactSet>
                                 <includes>
-                                    <include>org.apache.pulsar:pulsar-client-original</include>
-                                    <include>org.apache.pulsar:pulsar-client-admin-original</include>
-                                    <include>org.apache.pulsar:managed-ledger</include>
-                                    <include>org.apache.pulsar:pulsar-metadata</include>
+                                    <include>io.streamnative:pulsar-client-original</include>
+                                    <include>io.streamnative:pulsar-client-admin-original</include>
+                                    <include>io.streamnative:managed-ledger</include>
+                                    <include>io.streamnative:pulsar-metadata</include>
 
                                     <include>org.glassfish.jersey*:*</include>
                                     <include>javax.ws.rs:*</include>
@@ -185,7 +185,7 @@
                             </artifactSet>
                             <filters>
                                 <filter>
-                                    <artifact>org.apache.pulsar:pulsar-client-original</artifact>
+                                    <artifact>io.streamnative:pulsar-client-original</artifact>
                                     <includes>
                                         <include>**</include>
                                     </includes>
@@ -198,23 +198,23 @@
                             <relocations>
                                 <relocation>
                                     <pattern>org.glassfish</pattern>
-                                    <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
+                                    <shadedPattern>io.streamnative.shade.org.glassfish</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>javax.ws</pattern>
-                                    <shadedPattern>org.apache.pulsar.shade.javax.ws</shadedPattern>
+                                    <shadedPattern>io.streamnative.shade.javax.ws</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>javax.annotation</pattern>
-                                    <shadedPattern>org.apache.pulsar.shade.javax.annotation</shadedPattern>
+                                    <shadedPattern>io.streamnative.shade.javax.annotation</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>jersey</pattern>
-                                    <shadedPattern>org.apache.pulsar.shade.jersey</shadedPattern>
+                                    <shadedPattern>io.streamnative.shade.jersey</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.eclipse.jetty</pattern>
-                                    <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
+                                    <shadedPattern>io.streamnative.shade.org.eclipse.jetty</shadedPattern>
                                 </relocation>
 
                             </relocations>
