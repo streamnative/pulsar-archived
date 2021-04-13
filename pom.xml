@@ -234,6 +234,7 @@ flexible messaging model and an intuitive client API.</description>
     <maven-source-plugin.version>3.2.0</maven-source-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
     <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
+    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
 
     <!-- Used to configure rename.netty.native. Libs -->
     <rename.netty.native.libs>rename-netty-native-libs.sh</rename.netty.native.libs>
@@ -1610,6 +1611,11 @@ flexible messaging model and an intuitive client API.</description>
         <plugin>
           <artifactId>maven-antrun-plugin</artifactId>
           <version>${maven-antrun-plugin.version}</version>
+        </plugin>
+
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
         </plugin>
         
         <plugin>
