@@ -178,114 +178,114 @@
               <relocations>
                <relocation>
                   <pattern>org.asynchttpclient</pattern>
-                  <shadedPattern>io.streamnative.shade.org.asynchttpclient</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.asynchttpclient</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>
-                  <shadedPattern>io.streamnative.shade.org.apache.commons</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.commons</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google</pattern>
-                  <shadedPattern>io.streamnative.shade.com.google</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.com.google</shadedPattern>
                   <excludes>
                     <exclude>com.google.protobuf.*</exclude>
                   </excludes>
                 </relocation>
                 <relocation>
                   <pattern>com.fasterxml.jackson</pattern>
-                  <shadedPattern>io.streamnative.shade.com.fasterxml.jackson</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.com.fasterxml.jackson</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>io.netty</pattern>
-                  <shadedPattern>io.streamnative.shade.io.netty</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.netty</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>io.streamnative.policies</pattern>
-                  <shadedPattern>io.streamnative.shade.io.streamnative.policies</shadedPattern>
+                  <pattern>org.apache.pulsar.policies</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.streamnative.policies</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>io.streamnative.checksum</pattern>
-                  <shadedPattern>io.streamnative.shade.io.streamnative.checksum</shadedPattern>
+                  <pattern>org.apache.pulsar.checksum</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.streamnative.checksum</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo</pattern>
-                  <shadedPattern>io.streamnative.shade.com.yahoo</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.com.yahoo</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.typesafe</pattern>
-                  <shadedPattern>io.streamnative.shade.com.typesafe</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.com.typesafe</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.glassfish</pattern>
-                  <shadedPattern>io.streamnative.shade.org.glassfish</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.ws</pattern>
-                  <shadedPattern>io.streamnative.shade.javax.ws</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.javax.ws</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.annotation</pattern>
-                  <shadedPattern>io.streamnative.shade.javax.annotation</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.javax.annotation</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>jersey</pattern>
-                  <shadedPattern>io.streamnative.shade.jersey</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.jersey</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.jvnet</pattern>
-                  <shadedPattern>io.streamnative.shade.org.jvnet</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.jvnet</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.aopalliance</pattern>
-                  <shadedPattern>io.streamnative.shade.org.aopalliance</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.aopalliance</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javassist</pattern>
-                  <shadedPattern>io.streamnative.shade.javassist</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.javassist</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>javax.inject</pattern>
-                  <shadedPattern>io.streamnative.shade.javax.inject</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.javax.inject</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.reactivestreams</pattern>
-                  <shadedPattern>io.streamnative.shade.org.reactivestreams</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.reactivestreams</shadedPattern>
                 </relocation>
                   <relocation>
                       <pattern>io.grpc</pattern>
-                      <shadedPattern>io.streamnative.shade.io.grpc</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.io.grpc</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>okio</pattern>
-                      <shadedPattern>io.streamnative.shade.okio</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.okio</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>com.squareup</pattern>
-                      <shadedPattern>io.streamnative.shade.com.squareup</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.com.squareup</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>io.opencensus</pattern>
-                      <shadedPattern>io.streamnative.shade.io.opencensus</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.io.opencensus</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.eclipse.jetty</pattern>
-                      <shadedPattern>io.streamnative.shade.org.eclipse.jetty</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.objenesis</pattern>
-                      <shadedPattern>io.streamnative.shade.org.objenesis</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.org.objenesis</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>org.yaml</pattern>
-                      <shadedPattern>io.streamnative.shade.org.yaml</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.org.yaml</shadedPattern>
                   </relocation>
                   <relocation>
                       <pattern>io.swagger</pattern>
-                      <shadedPattern>io.streamnative.shade.io.swagger</shadedPattern>
+                      <shadedPattern>org.apache.pulsar.shade.io.swagger</shadedPattern>
                   </relocation>
                   <relocation>
                     <pattern>org.apache.bookkeeper</pattern>
-                    <shadedPattern>io.streamnative.shade.org.apache.bookkeeper</shadedPattern>
+                    <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
                   </relocation>
               </relocations>
               <transformers>

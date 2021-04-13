@@ -198,23 +198,23 @@
                             <relocations>
                                 <relocation>
                                     <pattern>org.glassfish</pattern>
-                                    <shadedPattern>io.streamnative.shade.org.glassfish</shadedPattern>
+                                    <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>javax.ws</pattern>
-                                    <shadedPattern>io.streamnative.shade.javax.ws</shadedPattern>
+                                    <shadedPattern>org.apache.pulsar.shade.javax.ws</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>javax.annotation</pattern>
-                                    <shadedPattern>io.streamnative.shade.javax.annotation</shadedPattern>
+                                    <shadedPattern>org.apache.pulsar.shade.javax.annotation</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>jersey</pattern>
-                                    <shadedPattern>io.streamnative.shade.jersey</shadedPattern>
+                                    <shadedPattern>org.apache.pulsar.shade.jersey</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.eclipse.jetty</pattern>
-                                    <shadedPattern>io.streamnative.shade.org.eclipse.jetty</shadedPattern>
+                                    <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
                                 </relocation>
 
                             </relocations>
