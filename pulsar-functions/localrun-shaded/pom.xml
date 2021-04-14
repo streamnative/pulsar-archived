@@ -83,7 +83,7 @@
                             <target>
                                 <!-- shade the AsyncHttpClient ahc-default.properties files -->
                                 <replace token= "org.asynchttpclient."
-                                         value="io.streamnative.shade.org.asynchttpclient."
+                                         value="org.apache.pulsar.shade.org.asynchttpclient."
                                          file="${project.build.directory}/classes/org/asynchttpclient/config/ahc-default.properties"/>
                             </target>
                         </configuration>

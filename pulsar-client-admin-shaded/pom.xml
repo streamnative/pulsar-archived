@@ -88,7 +88,7 @@
               <target>
                 <!-- shade the AsyncHttpClient ahc-default.properties files -->
                 <replace token= "org.asynchttpclient."
-                         value="io.streamnative.shade.org.asynchttpclient."
+                         value="org.apache.pulsar.shade.org.asynchttpclient."
                          file="${project.build.directory}/classes/org/asynchttpclient/config/ahc-default.properties"/>
               </target>
             </configuration>
@@ -201,11 +201,11 @@
                 </relocation>
                 <relocation>
                   <pattern>org.apache.pulsar.policies</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.streamnative.policies</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.pulsar.policies</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.pulsar.checksum</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.streamnative.checksum</shadedPattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.pulsar.checksum</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.yahoo</pattern>
