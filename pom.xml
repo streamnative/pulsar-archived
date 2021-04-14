@@ -1448,6 +1448,7 @@ flexible messaging model and an intuitive client API.</description>
             <exclude>**/*.so.*</exclude>
             <exclude>**/*.dylib</exclude>
             <exclude>src/test/resources/*.txt</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
           </excludes>
         </configuration>
       </plugin>
