@@ -23,7 +23,12 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <packaging>pom</packaging>
-  
+  <parent>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>23</version>
+  </parent>
+
   <groupId>io.streamnative</groupId>
   <artifactId>pulsar</artifactId>
 
@@ -232,11 +237,7 @@ flexible messaging model and an intuitive client API.</description>
     <lightproto-maven-plugin.version>0.2</lightproto-maven-plugin.version>
     <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
     <maven-source-plugin.version>3.2.0</maven-source-plugin.version>
-    <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
     <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
-    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-    <maven-surefire-plugin.version>3.0.0-M9</maven-surefire-plugin.version>
-    <apache-rat-plugin.version>0.13</apache-rat-plugin.version>
 
     <!-- Used to configure rename.netty.native. Libs -->
     <rename.netty.native.libs>rename-netty-native-libs.sh</rename.netty.native.libs>
@@ -1499,7 +1500,7 @@ flexible messaging model and an intuitive client API.</description>
                       <runOnlyAtExecutionRoot>true</runOnlyAtExecutionRoot>
                       <descriptorRefs>
                           <!-- defined in Apache Parent Pom -->
-                          <descriptorRef>source-release</descriptorRef>
+                          <descriptorRef>${sourceReleaseAssemblyDescriptor}</descriptorRef>
                       </descriptorRefs>
                       <finalName>apache-pulsar-${project.version}-src</finalName>
                       <appendAssemblyId>false</appendAssemblyId>
@@ -1538,7 +1539,6 @@ flexible messaging model and an intuitive client API.</description>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>${maven-javadoc-plugin.version}</version>
           <executions>
             <execution>
               <id>attach-javadocs</id>
@@ -1611,22 +1611,6 @@ flexible messaging model and an intuitive client API.</description>
         <plugin>
           <artifactId>maven-antrun-plugin</artifactId>
           <version>${maven-antrun-plugin.version}</version>
-        </plugin>
-
-        <plugin>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>${maven-compiler-plugin.version}</version>
-        </plugin>
-
-        <plugin>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>${maven-surefire-plugin.version}</version>
-        </plugin>
-
-        <plugin>
-          <groupId>org.apache.rat</groupId>
-          <artifactId>apache-rat-plugin</artifactId>
-          <version>${apache-rat-plugin.version}</version>
         </plugin>
         
         <plugin>
