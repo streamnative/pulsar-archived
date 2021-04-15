@@ -63,7 +63,7 @@
         <version>1.0.1</version>
         <configuration>
           <finalName>${project.artifactId}-${project.version}</finalName>
-          <mainClass>io.streamnative.bcloader.BouncyCastleLoader</mainClass>
+          <mainClass>org.apache.pulsar.bcloader.BouncyCastleLoader</mainClass>
         </configuration>
         <executions>
           <execution>
