@@ -53,7 +53,7 @@ EXIT=0
 
 # Check all bundled jars are mentioned in LICENSE
 for J in $JARS; do
-    echo $J | grep -q "org.apache.pulsar"
+    echo $J | grep -q "io.streamnative"
     if [ $? == 0 ]; then
         continue
     fi
@@ -94,7 +94,7 @@ LICENSEJARS=$(echo "$LICENSE" | sed -nE 's!.* (.*\.jar).*!\1!gp')
 
 
 for J in $JARS; do
-    echo $J | grep -q "org.apache.pulsar"
+    echo $J | grep -q "io.streamnative"
     if [ $? == 0 ]; then
         continue
     fi
