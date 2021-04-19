@@ -24,7 +24,7 @@
   <parent>
     <groupId>org.apache.pulsar.tests</groupId>
     <artifactId>tests-parent</artifactId>
-    <version>2.7.1.4-rc-202104191056-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104191113-SANPSHOT</version>
   </parent>
   <artifactId>bc_2_0_1</artifactId>
   <packaging>jar</packaging>
