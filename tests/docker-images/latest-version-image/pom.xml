@@ -21,9 +21,9 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>org.apache.pulsar.tests</groupId>
+    <groupId>io.streamnative.tests</groupId>
     <artifactId>docker-images</artifactId>
-    <version>2.7.1.4-rc-202104191348-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104191830-SANPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>latest-version-image</artifactId>
@@ -39,7 +39,7 @@
       </activation>
       <dependencies>
         <dependency>
-          <groupId>org.apache.pulsar.tests</groupId>
+          <groupId>io.streamnative.tests</groupId>
           <artifactId>java-test-functions</artifactId>
           <version>${project.parent.version}</version>
         </dependency>
@@ -64,7 +64,7 @@
                 <configuration>
                   <artifactItems>
                     <artifactItem>
-                      <groupId>org.apache.pulsar.tests</groupId>
+                      <groupId>io.streamnative.tests</groupId>
                       <artifactId>java-test-functions</artifactId>
                       <version>${project.parent.version}</version>
                       <type>jar</type>

@@ -25,9 +25,9 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>2.7.1.4-rc-202104191348-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104191830-SANPSHOT</version>
   </parent>
-  <groupId>org.apache.pulsar.tests</groupId>
+  <groupId>io.streamnative.tests</groupId>
   <artifactId>tests-parent</artifactId>
   <name>Apache Pulsar :: Tests</name>
   <modules>
