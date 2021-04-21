@@ -29,7 +29,7 @@
   <groupId>io.streamnative</groupId>
   <artifactId>pulsar-presto-distribution</artifactId>
   <name>Pulsar SQL :: Pulsar Presto Distribution</name>
-  <version>2.7.1.4-rc-202104200846-SNAPSHOT</version>
+  <version>2.7.1.4-rc-202104211316-SANPSHOT</version>
   <properties>
     <jersey.version>2.31</jersey.version>
     <presto.version>332</presto.version>
@@ -327,4 +327,14 @@
       </extension>
     </extensions>
   </build>
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 </project>
