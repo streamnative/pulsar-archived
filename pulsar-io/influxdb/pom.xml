@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar-io</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>2.7.1.4-rc-202104211326-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104211857-SANPSHOT</version>
   </parent>
   <artifactId>pulsar-io-influxdb</artifactId>
   <name>Pulsar IO :: InfluxDB</name>

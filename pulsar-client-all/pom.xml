@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>2.7.1.4-rc-202104211326-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104211857-SANPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>pulsar-client-all</artifactId>
@@ -335,6 +335,28 @@
               <arguments>
                 <argument>${project.artifactId}</argument>
               </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>javadoc-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <classifier>javadoc</classifier>
             </configuration>
           </execution>
         </executions>
