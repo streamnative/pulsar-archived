@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>bouncy-castle-parent</artifactId>
-    <version>2.7.1.4-rc-202104221121-SANPSHOT</version>
+    <version>2.7.1.4-rc-202104221421-SANPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>bouncy-castle-bc</artifactId>
