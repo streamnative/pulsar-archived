@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -18,20 +19,16 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <parent>
-    <groupId>org.apache.pulsar</groupId>
+    <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>2.6.2</version>
+    <version>2.6-rc-202104271250</version>
     <relativePath>..</relativePath>
   </parent>
-
   <artifactId>pulsar-client-all</artifactId>
   <name>Pulsar Client All</name>
-
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -44,17 +41,14 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-client-messagecrypto-bc</artifactId>
       <version>${project.parent.version}</version>
       <optional>true</optional>
     </dependency>
   </dependencies>
-
   <build>
     <plugins>
-
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
@@ -69,7 +63,7 @@
             <configuration>
               <artifactItems>
                 <artifactItem>
-                  <groupId>org.apache.pulsar</groupId>
+                  <groupId>io.streamnative</groupId>
                   <artifactId>pulsar-client-original</artifactId>
                   <version>${project.version}</version>
                   <type>jar</type>
@@ -78,13 +72,10 @@
                   <outputDirectory>${project.build.directory}/classes</outputDirectory>
                 </artifactItem>
               </artifactItems>
-
-
             </configuration>
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <!-- Shade all the dependencies to avoid conflicts -->
         <groupId>org.apache.maven.plugins</groupId>
@@ -99,11 +90,10 @@
               <createDependencyReducedPom>true</createDependencyReducedPom>
               <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
               <minimizeJar>false</minimizeJar>
-
               <artifactSet>
                 <includes>
-                  <include>org.apache.pulsar:pulsar-client-original</include>
-                  <include>org.apache.pulsar:pulsar-client-admin-original</include>
+                  <include>io.streamnative:pulsar-client-original</include>
+                  <include>io.streamnative:pulsar-client-admin-original</include>
                   <include>org.apache.commons:commons-lang3</include>
                   <include>commons-codec:commons-codec</include>
                   <include>commons-collections:commons-collections</include>
@@ -126,8 +116,7 @@
                   <include>org.eclipse.jetty:*</include>
                   <include>com.yahoo.datasketches:*</include>
                   <include>commons-*:*</include>
-
-                  <include>org.apache.pulsar:pulsar-common</include>
+                  <include>io.streamnative:pulsar-common</include>
                   <include>org.apache.bookkeeper:circe-checksum</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>org.glassfish.jersey*:*</include>
@@ -158,21 +147,21 @@
                   <include>org.apache.bookkeeper:bookkeeper-common-allocator</include>
                   <!-- bouncycastle Provider dependencies-->
                   <include>org.bouncycastle:*</include>
-                  <include>org.apache.pulsar:pulsar-client-messagecrypto-bc</include>
+                  <include>io.streamnative:pulsar-client-messagecrypto-bc</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
-                  <artifact>org.apache.pulsar:pulsar-client-original</artifact>
+                  <artifact>io.streamnative:pulsar-client-original</artifact>
                   <includes>
                     <include>**</include>
                   </includes>
                 </filter>
                 <filter>
-                   <artifact>commons-logging:commons-logging</artifact>
-                   <includes>
-                       <include>**</include>
-                   </includes>
+                  <artifact>commons-logging:commons-logging</artifact>
+                  <includes>
+                    <include>**</include>
+                  </includes>
                 </filter>
               </filters>
               <relocations>
@@ -264,28 +253,28 @@
                   <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>io.grpc</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.io.grpc</shadedPattern>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.grpc</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>okio</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.okio</shadedPattern>
+                  <pattern>okio</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.okio</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>com.squareup</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.com.squareup</shadedPattern>
+                  <pattern>com.squareup</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.com.squareup</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>io.opencensus</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.io.opencensus</shadedPattern>
+                  <pattern>io.opencensus</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.opencensus</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>org.eclipse.jetty</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
+                  <pattern>org.eclipse.jetty</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.eclipse.jetty</shadedPattern>
                 </relocation>
                 <relocation>
-                    <pattern>org.apache.http</pattern>
-                    <shadedPattern>org.apache.pulsar.shade.org.apache.http</shadedPattern>
+                  <pattern>org.apache.http</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.http</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.objenesis</pattern>
@@ -330,14 +319,13 @@
                 </relocation>
               </relocations>
               <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
-                <transformer implementation="org.apache.maven.plugins.shade.resource.PluginXmlResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.PluginXmlResourceTransformer"/>
               </transformers>
             </configuration>
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <!-- This plugin is used to run a script after the package phase in order to rename
             libnetty_transport_native_epoll_x86_64.so from Netty into
@@ -358,6 +346,28 @@
               <arguments>
                 <argument>${project.artifactId}</argument>
               </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>javadoc-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <classifier>javadoc</classifier>
             </configuration>
           </execution>
         </executions>

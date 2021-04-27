@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -24,7 +24,7 @@
     <Pulsar name="PulsarAppenderWithLayout" serviceUrl="pulsar://localhost:6650" topic="persistent://t/c/n/pulsar-topic" avoidRecursive="false">
       <PatternLayout pattern="[%m]"/>
     </Pulsar>
-    <Pulsar name="PulsarAppenderWithSerializedLayout" serviceUrl="pulsar://localhost:6650"  topic="persistent://t/c/n/pulsar-topic" avoidRecursive="false">
+    <Pulsar name="PulsarAppenderWithSerializedLayout" serviceUrl="pulsar://localhost:6650" topic="persistent://t/c/n/pulsar-topic" avoidRecursive="false">
       <SerializedLayout/>
     </Pulsar>
     <Pulsar name="AsyncPulsarAppender" serviceUrl="pulsar://localhost:6650" topic="persistent://t/c/n/pulsar-topic" avoidRecursive="false">
