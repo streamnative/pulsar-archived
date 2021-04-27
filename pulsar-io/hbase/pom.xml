@@ -66,11 +66,23 @@
           <artifactId>javax.el</artifactId>
         </exclusion>
       </exclusions>
+      <exclusions>
+        <exclusion>
+          <groupId>org.glassfish</groupId>
+          <artifactId>javax.el</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-server</artifactId>
       <version>${hbase.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.glassfish</groupId>
+          <artifactId>javax.el</artifactId>
+        </exclusion>
+      </exclusions>
       <exclusions>
         <exclusion>
           <groupId>org.glassfish</groupId>
@@ -88,6 +100,17 @@
           <artifactId>javax.el</artifactId>
         </exclusion>
       </exclusions>
+      <exclusions>
+        <exclusion>
+          <groupId>org.glassfish</groupId>
+          <artifactId>javax.el</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>javax.el</artifactId>
+      <version>3.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>
