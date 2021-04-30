@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,20 +20,18 @@
 
 -->
 <configuration scan="true">
-	<logger name="org.apache" level="INFO" />
-	<logger name="org" level="INFO" />
-	<logger name="com" level="INFO" />
-	<logger name="io" level="INFO" />
-	<logger name="org.apache.pulsar.client.api" level="INFO" />
-
-	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+  <logger name="org.apache" level="INFO"/>
+  <logger name="org" level="INFO"/>
+  <logger name="com" level="INFO"/>
+  <logger name="io" level="INFO"/>
+  <logger name="org.apache.pulsar.client.api" level="INFO"/>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
 			</pattern>
-		</encoder>
-	</appender>
-
-	<root level="DEBUG">
-		<appender-ref ref="STDOUT" />
-	</root>
+    </encoder>
+  </appender>
+  <root level="DEBUG">
+    <appender-ref ref="STDOUT"/>
+  </root>
 </configuration>
