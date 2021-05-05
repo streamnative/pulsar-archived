@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar-functions</artifactId>
-    <version>2.7.1.5-rc-202105051307</version>
+    <version>2.7.1.5-rc-202105051501</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>pulsar-functions-local-runner-original</artifactId>
