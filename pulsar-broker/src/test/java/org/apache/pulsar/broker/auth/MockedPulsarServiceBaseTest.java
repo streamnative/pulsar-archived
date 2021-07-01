@@ -53,6 +53,7 @@ import org.apache.pulsar.broker.intercept.CounterBrokerInterceptor;
 import org.apache.pulsar.broker.namespace.NamespaceService;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.common.policies.data.ClusterData;
@@ -122,7 +123,28 @@ public abstract class MockedPulsarServiceBaseTest {
     }
 
     protected PulsarClient newPulsarClient(String url, int intervalInSecs) throws PulsarClientException {
-        return PulsarClient.builder().serviceUrl(url).statsInterval(intervalInSecs, TimeUnit.SECONDS).build();
+        ClientBuilder clientBuilder =
+                PulsarClient.builder()
+                        .serviceUrl(url)
+                        .statsInterval(intervalInSecs, TimeUnit.SECONDS);
+        customizeNewPulsarClientBuilder(clientBuilder);
+        return createNewPulsarClient(clientBuilder);
+    }
+
+    protected void customizeNewPulsarClientBuilder(ClientBuilder clientBuilder) {
+
+    }
+
+    protected PulsarClient createNewPulsarClient(ClientBuilder clientBuilder) throws PulsarClientException {
+        return clientBuilder.build();
+    }
+
+    protected PulsarClient replacePulsarClient(ClientBuilder clientBuilder) throws PulsarClientException {
+        if (pulsarClient != null) {
+            pulsarClient.shutdown();
+        }
+        pulsarClient = createNewPulsarClient(clientBuilder);
+        return pulsarClient;
     }
 
     protected final void internalSetupForStatsTest() throws Exception {
