@@ -21,6 +21,8 @@ package org.apache.pulsar.broker.transaction;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNotNull;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -53,6 +55,10 @@ import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.metadata.impl.ZKMetadataStore;
 import org.apache.pulsar.tests.TestRetrySupport;
+import org.apache.pulsar.transaction.coordinator.TransactionCoordinatorID;
+import org.apache.pulsar.transaction.coordinator.TransactionMetadataStore;
+import org.apache.pulsar.transaction.coordinator.TransactionMetadataStoreState;
+import org.apache.pulsar.transaction.coordinator.impl.MLTransactionMetadataStore;
 import org.apache.pulsar.zookeeper.ZooKeeperClientFactory;
 import org.apache.pulsar.zookeeper.ZookeeperClientFactoryImpl;
 import org.apache.zookeeper.data.ACL;
@@ -60,6 +66,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.MockZooKeeper;
 import org.apache.zookeeper.MockZooKeeperSession;
 import org.apache.zookeeper.ZooKeeper;
+import org.awaitility.Awaitility;
 
 @Slf4j
 public abstract class TransactionTestBase extends TestRetrySupport {
@@ -290,6 +297,18 @@ public abstract class TransactionTestBase extends TestRetrySupport {
         } catch (Exception e) {
             log.warn("Failed to clean up mocked pulsar service:", e);
         }
+    }
+    public boolean waitForCoordinatorToBeAvailable(int numOfBroker, int numOfTCPerBroker){
+        // wait tc init success to ready state
+        Awaitility.await().untilAsserted(() -> {
+            TransactionMetadataStore transactionMetadataStore =
+                    getPulsarServiceList().get(numOfBroker - 1).getTransactionMetadataStoreService()
+                            .getStores().get(TransactionCoordinatorID.get(numOfTCPerBroker - 1));
+            assertNotNull(transactionMetadataStore);
+            assertEquals(((MLTransactionMetadataStore) transactionMetadataStore).getState(),
+                    TransactionMetadataStoreState.State.Ready);
+        });
+        return true;
     }
 
 }

@@ -32,6 +32,8 @@ import org.apache.pulsar.client.api.ConsumerBuilder;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.apache.pulsar.client.api.transaction.Transaction;
+import org.apache.pulsar.client.api.transaction.TxnID;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.common.naming.TopicName;
@@ -53,13 +55,14 @@ public class TransactionTest extends TransactionTestBase {
 
     private static final String TENANT = "tnx";
     private static final String NAMESPACE1 = TENANT + "/ns1";
-
+    private static final int NUM_BROKER = 1;
+    private static final int NUM_TC_PER_ = 1;
     @BeforeMethod
     protected void setup() throws Exception {
         this.setBrokerCount(1);
         this.internalSetup();
 
-        String[] brokerServiceUrlArr = getPulsarServiceList().get(0).getBrokerServiceUrl().split(":");
+        String[] brokerServiceUrlArr = getPulsarServiceList().get(NUM_BROKER - 1).getBrokerServiceUrl().split(":");
         String webServicePort = brokerServiceUrlArr[brokerServiceUrlArr.length - 1];
         admin.clusters().createCluster(CLUSTER_NAME, ClusterData.builder().serviceUrl("http://localhost:" + webServicePort).build());
         admin.tenants().createTenant(TENANT,
@@ -69,10 +72,10 @@ public class TransactionTest extends TransactionTestBase {
         admin.tenants().createTenant(NamespaceName.SYSTEM_NAMESPACE.getTenant(),
                 new TenantInfoImpl(Sets.newHashSet("appid1"), Sets.newHashSet(CLUSTER_NAME)));
         admin.namespaces().createNamespace(NamespaceName.SYSTEM_NAMESPACE.toString());
-        admin.topics().createPartitionedTopic(TopicName.TRANSACTION_COORDINATOR_ASSIGN.toString(), 1);
+        admin.topics().createPartitionedTopic(TopicName.TRANSACTION_COORDINATOR_ASSIGN.toString(), NUM_TC_PER_);
         pulsarClient.close();
         pulsarClient = PulsarClient.builder()
-                .serviceUrl(getPulsarServiceList().get(0).getBrokerServiceUrl())
+                .serviceUrl(getPulsarServiceList().get(NUM_BROKER - 1).getBrokerServiceUrl())
                 .statsInterval(0, TimeUnit.SECONDS)
                 .enableTransaction(true)
                 .build();
@@ -138,5 +141,22 @@ public class TransactionTest extends TransactionTestBase {
                 .subscriptionType(SubscriptionType.Shared)
                 .enableBatchIndexAcknowledgment(true)
                 .subscribe();
+    }
+
+    @Test
+    public void testGetTxnID() throws Exception {
+        // wait tc init success to ready state
+        Assert.assertTrue(waitForCoordinatorToBeAvailable(NUM_BROKER, NUM_TC_PER_));
+        Transaction transaction = pulsarClient.newTransaction()
+                .build().get();
+        TxnID txnID = transaction.getTxnID();
+        Assert.assertEquals(txnID.getLeastSigBits(), 0);
+        Assert.assertEquals(txnID.getMostSigBits(), 0);
+        transaction.abort();
+        transaction = pulsarClient.newTransaction()
+                .build().get();
+        txnID = transaction.getTxnID();
+        Assert.assertEquals(txnID.getLeastSigBits(), 1);
+        Assert.assertEquals(txnID.getMostSigBits(), 0);
     }
 }
