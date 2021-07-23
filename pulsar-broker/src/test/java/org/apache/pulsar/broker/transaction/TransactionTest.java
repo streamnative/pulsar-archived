@@ -62,7 +62,7 @@ public class TransactionTest extends TransactionTestBase {
         this.setBrokerCount(1);
         this.internalSetup();
 
-        String[] brokerServiceUrlArr = getPulsarServiceList().get(NUM_BROKER - 1).getBrokerServiceUrl().split(":");
+        String[] brokerServiceUrlArr = getPulsarServiceList().get(0).getBrokerServiceUrl().split(":");
         String webServicePort = brokerServiceUrlArr[brokerServiceUrlArr.length - 1];
         admin.clusters().createCluster(CLUSTER_NAME, ClusterData.builder().serviceUrl("http://localhost:" + webServicePort).build());
         admin.tenants().createTenant(TENANT,
