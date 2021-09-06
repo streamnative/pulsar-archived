@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,20 +19,16 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <parent>
-    <groupId>org.apache.pulsar</groupId>
+    <groupId>io.streamnative</groupId>
     <artifactId>pulsar-functions</artifactId>
     <version>2.1.0-incubating-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
-
   <artifactId>pulsar-functions-worker-shaded</artifactId>
   <name>Pulsar Functions :: Worker Shaded</name>
-
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -51,14 +47,12 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <!-- bookkeeper-server-shaded include circe-checksum, bookkeeper-common and bookkeeper-stats-api -->
     <dependency>
       <groupId>org.apache.bookkeeper</groupId>
       <artifactId>bookkeeper-server-shaded</artifactId>
     </dependency>
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
@@ -74,7 +68,6 @@
               <createDependencyReducedPom>true</createDependencyReducedPom>
               <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
               <minimizeJar>false</minimizeJar>
-
               <artifactSet>
                 <!-- package the dependencies that use protobuf & grpc and relocate protobuf -->
                 <includes>
@@ -85,11 +78,11 @@
                   <include>com.google.instrumentation:instrumentation-api</include>
                   <include>com.google.api.grpc:proto-google-common-protos</include>
                   <!-- dependencies use protobuf -->
-                  <include>org.apache.pulsar:pulsar-functions-proto</include>
-                  <include>org.apache.pulsar:pulsar-functions-utils</include>
-                  <include>org.apache.pulsar:pulsar-functions-instance</include>
-                  <include>org.apache.pulsar:pulsar-functions-runtime</include>
-                  <include>org.apache.pulsar:pulsar-functions-worker</include>
+                  <include>io.streamnative:pulsar-functions-proto</include>
+                  <include>io.streamnative:pulsar-functions-utils</include>
+                  <include>io.streamnative:pulsar-functions-instance</include>
+                  <include>io.streamnative:pulsar-functions-runtime</include>
+                  <include>io.streamnative:pulsar-functions-worker</include>
                   <!-- protobuf dependencies in grpc -->
                   <include>io.grpc:*</include>
                   <!-- bookkeeper key/value service -->
@@ -103,6 +96,30 @@
                   <shadedPattern>org.apache.pulsar.functions.shaded.com.google.protobuf</shadedPattern>
                 </relocation>
               </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.2.0</version>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>javadoc-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <classifier>javadoc</classifier>
             </configuration>
           </execution>
         </executions>
