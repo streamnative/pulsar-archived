@@ -119,6 +119,7 @@ import org.apache.pulsar.broker.stats.ClusterReplicationMetrics;
 import org.apache.pulsar.broker.stats.prometheus.metrics.ObserverGauge;
 import org.apache.pulsar.broker.stats.prometheus.metrics.Summary;
 import org.apache.pulsar.broker.systopic.SystemTopicClient;
+import org.apache.pulsar.broker.validator.BindAddressValidator;
 import org.apache.pulsar.broker.web.PulsarWebResource;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminBuilder;
@@ -128,6 +129,7 @@ import org.apache.pulsar.client.impl.ClientBuilderImpl;
 import org.apache.pulsar.client.impl.PulsarClientImpl;
 import org.apache.pulsar.client.impl.conf.ClientConfigurationData;
 import org.apache.pulsar.common.allocator.PulsarByteBufAllocator;
+import org.apache.pulsar.common.configuration.BindAddress;
 import org.apache.pulsar.common.configuration.FieldContext;
 import org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor;
 import org.apache.pulsar.common.intercept.BrokerEntryMetadataInterceptor;
@@ -259,6 +261,7 @@ public class BrokerService implements Closeable, ZooKeeperCacheListener<Policies
     private final DelayedDeliveryTrackerFactory delayedDeliveryTrackerFactory;
     private final ServerBootstrap defaultServerBootstrap;
 
+    private final List<Channel> listenChannels = new ArrayList<>(2);
     private Channel listenChannel;
     private Channel listenChannelTls;
 
@@ -413,37 +416,35 @@ public class BrokerService implements Closeable, ZooKeeperCacheListener<Policies
         this.producerNameGenerator = new DistributedIdGenerator(pulsar.getCoordinationService(),
                 PRODUCER_NAME_GENERATOR_PATH, pulsar.getConfiguration().getClusterName());
 
-        ServerBootstrap bootstrap = defaultServerBootstrap.clone();
-
         ServiceConfiguration serviceConfig = pulsar.getConfiguration();
+        List<BindAddress> bindAddresses = BindAddressValidator.validateBindAddresses(serviceConfig);
+        String internalListenerName = serviceConfig.getInternalListenerName();
 
-        bootstrap.childHandler(new PulsarChannelInitializer(pulsar, false));
-
-        Optional<Integer> port = serviceConfig.getBrokerServicePort();
-        if (port.isPresent()) {
-            // Bind and start to accept incoming connections.
-            InetSocketAddress addr = new InetSocketAddress(pulsar.getBindAddress(), port.get());
+        // create a server socket for each bind address
+        for (BindAddress a : bindAddresses) {
+            InetSocketAddress addr = new InetSocketAddress(a.getAddress().getHost(), a.getAddress().getPort());
+            String listenerName = a.getListenerName();
+            ServerBootstrap b = defaultServerBootstrap.clone();
+            b.childHandler(new PulsarChannelInitializer(pulsar, a.isTLS(), a.getListenerName()));
             try {
-                listenChannel = bootstrap.bind(addr).sync().channel();
-                log.info("Started Pulsar Broker service on {}", listenChannel.localAddress());
+                Channel ch = b.bind(addr).sync().channel();
+                listenChannels.add(ch);
+
+                if (listenerName == null || StringUtils.equalsIgnoreCase(listenerName, internalListenerName)) {
+                    // use the internal listener as the primary channel.
+                    if (this.listenChannel == null && !a.isTLS()) {
+                        this.listenChannel = ch;
+                    }
+                    if (this.listenChannelTls == null && a.isTLS()) {
+                        this.listenChannelTls = ch;
+                    }
+                }
+
+                log.info("Started Pulsar Broker service on {}, TLS: {}",
+                        ch.localAddress(),
+                        a.isTLS() ? SslContext.defaultServerProvider().toString() : "(none)");
             } catch (Exception e) {
                 throw new IOException("Failed to bind Pulsar broker on " + addr, e);
-            }
-        }
-
-        Optional<Integer> tlsPort = serviceConfig.getBrokerServicePortTls();
-        if (tlsPort.isPresent()) {
-            ServerBootstrap tlsBootstrap = bootstrap.clone();
-            tlsBootstrap.childHandler(new PulsarChannelInitializer(pulsar, true));
-            try {
-                listenChannelTls = tlsBootstrap.bind(new InetSocketAddress(
-                        pulsar.getBindAddress(), tlsPort.get())).sync()
-                        .channel();
-                log.info("Started Pulsar Broker TLS service on {} - TLS provider: {}", listenChannelTls.localAddress(),
-                        SslContext.defaultServerProvider());
-            } catch (Exception e) {
-                throw new IOException(String.format("Failed to start Pulsar Broker TLS service on %s:%d",
-                        pulsar.getBindAddress(), tlsPort.get()), e);
             }
         }
 
@@ -711,14 +712,11 @@ public class BrokerService implements Closeable, ZooKeeperCacheListener<Policies
                                 log.info("Continuing to second phase in shutdown.");
 
                                 List<CompletableFuture<Void>> asyncCloseFutures = new ArrayList<>();
-
-                                if (listenChannel != null && listenChannel.isOpen()) {
-                                    asyncCloseFutures.add(closeChannel(listenChannel));
-                                }
-
-                                if (listenChannelTls != null && listenChannelTls.isOpen()) {
-                                    asyncCloseFutures.add(closeChannel(listenChannelTls));
-                                }
+                                listenChannels.forEach(ch -> {
+                                    if (ch.isOpen()) {
+                                        asyncCloseFutures.add(closeChannel(ch));
+                                    }
+                                });
 
                                 if (interceptor != null) {
                                     interceptor.close();

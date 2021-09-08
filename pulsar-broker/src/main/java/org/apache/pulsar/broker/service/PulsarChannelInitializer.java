@@ -46,6 +46,7 @@ public class PulsarChannelInitializer extends ChannelInitializer<SocketChannel> 
 
     private final PulsarService pulsar;
     private final boolean enableTls;
+    private final String listenerName;
     private final boolean tlsEnabledWithKeyStore;
     private SslContextAutoRefreshBuilder<SslContext> sslCtxRefresher;
     private final ServiceConfiguration brokerConf;
@@ -64,11 +65,14 @@ public class PulsarChannelInitializer extends ChannelInitializer<SocketChannel> 
      *              An instance of {@link PulsarService}
      * @param enableTLS
      *              Enable tls or not
+     * @param listenerName
+     *              The listener associated with the channel, or null if the bind address has none.
      */
-    public PulsarChannelInitializer(PulsarService pulsar, boolean enableTLS) throws Exception {
+    public PulsarChannelInitializer(PulsarService pulsar, boolean enableTLS, String listenerName) throws Exception {
         super();
         this.pulsar = pulsar;
         this.enableTls = enableTLS;
+        this.listenerName = listenerName;
         ServiceConfiguration serviceConfig = pulsar.getConfiguration();
         this.tlsEnabledWithKeyStore = serviceConfig.isTlsEnabledWithKeyStore();
         if (this.enableTls) {
@@ -129,7 +133,7 @@ public class PulsarChannelInitializer extends ChannelInitializer<SocketChannel> 
         // ServerCnx ends up reading higher number of messages and broker can not throttle the messages by disabling
         // auto-read.
         ch.pipeline().addLast("flowController", new FlowControlHandler());
-        ServerCnx cnx = new ServerCnx(pulsar);
+        ServerCnx cnx = new ServerCnx(pulsar, this.listenerName);
         ch.pipeline().addLast("handler", cnx);
 
         connections.put(ch.remoteAddress(), cnx);

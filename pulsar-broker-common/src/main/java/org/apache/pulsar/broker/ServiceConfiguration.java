@@ -168,6 +168,14 @@ public class ServiceConfiguration implements PulsarConfiguration {
     private String internalListenerName;
 
     @FieldContext(category=CATEGORY_SERVER,
+            doc = "Used to specify multiple bind addresses for the broker."
+                    + " The value must format as <listener_name>:pulsar://<host>:<port>,"
+                    + "multiple bind addresses should separate with commas."
+                    + "Use this configuration with advertisedListeners."
+                    + "The Default value is absent means use bindAddress for all listeners.")
+    private String bindAddresses;
+
+    @FieldContext(category=CATEGORY_SERVER,
             doc = "Enable or disable the proxy protocol.")
     private boolean haProxyProtocolEnabled;
 
