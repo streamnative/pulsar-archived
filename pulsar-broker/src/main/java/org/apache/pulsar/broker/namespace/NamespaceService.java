@@ -421,9 +421,10 @@ public class NamespaceService implements AutoCloseable {
                                     new PulsarServerException("the broker do not have "
                                             + options.getAdvertisedListenerName() + " listener"));
                         } else {
+                            URI url = listener.getBrokerServiceUrl();
                             URI urlTls = listener.getBrokerServiceUrlTls();
                             future.complete(Optional.of(new LookupResult(nsData.get(),
-                                    listener.getBrokerServiceUrl().toString(),
+                                    url == null ? null : url.toString(),
                                     urlTls == null ? null : urlTls.toString())));
                         }
                         return;
@@ -542,9 +543,11 @@ public class NamespaceService implements AutoCloseable {
                                                 + options.getAdvertisedListenerName() + " listener"));
                                 return;
                             } else {
+                                URI url = listener.getBrokerServiceUrl();
                                 URI urlTls = listener.getBrokerServiceUrlTls();
                                 lookupFuture.complete(Optional.of(
-                                        new LookupResult(ownerInfo, listener.getBrokerServiceUrl().toString(),
+                                        new LookupResult(ownerInfo,
+                                                url == null ? null : url.toString(),
                                                 urlTls == null ? null : urlTls.toString())));
                                 return;
                             }
@@ -603,9 +606,10 @@ public class NamespaceService implements AutoCloseable {
                                     new PulsarServerException(
                                             "the broker do not have " + advertisedListenerName + " listener"));
                         } else {
+                            URI url = listener.getBrokerServiceUrl();
                             URI urlTls = listener.getBrokerServiceUrlTls();
                             lookupFuture.complete(new LookupResult(lookupData.getWebServiceUrl(),
-                                    lookupData.getWebServiceUrlTls(), listener.getBrokerServiceUrl().toString(),
+                                    lookupData.getWebServiceUrlTls(), url == null ? null : url.toString(),
                                     urlTls == null ? null : urlTls.toString(), authoritativeRedirect));
                         }
                     } else {
