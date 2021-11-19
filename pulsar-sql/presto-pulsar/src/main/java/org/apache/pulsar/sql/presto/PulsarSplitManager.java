@@ -107,8 +107,11 @@ public class PulsarSplitManager implements ConnectorSplitManager {
         SchemaInfo schemaInfo;
 
         try {
-            schemaInfo = this.pulsarAdmin.schemas().getSchemaInfo(
-                    String.format("%s/%s", namespace, tableHandle.getTopicName()));
+            // TODO this call functions as the auth check. We still make calls via the existing methods
+            // but if the user can't read schema, then they cannot read the data
+            PulsarAdmin userSpecificClient = pulsarConnectorConfig.getPulsarAdminForSession(session);
+            schemaInfo = userSpecificClient.schemas().getSchemaInfo(
+                    String.format("%s/%s", namespace, tableHandle.getTableName()));
         } catch (PulsarAdminException e) {
             if (e.getStatusCode() == 401) {
                 throw new PrestoException(QUERY_REJECTED,
@@ -121,6 +124,10 @@ public class PulsarSplitManager implements ConnectorSplitManager {
                         + String.format("%s/%s", namespace, tableHandle.getTopicName())
                         + ": " + ExceptionUtils.getRootCause(e).getLocalizedMessage(), e);
             }
+        } catch (PulsarClientException e) {
+            throw new RuntimeException("Failed to get pulsar topic schema for topic "
+                    + String.format("%s/%s", namespace, tableHandle.getTableName())
+                    + ": " + ExceptionUtils.getRootCause(e).getLocalizedMessage(), e);
         }
 
         Collection<PulsarSplit> splits;

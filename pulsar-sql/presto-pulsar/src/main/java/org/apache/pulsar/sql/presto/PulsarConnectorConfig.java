@@ -27,6 +27,8 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.ClientBuilder;
+
+import io.prestosql.spi.connector.ConnectorSession;
 import org.apache.bookkeeper.stats.NullStatsProvider;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -427,28 +429,46 @@ public class PulsarConnectorConfig implements AutoCloseable {
     @NotNull
     public PulsarAdmin getPulsarAdmin() throws PulsarClientException {
         if (this.pulsarAdmin == null) {
-            PulsarAdminBuilder builder = PulsarAdmin.builder();
-
+            PulsarAdminBuilder builder = buildBaseAdmin();
             if (getAuthPlugin() != null) {
                 builder.authentication(getAuthPlugin(), getAuthParams());
             }
-
-            if (isTlsAllowInsecureConnection() != null) {
-                builder.allowTlsInsecureConnection(isTlsAllowInsecureConnection());
-            }
-
-            if (isTlsHostnameVerificationEnable() != null) {
-                builder.enableTlsHostnameVerification(isTlsHostnameVerificationEnable());
-            }
-
-            if (getTlsTrustCertsFilePath() != null) {
-                builder.tlsTrustCertsFilePath(getTlsTrustCertsFilePath());
-            }
-
-            builder.setContextClassLoader(ClientBuilder.class.getClassLoader());
-            this.pulsarAdmin = builder.serviceHttpUrl(getBrokerServiceUrl()).build();
+            this.pulsarAdmin = builder.build();
         }
         return this.pulsarAdmin;
+    }
+
+    @NotNull
+    public PulsarAdmin getPulsarAdminForSession(ConnectorSession session) throws PulsarClientException {
+        // no extra creds, fallback to default session
+        if (session.getIdentity().getExtraCredentials().isEmpty()) {
+            return this.getPulsarAdmin();
+        }
+        PulsarAdminBuilder builder = buildBaseAdmin();
+        // TODO make this cleaner and handle errors
+        builder.authentication(session.getIdentity().getExtraCredentials().get("auth-method"), session.getIdentity().getExtraCredentials().get("auth-params"));
+        return builder.build();
+
+    }
+
+    private PulsarAdminBuilder buildBaseAdmin() throws PulsarClientException.UnsupportedAuthenticationException {
+        PulsarAdminBuilder builder = PulsarAdmin.builder();
+
+
+        if (isTlsAllowInsecureConnection() != null) {
+            builder.allowTlsInsecureConnection(isTlsAllowInsecureConnection());
+        }
+
+        if (isTlsHostnameVerificationEnable() != null) {
+            builder.enableTlsHostnameVerification(isTlsHostnameVerificationEnable());
+        }
+
+        if (getTlsTrustCertsFilePath() != null) {
+            builder.tlsTrustCertsFilePath(getTlsTrustCertsFilePath());
+        }
+
+        builder.setContextClassLoader(ClientBuilder.class.getClassLoader());
+        return builder;
     }
 
     public OffloadPoliciesImpl getOffloadPolices() {
