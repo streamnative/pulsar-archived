@@ -74,6 +74,40 @@ public interface AuthenticationProvider extends Closeable {
     }
 
     /**
+     * Create an http authentication data State use passed in AuthenticationDataSource.
+     */
+    default AuthenticationState newHttpAuthState(HttpServletRequest request)
+            throws AuthenticationException {
+        return new OneStageAuthenticationState(request, this);
+    }
+
+    /**
+     * Validate the authentication for the given credentials with the specified authentication data.
+     *
+     * <p>Warning: the calling thread is an IO thread. Any implementations that rely on blocking behavior
+     * must ensure that the execution is completed on using a separate thread pool to ensure IO threads
+     * are never blocked.</p>
+     *
+     * <p>Note: this method is marked as unstable because the Pulsar code base only calls it for the
+     * Pulsar Broker Auth SASL plugin. All non SASL HTTP requests are authenticated using the
+     * {@link AuthenticationProvider#authenticateAsync(AuthenticationDataSource)} method. As such,
+     * this method might be removed in favor of the SASL provider implementing the
+     * {@link AuthenticationProvider#authenticateAsync(AuthenticationDataSource)} method.</p>
+     *
+     * @return Set response, according to passed in request.
+     * and return whether we should do following chain.doFilter or not.
+     */
+    @InterfaceStability.Unstable
+    default CompletableFuture<Boolean> authenticateHttpRequestAsync(HttpServletRequest request,
+                                                                    HttpServletResponse response) {
+        try {
+            return CompletableFuture.completedFuture(this.authenticateHttpRequest(request, response));
+        } catch (Exception e) {
+            return FutureUtil.failedFuture(e);
+        }
+    }
+
+    /**
      * Set response, according to passed in request.
      * and return whether we should do following chain.doFilter or not.
      */

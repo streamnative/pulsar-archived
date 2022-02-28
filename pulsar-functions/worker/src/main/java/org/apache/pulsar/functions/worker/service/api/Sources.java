@@ -37,26 +37,107 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
  */
 public interface Sources<W extends WorkerService> extends Component<W> {
 
-    void registerSource(final String tenant,
-                        final String namespace,
-                        final String sourceName,
-                        final InputStream uploadedInputStream,
-                        final FormDataContentDisposition fileDetail,
-                        final String sourcePkgUrl,
-                        final SourceConfig sourceConfig,
-                        final String clientRole,
-                        AuthenticationDataHttps clientAuthenticationDataHttps);
+    /**
+     * Update a function.
+     * @param tenant The tenant of a Pulsar Source
+     * @param namespace The namespace of a Pulsar Source
+     * @param sourceName The name of a Pulsar Source
+     * @param uploadedInputStream Input stream of bytes
+     * @param fileDetail A form-data content disposition header
+     * @param sourcePkgUrl URL path of the Pulsar Source package
+     * @param sourceConfig Configuration of Pulsar Source
+     * @param clientRole Client role for running the Pulsar Source
+     * @param clientAuthenticationDataHttps Authentication status of the http client
+     */
+    void registerSource(String tenant,
+                        String namespace,
+                        String sourceName,
+                        InputStream uploadedInputStream,
+                        FormDataContentDisposition fileDetail,
+                        String sourcePkgUrl,
+                        SourceConfig sourceConfig,
+                        String clientRole,
+                        AuthenticationDataSource clientAuthenticationDataHttps);
 
-    void updateSource(final String tenant,
-                      final String namespace,
-                      final String sourceName,
-                      final InputStream uploadedInputStream,
-                      final FormDataContentDisposition fileDetail,
-                      final String sourcePkgUrl,
-                      final SourceConfig sourceConfig,
-                      final String clientRole,
-                      AuthenticationDataHttps clientAuthenticationDataHttps,
+    /**
+     * This method uses an incorrect signature 'AuthenticationDataHttps' that prevents the extension of auth status,
+     * so it is marked as deprecated and kept here only for backward compatibility. Please use the method that accepts
+     * the signature of the AuthenticationDataSource.
+     */
+    @Deprecated
+    default void registerSource(String tenant,
+                        String namespace,
+                        String sourceName,
+                        InputStream uploadedInputStream,
+                        FormDataContentDisposition fileDetail,
+                        String sourcePkgUrl,
+                        SourceConfig sourceConfig,
+                        String clientRole,
+                        AuthenticationDataHttps clientAuthenticationDataHttps) {
+        registerSource(
+                tenant,
+                namespace,
+                sourceName,
+                uploadedInputStream,
+                fileDetail,
+                sourcePkgUrl,
+                sourceConfig,
+                clientRole,
+                (AuthenticationDataSource) clientAuthenticationDataHttps);
+    }
+
+    /**
+     * Update a function.
+     * @param tenant The tenant of a Pulsar Source
+     * @param namespace The namespace of a Pulsar Source
+     * @param sourceName The name of a Pulsar Source
+     * @param uploadedInputStream Input stream of bytes
+     * @param fileDetail A form-data content disposition header
+     * @param sourcePkgUrl URL path of the Pulsar Source package
+     * @param sourceConfig Configuration of Pulsar Source
+     * @param clientRole Client role for running the Pulsar Source
+     * @param clientAuthenticationDataHttps Authentication status of the http client
+     * @param updateOptions Options while updating the source
+     */
+    void updateSource(String tenant,
+                      String namespace,
+                      String sourceName,
+                      InputStream uploadedInputStream,
+                      FormDataContentDisposition fileDetail,
+                      String sourcePkgUrl,
+                      SourceConfig sourceConfig,
+                      String clientRole,
+                      AuthenticationDataSource clientAuthenticationDataHttps,
                       UpdateOptionsImpl updateOptions);
+
+    /**
+     * This method uses an incorrect signature 'AuthenticationDataHttps' that prevents the extension of auth status,
+     * so it is marked as deprecated and kept here only for backward compatibility. Please use the method that accepts
+     * the signature of the AuthenticationDataSource.
+     */
+    @Deprecated
+    default void updateSource(String tenant,
+                      String namespace,
+                      String sourceName,
+                      InputStream uploadedInputStream,
+                      FormDataContentDisposition fileDetail,
+                      String sourcePkgUrl,
+                      SourceConfig sourceConfig,
+                      String clientRole,
+                      AuthenticationDataHttps clientAuthenticationDataHttps,
+                      UpdateOptionsImpl updateOptions) {
+        updateSource(
+                tenant,
+                namespace,
+                sourceName,
+                uploadedInputStream,
+                fileDetail,
+                sourcePkgUrl,
+                sourceConfig,
+                clientRole,
+                (AuthenticationDataSource) clientAuthenticationDataHttps,
+                updateOptions);
+    }
 
 
     SourceStatus getSourceStatus(final String tenant,
