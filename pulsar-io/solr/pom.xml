@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar-io</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>2.10.0.0-rc10</version>
+    <version>branch-2.10.0.0-rc11</version>
   </parent>
   <properties>
     <solr.version>8.11.1</solr.version>

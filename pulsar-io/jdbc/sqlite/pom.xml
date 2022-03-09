@@ -23,7 +23,7 @@
   <parent>
     <artifactId>pulsar-io-jdbc</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>2.10.0.0-rc10</version>
+    <version>branch-2.10.0.0-rc11</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>pulsar-io-jdbc-sqlite</artifactId>
