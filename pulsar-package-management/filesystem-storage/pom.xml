@@ -23,7 +23,7 @@
   <parent>
     <artifactId>pulsar-package-management</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>branch-2.10.0.0-rc11</version>
+    <version>branch-2.10.0.0-rc-11</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>pulsar-package-filesystem-storage</artifactId>

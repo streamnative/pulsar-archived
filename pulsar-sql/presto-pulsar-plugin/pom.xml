@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar-sql</artifactId>
-    <version>branch-2.10.0.0-rc11</version>
+    <version>branch-2.10.0.0-rc-11</version>
   </parent>
   <artifactId>pulsar-presto-connector</artifactId>
   <name>Pulsar SQL :: Pulsar Presto Connector</name>

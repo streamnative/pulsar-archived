@@ -25,7 +25,7 @@
   <parent>
     <groupId>io.streamnative.tests</groupId>
     <artifactId>tests-parent</artifactId>
-    <version>branch-2.10.0.0-rc11</version>
+    <version>branch-2.10.0.0-rc-11</version>
   </parent>
   <artifactId>docker-images</artifactId>
   <name>Apache Pulsar :: Tests :: Docker Images</name>
