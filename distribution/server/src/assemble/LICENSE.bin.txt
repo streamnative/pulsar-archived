@@ -445,7 +445,7 @@ The Apache Software License, Version 2.0
     - org.eclipse.jetty.websocket-websocket-servlet-9.4.43.v20210629.jar
     - org.eclipse.jetty-jetty-alpn-conscrypt-server-9.4.43.v20210629.jar
     - org.eclipse.jetty-jetty-alpn-server-9.4.43.v20210629.jar
- * SnakeYaml -- org.yaml-snakeyaml-1.27.jar
+ * SnakeYaml -- org.yaml-snakeyaml-1.30.jar
  * RocksDB - org.rocksdb-rocksdbjni-6.10.2.jar
  * Google Error Prone Annotations - com.google.errorprone-error_prone_annotations-2.5.1.jar
  * Apache Thrift - org.apache.thrift-libthrift-0.14.2.jar
@@ -516,9 +516,9 @@ The Apache Software License, Version 2.0
     - io.vertx-vertx-web-3.9.8.jar
     - io.vertx-vertx-web-common-3.9.8.jar
   * Apache ZooKeeper
-    - org.apache.zookeeper-zookeeper-3.6.3.jar
-    - org.apache.zookeeper-zookeeper-jute-3.6.3.jar
-    - org.apache.zookeeper-zookeeper-prometheus-metrics-3.6.3.jar
+    - zookeeper-3.6.3.1.jar
+    - zookeeper-jute-3.6.3.1.jar
+    - zookeeper-prometheus-metrics-3.6.3.1.jar
   * Snappy Java
     - org.xerial.snappy-snappy-java-1.1.7.jar
   * Google HTTP Client
