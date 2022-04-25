@@ -27,6 +27,8 @@ import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerWrapper;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleLoadManagerImpl;
+import org.apache.pulsar.broker.loadbalance.test.BrokerDiscoveryImpl;
+import org.apache.pulsar.broker.loadbalance.test.ScalableLoadManagerWrapper;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.stats.Metrics;
 import org.apache.pulsar.common.util.Reflections;
@@ -141,6 +143,10 @@ public interface LoadManager {
                 return casted;
             } else if (loadManagerInstance instanceof ModularLoadManager) {
                 final LoadManager casted = new ModularLoadManagerWrapper((ModularLoadManager) loadManagerInstance);
+                casted.initialize(pulsar);
+                return casted;
+            } else if (loadManagerInstance instanceof BrokerDiscoveryImpl) {
+                final LoadManager casted = new ScalableLoadManagerWrapper((BrokerDiscoveryImpl) loadManagerInstance);
                 casted.initialize(pulsar);
                 return casted;
             }
