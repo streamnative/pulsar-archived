@@ -1539,17 +1539,6 @@ flexible messaging model and an intuitive client API.</description>
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.8</version>
-        <extensions>true</extensions>
-        <configuration>
-          <serverId>ossrh</serverId>
-          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-          <autoReleaseAfterClose>true</autoReleaseAfterClose>
-        </configuration>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <version>3.2.0</version>
@@ -2246,13 +2235,13 @@ flexible messaging model and an intuitive client API.</description>
     </repository>
   </repositories>
   <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
+      <snapshotRepository>
+    <id>staging</id>
+    <url>https://maven.cloudsmith.io/streamnative/staging/</url>
+  </snapshotRepository>
+  <repository>
+    <id>staging</id>
+    <url>https://maven.cloudsmith.io/streamnative/staging/</url>
+  </repository>
   </distributionManagement>
 </project>
