@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -20,8 +19,8 @@
 
 -->
 <FindBugsFilter>
-  <Match>
-    <Class name="~org.apache.zookeeper.*"/>
-    <Bug pattern="DM_EXIT,DM_DEFAULT_ENCODING"/>
-  </Match>
+    <Match>
+        <Class name="~org.apache.zookeeper.*"/>
+        <Bug pattern="DM_EXIT,DM_DEFAULT_ENCODING"/>
+    </Match>
 </FindBugsFilter>
