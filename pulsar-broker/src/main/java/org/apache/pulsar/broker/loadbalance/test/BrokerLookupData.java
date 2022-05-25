@@ -3,21 +3,25 @@ package org.apache.pulsar.broker.loadbalance.test;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.apache.pulsar.policies.data.loadbalancer.AdvertisedListener;
 import org.apache.pulsar.policies.data.loadbalancer.ServiceLookupData;
 
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class BrokerLookupData implements ServiceLookupData {
 
     // URLs to satisfy contract of ServiceLookupData (used by NamespaceService).
-    private final String webServiceUrl;
-    private final String webServiceUrlTls;
-    private final String pulsarServiceUrl;
-    private final String pulsarServiceUrlTls;
+    private String webServiceUrl;
+    private String webServiceUrlTls;
+    private String pulsarServiceUrl;
+    private String pulsarServiceUrlTls;
 
     // the external protocol data advertised by protocol handlers.
-    private Map<String, String> protocols;
+    private Map<String, String> protocols = new HashMap<>();
     private Map<String, AdvertisedListener> advertisedListeners;
 
     private boolean persistentTopicsEnabled = true;
@@ -31,7 +35,6 @@ public class BrokerLookupData implements ServiceLookupData {
         this.webServiceUrlTls = webServiceUrlTls;
         this.pulsarServiceUrl = pulsarServiceUrl;
         this.pulsarServiceUrlTls = pulsarServiceUrlTls;
-        this.protocols = new HashMap<>();
         this.advertisedListeners = Map.copyOf(advertisedListeners);
     }
 

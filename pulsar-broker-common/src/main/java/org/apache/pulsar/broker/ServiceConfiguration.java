@@ -2392,16 +2392,7 @@ public class ServiceConfiguration implements PulsarConfiguration {
         category = CATEGORY_LOAD_BALANCER,
         doc = "Name of load manager to use"
     )
-    @Deprecated
     private String loadManagerClassName = "org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerImpl";
-
-    @FieldContext(
-            dynamic = true,
-            category = CATEGORY_LOAD_BALANCER,
-            doc = "Name of load manager to use. Default: modular_load_manager. "
-                    + "The supported parameters are: modular_load_manager, simple_load_manager"
-    )
-    private String loadManagerName = "modular_load_manager";
 
     @FieldContext(
         dynamic = true,

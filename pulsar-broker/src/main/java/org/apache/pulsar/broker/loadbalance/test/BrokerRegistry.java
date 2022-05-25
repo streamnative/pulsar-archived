@@ -24,6 +24,8 @@ public interface BrokerRegistry {
      */
     void unregister() throws PulsarServerException;
 
+    String getLookupServiceAddress();
+
     /**
      * Get available brokers.
      */

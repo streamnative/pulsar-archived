@@ -2,7 +2,6 @@ package org.apache.pulsar.broker.loadbalance.test;
 
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
@@ -18,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class BrokerRegistryImpl implements BrokerRegistry {
@@ -32,11 +32,15 @@ public class BrokerRegistryImpl implements BrokerRegistry {
 
     private final LockManager<BrokerLookupData> brokerLookupDataLockManager;
 
-    private ResourceLock<BrokerLookupData> brokerLookupDataLock;
-
     private final String brokerZNodePath;
 
+    private final String lookupServiceAddress;
+
     private final Set<String> availableBrokers;
+
+    private final AtomicBoolean registered;
+
+    private volatile ResourceLock<BrokerLookupData> brokerLookupDataLock;
 
     public BrokerRegistryImpl(PulsarService pulsar) {
         this.pulsar = pulsar;
@@ -44,8 +48,13 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.brokerLookupDataLockManager = pulsar.getCoordinationService().getLockManager(BrokerLookupData.class);
         this.availableBrokers = new ConcurrentSkipListSet<>();
 
-        this.brokerLookupData = new BrokerLookupData(pulsar.getSafeWebServiceAddress(), pulsar.getWebServiceAddressTls(),
-                pulsar.getBrokerServiceUrl(), pulsar.getBrokerServiceUrlTls(), pulsar.getAdvertisedListeners());
+        this.registered = new AtomicBoolean(false);
+        this.brokerLookupData = new BrokerLookupData(
+                pulsar.getSafeWebServiceAddress(),
+                pulsar.getWebServiceAddressTls(),
+                pulsar.getBrokerServiceUrl(),
+                pulsar.getBrokerServiceUrlTls(),
+                pulsar.getAdvertisedListeners());
         // At this point, the ports will be updated with the real port number that the server was assigned
         Map<String, String> protocolData = pulsar.getProtocolDataToAdvertise();
         this.brokerLookupData.setProtocols(protocolData);
@@ -54,9 +63,8 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.brokerLookupData.setNonPersistentTopicsEnabled(pulsar.getConfiguration().isEnableNonPersistentTopics());
         this.brokerLookupData.setBrokerVersion(pulsar.getBrokerVersion());
 
-        String lookupServiceAddress = pulsar.getAdvertisedAddress() + ":"
-                + (conf.getWebServicePort().isPresent() ? conf.getWebServicePort().get()
-                : conf.getWebServicePortTls().get());
+        this.lookupServiceAddress = pulsar.getAdvertisedAddress() + ":"
+                + conf.getWebServicePort().orElseGet(() -> conf.getWebServicePortTls().get());
         this.brokerZNodePath = LOOKUP_DATA_PATH + "/" + lookupServiceAddress;
     }
 
@@ -67,12 +75,15 @@ public class BrokerRegistryImpl implements BrokerRegistry {
 
     @Override
     public void register() {
-        this.brokerLookupDataLock = brokerLookupDataLockManager.acquireLock(brokerZNodePath, brokerLookupData).join();
+        if (registered.compareAndSet(false, true)) {
+            this.brokerLookupDataLock
+                    = brokerLookupDataLockManager.acquireLock(brokerZNodePath, brokerLookupData).join();
+        }
     }
 
     @Override
     public void unregister() throws PulsarServerException {
-        if (StringUtils.isNotEmpty(brokerZNodePath)) {
+        if (registered.compareAndSet(true, false)) {
             try {
                 brokerLookupDataLock.release().join();
             } catch (CompletionException e) {
@@ -83,6 +94,11 @@ public class BrokerRegistryImpl implements BrokerRegistry {
                 }
             }
         }
+    }
+
+    @Override
+    public String getLookupServiceAddress() {
+        return this.lookupServiceAddress;
     }
 
     @Override
