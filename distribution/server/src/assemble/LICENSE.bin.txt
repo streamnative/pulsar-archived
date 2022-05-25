@@ -511,7 +511,7 @@ The Apache Software License, Version 2.0
     - io.vertx-vertx-core-3.5.3.jar
     - io.vertx-vertx-web-3.5.3.jar
   * Apache ZooKeeper
-    - org.apache.zookeeper-zookeeper-jute-3.5.9.jar
+    - zookeeper-jute-3.6.3.1.jar
   * IPAddress
     - com.github.seancfoley-ipaddress-5.3.3.jar
 
