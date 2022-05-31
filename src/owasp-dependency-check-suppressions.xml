@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -41,105 +41,103 @@
     <gav regex="true">org\.apache\.zookeeper:.*:3\.6\.2</gav>
     <vulnerabilityName regex="true">.*</vulnerabilityName>
   </suppress>
-
   <!-- see https://github.com/apache/pulsar/pull/14629-->
   <suppress>
-      <notes><![CDATA[
+    <notes>
   file name: kotlin-stdlib-common-1.4.32.jar
-  ]]></notes>
-      <sha1>ef50bfa2c0491a11dcc35d9822edbfd6170e1ea2</sha1>
-      <cpe>cpe:/a:jetbrains:kotlin</cpe>
+  </notes>
+    <sha1>ef50bfa2c0491a11dcc35d9822edbfd6170e1ea2</sha1>
+    <cpe>cpe:/a:jetbrains:kotlin</cpe>
   </suppress>
   <suppress>
-      <notes><![CDATA[
+    <notes>
   file name: kotlin-stdlib-jdk7-1.4.32.jar
-  ]]></notes>
-      <sha1>3546900a3ebff0c43f31190baf87a9220e37b7ea</sha1>
-      <cve>CVE-2022-24329</cve>
+  </notes>
+    <sha1>3546900a3ebff0c43f31190baf87a9220e37b7ea</sha1>
+    <cve>CVE-2022-24329</cve>
   </suppress>
   <suppress>
-      <notes><![CDATA[
+    <notes>
   file name: kotlin-stdlib-jdk8-1.4.32.jar
-  ]]></notes>
-      <sha1>3302f9ec8a5c1ed220781dbd37770072549bd333</sha1>
-      <cve>CVE-2022-24329</cve>
+  </notes>
+    <sha1>3302f9ec8a5c1ed220781dbd37770072549bd333</sha1>
+    <cve>CVE-2022-24329</cve>
   </suppress>
   <suppress>
-      <notes><![CDATA[
+    <notes>
   file name: kotlin-stdlib-1.4.32.jar
-  ]]></notes>
-      <sha1>461367948840adbb0839c51d91ed74ef4a9ccb52</sha1>
-      <cve>CVE-2022-24329</cve>
+  </notes>
+    <sha1>461367948840adbb0839c51d91ed74ef4a9ccb52</sha1>
+    <cve>CVE-2022-24329</cve>
   </suppress>
-
   <!-- clickhouse: security scan matches client lib to the server CVEs -->
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: avro-1.10.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/org\.apache\.avro/avro@.*$</packageUrl>
     <cve>CVE-2021-43045</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2018-14668</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2018-14669</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2018-14670</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2018-14671</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2018-14672</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2019-15024</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2019-16535</cve>
   </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2019-18657</cve>
-  </suppress> 
+  </suppress>
   <suppress>
-    <notes><![CDATA[
+    <notes>
     file name: clickhouse-jdbc-0.3.2.jar
-    ]]></notes>
+    </notes>
     <packageUrl regex="true">^pkg:maven/ru\.yandex\.clickhouse/clickhouse\-jdbc@.*$</packageUrl>
     <cve>CVE-2021-25263</cve>
   </suppress>
