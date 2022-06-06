@@ -11,11 +11,6 @@ import java.util.function.BiConsumer;
 public interface LoadDataStore<T> {
 
     /**
-     * Start the load data store.
-     */
-    void start();
-
-    /**
      * Push load data to store.
      *
      * @param key

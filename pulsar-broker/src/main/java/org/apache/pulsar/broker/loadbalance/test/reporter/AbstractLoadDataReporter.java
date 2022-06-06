@@ -5,6 +5,7 @@ import org.apache.pulsar.broker.loadbalance.test.data.LoadDataStore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -15,23 +16,17 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 public abstract class AbstractLoadDataReporter<T> implements LoadDataReporter<T> {
 
-    private final Map<String, T> loadDataMap;
+    abstract T generateLoadData();
 
-    private final ScheduledExecutorService executor;
-
-    protected AbstractLoadDataReporter() {
-        this.loadDataMap = new HashMap<>();
-        this.executor = Executors
-                .newSingleThreadScheduledExecutor(new DefaultThreadFactory("load-data-reporter"));
-    }
-
-    abstract LoadDataStore<T> getLoadDataStore();
-
-    abstract Map<String, T> generateLoadData();
-
-    @Override
-    public void flush() {
-        loadDataMap.forEach((key, loadData) -> this.getLoadDataStore().push(key, loadData));
+    protected double percentChange(final double oldValue, final double newValue) {
+        if (oldValue == 0) {
+            if (newValue == 0) {
+                // Avoid NaN
+                return 0;
+            }
+            return Double.POSITIVE_INFINITY;
+        }
+        return 100 * Math.abs((oldValue - newValue) / oldValue);
     }
 
 }

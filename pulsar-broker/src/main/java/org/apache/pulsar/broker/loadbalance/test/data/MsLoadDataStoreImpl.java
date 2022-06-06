@@ -10,9 +10,10 @@ import java.util.function.BiConsumer;
  */
 public class MsLoadDataStoreImpl<T> implements LoadDataStore<T> {
 
-    @Override
-    public void start() {
+    private String path;
 
+    public MsLoadDataStoreImpl(String path) {
+        this.path = path;
     }
 
     @Override

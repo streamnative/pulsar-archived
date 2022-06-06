@@ -7,22 +7,25 @@ import java.util.Map;
 
 public class TimeAverageBrokerLoadDataReporter extends AbstractLoadDataReporter<TimeAverageBrokerLoadData> {
 
-    public TimeAverageBrokerLoadDataReporter() {
-        super();
+    private final LoadDataStore<TimeAverageBrokerLoadData> loadDataStore;
+
+    public TimeAverageBrokerLoadDataReporter(LoadDataStore<TimeAverageBrokerLoadData> loadDataStore) {
+        this.loadDataStore = loadDataStore;
     }
 
-    @Override
-    public LoadDataStore<TimeAverageBrokerLoadData> getLoadDataStore() {
-        return null;
-    }
 
     @Override
-    public Map<String, TimeAverageBrokerLoadData> generateLoadData() {
+    public TimeAverageBrokerLoadData generateLoadData() {
         return null;
     }
 
     @Override
     public void start() {
+
+    }
+
+    @Override
+    public void flush() {
 
     }
 

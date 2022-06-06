@@ -6,11 +6,6 @@ import java.util.function.BiConsumer;
 public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
 
     @Override
-    public void start() {
-
-    }
-
-    @Override
     public void push(String key, T loadData) {
 
     }

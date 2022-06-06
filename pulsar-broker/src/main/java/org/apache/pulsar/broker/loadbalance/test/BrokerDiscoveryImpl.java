@@ -1,5 +1,6 @@
 package org.apache.pulsar.broker.loadbalance.test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,7 +15,14 @@ import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.LoadSheddingStrategy;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
+import org.apache.pulsar.broker.loadbalance.test.data.BrokerLoadData;
+import org.apache.pulsar.broker.loadbalance.test.data.BundleLoadData;
+import org.apache.pulsar.broker.loadbalance.test.data.LoadDataStore;
+import org.apache.pulsar.broker.loadbalance.test.data.MsLoadDataStoreImpl;
+import org.apache.pulsar.broker.loadbalance.test.data.TimeAverageBrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.test.filter.BrokerFilter;
+import org.apache.pulsar.broker.loadbalance.test.filter.BrokerVersionFilter;
+import org.apache.pulsar.broker.loadbalance.test.filter.LargeTopicCountFilter;
 import org.apache.pulsar.broker.loadbalance.test.reporter.BrokerLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.test.reporter.BundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.test.reporter.TimeAverageBrokerLoadDataReporter;
@@ -42,6 +50,15 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
     private List<BrokerFilter> brokerFilterPipeline;
 
     /**
+     * The load data store.
+     */
+    private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
+
+    private LoadDataStore<BundleLoadData> bundleLoadDataStore;
+
+    private LoadDataStore<TimeAverageBrokerLoadData> timeAverageBrokerLoadDataStore;
+
+    /**
      * The load reporters.
      */
     private BrokerLoadDataReporter brokerLoadDataReporter;
@@ -62,25 +79,44 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
     @Override
     public void start() {
-        // TODO: new load balancer
-        brokerSelectionStrategy = null;
-        // TODO: new broker filter pipeline
-        brokerFilterPipeline = null;
+        brokerSelectionStrategy = new BrokerSelectionStrategyImpl();
 
-        namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
-        namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
+        brokerFilterPipeline = new ArrayList<>();
+
+        brokerFilterPipeline.add(new BrokerVersionFilter());
+        brokerFilterPipeline.add(new LargeTopicCountFilter());
+
+        brokerRegistry = new BrokerRegistryImpl(pulsar);
 
         brokerRegistry.start();
         brokerRegistry.register();
 
+        brokerLoadDataStore = new MsLoadDataStoreImpl<>("/broker-load-data");
+        bundleLoadDataStore = new MsLoadDataStoreImpl<>("/bundle-load-data");
+        timeAverageBrokerLoadDataStore = new MsLoadDataStoreImpl<>("/time-average-broker-load-data");
+
+        brokerLoadDataReporter =
+                new BrokerLoadDataReporter(brokerLoadDataStore, pulsar, brokerRegistry.getLookupServiceAddress());
+        bundleLoadDataReporter = new BundleLoadDataReporter(bundleLoadDataStore);
+        timeAverageBrokerLoadDataReporter = new TimeAverageBrokerLoadDataReporter(timeAverageBrokerLoadDataStore);
+
+        this.context = BaseLoadManagerContextImpl
+                .builder()
+                .brokerLoadDataStore(brokerLoadDataStore)
+                .bundleLoadDataStore(bundleLoadDataStore)
+                .timeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore)
+                .brokerRegistry(brokerRegistry)
+                .configuration(configuration)
+                .build();
+
+        namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
+        namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
     }
 
     @Override
     public void initialize(PulsarService pulsar) {
         this.pulsar = pulsar;
         this.configuration = pulsar.getConfiguration();
-        this.brokerRegistry = new BrokerRegistryImpl(pulsar);
-
     }
 
     @Override
