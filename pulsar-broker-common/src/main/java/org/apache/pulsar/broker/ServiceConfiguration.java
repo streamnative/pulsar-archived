@@ -2420,6 +2420,15 @@ public class ServiceConfiguration implements PulsarConfiguration {
     )
     private long namespaceBundleUnloadingTimeoutMs = 60000;
 
+    @FieldContext(
+            category = CATEGORY_LOAD_BALANCER,
+            dynamic = true,
+            doc = "Choose load data store implementation. " +
+                    "Available value: TableViewStore, MetaDataStore." +
+                    "Default value: TableViewStore"
+    )
+    private String loadDataStoreName = "TableViewStore";
+
     /**** --- Replication. --- ****/
     @FieldContext(
         category = CATEGORY_REPLICATION,
