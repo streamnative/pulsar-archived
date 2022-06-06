@@ -37,7 +37,7 @@ public interface LoadDataStore<T> extends Closeable {
      * @param key
      *           The load data key.
      */
-    T get(String key) throws LoadDataStoreException;
+    T get(String key);
 
     /**
      * Async get load data by key.

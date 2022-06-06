@@ -23,15 +23,15 @@ public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/load-data/";
 
-    public TableViewLoadDataStoreImpl(String path, PulsarService pulsar, Schema<T> schema)
+    public TableViewLoadDataStoreImpl(String name, PulsarService pulsar, Schema<T> schema)
             throws LoadDataStoreException {
         try {
             this.tableView = pulsar.getClient()
                     .newTableViewBuilder(schema)
-                    .topic(TOPIC_PREFIX + path)
+                    .topic(TOPIC_PREFIX + name)
                     .create();
             this.producer = pulsar.getClient().newProducer(schema)
-                    .topic(TOPIC_PREFIX + path)
+                    .topic(TOPIC_PREFIX + name)
                     .create();
         } catch (Exception e) {
             throw new LoadDataStoreException(e);
