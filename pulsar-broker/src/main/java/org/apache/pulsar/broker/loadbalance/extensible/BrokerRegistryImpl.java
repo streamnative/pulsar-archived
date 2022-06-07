@@ -1,6 +1,6 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
-import com.google.common.collect.Sets;
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -10,12 +10,11 @@ import org.apache.pulsar.metadata.api.MetadataStoreException;
 import org.apache.pulsar.metadata.api.Notification;
 import org.apache.pulsar.metadata.api.coordination.LockManager;
 import org.apache.pulsar.metadata.api.coordination.ResourceLock;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -36,7 +35,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
 
     private final String lookupServiceAddress;
 
-    private final Set<String> availableBrokers;
+    private final List<String> availableBrokers;
 
     private final AtomicBoolean registered;
 
@@ -46,7 +45,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.pulsar = pulsar;
         this.conf = pulsar.getConfiguration();
         this.brokerLookupDataLockManager = pulsar.getCoordinationService().getLockManager(BrokerLookupData.class);
-        this.availableBrokers = new ConcurrentSkipListSet<>();
+        this.availableBrokers = new ArrayList<>();
 
         this.registered = new AtomicBoolean(false);
         this.brokerLookupData = new BrokerLookupData(
@@ -102,11 +101,10 @@ public class BrokerRegistryImpl implements BrokerRegistry {
     }
 
     @Override
-    public Set<String> getAvailableBrokers() {
+    public List<String> getAvailableBrokers() {
         try {
-            return new HashSet<>(
-                    this.brokerLookupDataLockManager.listLocks(LOOKUP_DATA_PATH)
-                    .get(conf.getMetadataStoreOperationTimeoutSeconds(), TimeUnit.SECONDS));
+            return this.brokerLookupDataLockManager.listLocks(LOOKUP_DATA_PATH)
+                    .get(conf.getMetadataStoreOperationTimeoutSeconds(), TimeUnit.SECONDS);
         } catch (Exception e) {
             log.warn("Error when trying to get active brokers", e);
             return this.availableBrokers;
@@ -114,8 +112,8 @@ public class BrokerRegistryImpl implements BrokerRegistry {
     }
 
     @Override
-    public CompletableFuture<Set<String>> getAvailableBrokersAsync() {
-        CompletableFuture<Set<String>> future = new CompletableFuture<>();
+    public CompletableFuture<List<String>> getAvailableBrokersAsync() {
+        CompletableFuture<List<String>> future = new CompletableFuture<>();
         brokerLookupDataLockManager.listLocks(LOOKUP_DATA_PATH)
                 .whenComplete((listLocks, ex) -> {
                     if (ex != null){
@@ -123,7 +121,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
                         log.warn("Error when trying to get active brokers", realCause);
                         future.complete(availableBrokers);
                     } else {
-                        future.complete(Sets.newHashSet(listLocks));
+                        future.complete(Lists.newArrayList(listLocks));
                     }
                 });
         return future;

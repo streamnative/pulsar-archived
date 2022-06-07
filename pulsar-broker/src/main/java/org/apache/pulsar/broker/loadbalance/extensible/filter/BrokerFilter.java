@@ -1,6 +1,6 @@
 package org.apache.pulsar.broker.loadbalance.extensible.filter;
 
-import java.util.Set;
+import java.util.List;
 import org.apache.pulsar.broker.loadbalance.extensible.LoadManagerContext;
 
 /**
@@ -10,6 +10,6 @@ public interface BrokerFilter {
 
     String name();
 
-    void filter(Set<String> brokers, LoadManagerContext context);
+    void filter(List<String> brokers, LoadManagerContext context);
 
 }

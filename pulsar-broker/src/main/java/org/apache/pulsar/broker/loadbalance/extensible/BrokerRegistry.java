@@ -2,7 +2,7 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 
 import org.apache.pulsar.broker.PulsarServerException;
 
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -29,12 +29,12 @@ public interface BrokerRegistry {
     /**
      * Get available brokers.
      */
-    Set<String> getAvailableBrokers();
+    List<String> getAvailableBrokers();
 
     /**
      * Async get available brokers.
      */
-    CompletableFuture<Set<String>> getAvailableBrokersAsync();
+    CompletableFuture<List<String>> getAvailableBrokersAsync();
 
     /**
      * Fetch local-broker data from load-manager broker cache.

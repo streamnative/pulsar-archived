@@ -4,11 +4,14 @@ import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
+import org.apache.pulsar.broker.loadbalance.impl.PulsarResourceDescription;
+import org.apache.pulsar.broker.loadbalance.impl.SimpleResourceUnit;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.stats.Metrics;
 import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
-
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -16,11 +19,11 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Wrapper class allowing classes of instance BrokerDiscoveryImpl to be compatible with the interface LoadManager.
  */
-public class ScalableLoadManagerWrapper implements LoadManager {
+public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     private final BrokerDiscoveryImpl brokerDiscovery;
 
-    public ScalableLoadManagerWrapper(BrokerDiscoveryImpl brokerDiscovery) {
+    public ExtensibleLoadManagerWrapper(BrokerDiscoveryImpl brokerDiscovery) {
         this.brokerDiscovery = brokerDiscovery;
     }
 
@@ -41,7 +44,26 @@ public class ScalableLoadManagerWrapper implements LoadManager {
 
     @Override
     public Optional<ResourceUnit> getLeastLoaded(ServiceUnitId su) throws Exception {
-        return brokerDiscovery.discover(su);
+        return brokerDiscovery.discover(su).map(s -> {
+            String webServiceUrl = getBrokerWebServiceUrl(s);
+            String brokerZnodeName = getBrokerZnodeName(s, webServiceUrl);
+            return new SimpleResourceUnit(webServiceUrl,
+                    new PulsarResourceDescription(), Map.of(ResourceUnit.PROPERTY_KEY_BROKER_ZNODE_NAME, brokerZnodeName));
+        });
+    }
+
+    private String getBrokerWebServiceUrl(String broker) {
+        BrokerLookupData localData = this.brokerDiscovery.getBrokerRegistry().lookup(broker);
+        if (localData != null) {
+            return localData.getWebServiceUrl() != null ? localData.getWebServiceUrl()
+                    : localData.getWebServiceUrlTls();
+        }
+        return String.format("http://%s", broker);
+    }
+
+    private String getBrokerZnodeName(String broker, String webServiceUrl) {
+        String scheme = webServiceUrl.substring(0, webServiceUrl.indexOf("://"));
+        return String.format("%s://%s", scheme, broker);
     }
 
     @Override
@@ -51,12 +73,12 @@ public class ScalableLoadManagerWrapper implements LoadManager {
 
     @Override
     public Set<String> getAvailableBrokers() throws Exception {
-        return brokerDiscovery.getBrokerRegistry().getAvailableBrokers();
+        return new HashSet<>(brokerDiscovery.getBrokerRegistry().getAvailableBrokers());
     }
 
     @Override
     public CompletableFuture<Set<String>> getAvailableBrokersAsync() {
-        return brokerDiscovery.getBrokerRegistry().getAvailableBrokersAsync();
+        return brokerDiscovery.getBrokerRegistry().getAvailableBrokersAsync().thenApply(HashSet::new);
     }
 
     @Override

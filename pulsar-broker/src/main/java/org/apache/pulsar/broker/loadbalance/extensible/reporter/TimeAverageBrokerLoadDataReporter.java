@@ -1,21 +1,19 @@
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
-import org.apache.pulsar.broker.loadbalance.extensible.data.TimeAverageBrokerLoadData;
+import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 
-import java.util.Map;
+public class TimeAverageBrokerLoadDataReporter extends AbstractLoadDataReporter<TimeAverageBrokerData> {
 
-public class TimeAverageBrokerLoadDataReporter extends AbstractLoadDataReporter<TimeAverageBrokerLoadData> {
+    private final LoadDataStore<TimeAverageBrokerData> loadDataStore;
 
-    private final LoadDataStore<TimeAverageBrokerLoadData> loadDataStore;
-
-    public TimeAverageBrokerLoadDataReporter(LoadDataStore<TimeAverageBrokerLoadData> loadDataStore) {
+    public TimeAverageBrokerLoadDataReporter(LoadDataStore<TimeAverageBrokerData> loadDataStore) {
         this.loadDataStore = loadDataStore;
     }
 
 
     @Override
-    public TimeAverageBrokerLoadData generateLoadData() {
+    public TimeAverageBrokerData generateLoadData() {
         return null;
     }
 

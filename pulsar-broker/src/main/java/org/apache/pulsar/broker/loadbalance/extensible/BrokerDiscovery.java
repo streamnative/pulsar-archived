@@ -3,7 +3,6 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 import java.util.Optional;
 
 import org.apache.pulsar.broker.PulsarService;
-import org.apache.pulsar.broker.loadbalance.ResourceUnit;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 
 /**
@@ -29,7 +28,7 @@ public interface BrokerDiscovery {
      * @param serviceUnit Bundle.
      * @return Simple resource.
      */
-    Optional<ResourceUnit> discover(ServiceUnitId serviceUnit);
+    Optional<String> discover(ServiceUnitId serviceUnit);
 
     void stop();
 }

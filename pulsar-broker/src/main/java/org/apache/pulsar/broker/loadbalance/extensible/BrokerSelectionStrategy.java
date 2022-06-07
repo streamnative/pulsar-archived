@@ -1,9 +1,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-
-import org.apache.pulsar.broker.loadbalance.ResourceUnit;
 
 /**
  * The broker selection strategy is designed to select the broker according to different implementations.
@@ -25,6 +23,6 @@ public interface BrokerSelectionStrategy {
      * @param context
      *               The context includes a variety of information needed for selection.
      */
-    Optional<ResourceUnit> select(Set<String> brokers, LoadManagerContext context);
+    Optional<String> select(List<String> brokers, LoadManagerContext context);
 
 }

@@ -1,20 +1,30 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
-import lombok.Builder;
+import lombok.Data;
+import lombok.Setter;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
-import org.apache.pulsar.broker.loadbalance.extensible.data.BundleLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
-import org.apache.pulsar.broker.loadbalance.extensible.data.TimeAverageBrokerLoadData;
+import org.apache.pulsar.policies.data.loadbalancer.BundleData;
+import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-@Builder
+@Data
+@Setter
 public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
+
+    public BaseLoadManagerContextImpl() {
+        this.preallocatedBundleData = new ConcurrentHashMap<>();
+    }
 
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
-    private LoadDataStore<BundleLoadData> bundleLoadDataStore;
+    private LoadDataStore<BundleData> bundleLoadDataStore;
 
-    private LoadDataStore<TimeAverageBrokerLoadData> timeAverageBrokerLoadDataStore;
+    private LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore;
+
+    private Map<String, Map<String, BundleData>> preallocatedBundleData;
 
     private BrokerRegistry brokerRegistry;
 
@@ -26,13 +36,18 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
     }
 
     @Override
-    public LoadDataStore<BundleLoadData> bundleLoadDataStore() {
+    public LoadDataStore<BundleData> bundleLoadDataStore() {
         return this.bundleLoadDataStore;
     }
 
     @Override
-    public LoadDataStore<TimeAverageBrokerLoadData> timeAverageBrokerLoadDataStore() {
+    public LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore() {
         return this.timeAverageBrokerLoadDataStore;
+    }
+
+    @Override
+    public Map<String, BundleData> preallocatedBundleData(String broker) {
+        return this.preallocatedBundleData.computeIfAbsent(broker, (__) -> new ConcurrentHashMap<>());
     }
 
     @Override

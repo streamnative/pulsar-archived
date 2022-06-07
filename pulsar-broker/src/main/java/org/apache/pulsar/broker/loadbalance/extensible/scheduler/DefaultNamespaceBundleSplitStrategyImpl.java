@@ -1,15 +1,14 @@
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
-import org.apache.pulsar.broker.loadbalance.extensible.data.BundleLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.namespace.NamespaceService;
 import org.apache.pulsar.common.naming.NamespaceName;
+import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageMessageData;
 import java.util.HashSet;
@@ -36,7 +35,7 @@ public class DefaultNamespaceBundleSplitStrategyImpl implements NamespaceBundleS
         long maxBundleMsgRate = conf.getLoadBalancerNamespaceBundleMaxMsgRate();
         long maxBundleBandwidth = conf.getLoadBalancerNamespaceBundleMaxBandwidthMbytes() * LoadManagerShared.MIBI;
         LoadDataStore<BrokerLoadData> brokerLoadDataStore = context.brokerLoadDataStore();
-        LoadDataStore<BundleLoadData> bundleLoadDataStore = context.bundleLoadDataStore();
+        LoadDataStore<BundleData> bundleLoadDataStore = context.bundleLoadDataStore();
         brokerLoadDataStore.forEach((broker, brokerLoadData) -> {
             for (final Map.Entry<String, NamespaceBundleStats> entry : brokerLoadData.getLastStats().entrySet()) {
                 final String bundle = entry.getKey();
@@ -48,7 +47,7 @@ public class DefaultNamespaceBundleSplitStrategyImpl implements NamespaceBundleS
                 double totalMessageRate = 0;
                 double totalMessageThroughput = 0;
                 // Attempt to consider long-term message data, otherwise effectively ignore.
-                BundleLoadData bundleLoadData = bundleLoadDataStore.get(bundle);
+                BundleData bundleLoadData = bundleLoadDataStore.get(bundle);
                 if (null != bundleLoadData) {
                     final TimeAverageMessageData longTermData = bundleLoadData.getLongTermData();
                     totalMessageRate = longTermData.totalMsgRate();

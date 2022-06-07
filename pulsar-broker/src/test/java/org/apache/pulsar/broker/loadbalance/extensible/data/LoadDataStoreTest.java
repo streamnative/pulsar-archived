@@ -1,5 +1,9 @@
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.AssertJUnit.assertNull;
+import static org.testng.AssertJUnit.assertTrue;
+
 import lombok.AllArgsConstructor;
 import lombok.Cleanup;
 import lombok.Data;
@@ -10,14 +14,16 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-import static org.testng.Assert.*;
-
+/**
+ * The {@link LoadDataStore} unit test.
+ */
 public class LoadDataStoreTest extends MockedPulsarServiceBaseTest {
-
-    private static final String NAME = "test";
 
     @Data
     @AllArgsConstructor
@@ -47,10 +53,11 @@ public class LoadDataStoreTest extends MockedPulsarServiceBaseTest {
     }
 
     @Test(dataProvider = "impl")
-    public void testPushGetAndRemove(String impl) throws LoadDataStoreException {
+    public void testPushGetAndRemove(String impl) throws IOException {
 
+        @Cleanup
         LoadDataStore<MyClass> loadDataStore =
-                LoadDataStoreFactory.newInstance(pulsar, impl, "test", MyClass.class);
+                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), MyClass.class);
         MyClass myClass1 = new MyClass("1", 1);
         loadDataStore.push("key1", myClass1);
 
@@ -69,21 +76,44 @@ public class LoadDataStoreTest extends MockedPulsarServiceBaseTest {
 
     }
 
+    @Test(dataProvider = "impl")
+    public void testForEach(String impl) throws IOException {
+        @Cleanup
+        LoadDataStore<Integer> loadDataStore =
+                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), Integer.class);
 
-    @Test
-    public void testRemove() {
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 0; i < 10; i++) {
+            String key = "key-" + i;
+            Integer value = i;
+            loadDataStore.push(key, value);
+            map.put(key, value);
+        }
+        Awaitility.await().untilAsserted(() -> assertEquals(loadDataStore.size(), 10));
+
+        loadDataStore.forEach((key, value) -> {
+            assertTrue(map.containsKey(key));
+            assertEquals(loadDataStore.get(key), map.get(key));
+        });
     }
 
-    @Test
-    public void testForEach() {
-    }
+    @Test(dataProvider = "impl")
+    public void testListen(String impl) throws IOException {
+        @Cleanup
+        LoadDataStore<Integer> loadDataStore =
+                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), Integer.class);
 
-    @Test
-    public void testListen() {
-    }
+        Map<String, Integer> map = new ConcurrentHashMap<>();
+        loadDataStore.listen(map::put);
 
-    @Test
-    public void testSize() {
+        for (int i = 0; i < 10; i++) {
+            String key = "key-" + i;
+            loadDataStore.push(key, i);
+        }
+
+        Awaitility.await().untilAsserted(() -> assertEquals(loadDataStore.size(), 10));
+
+        assertEquals(map.size(), loadDataStore.size());
     }
 
 }
