@@ -18,10 +18,9 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.strategy;
 
-import org.apache.pulsar.broker.loadbalance.extensible.LoadManagerContext;
-
 import java.util.List;
 import java.util.Optional;
+import org.apache.pulsar.broker.loadbalance.extensible.LoadManagerContext;
 
 /**
  * The broker selection strategy is designed to select the broker according to different implementations.
