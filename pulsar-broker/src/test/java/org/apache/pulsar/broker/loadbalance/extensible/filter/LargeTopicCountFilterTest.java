@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.BrokerFilterException;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerTestBase;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -36,7 +37,7 @@ import org.testng.annotations.Test;
 /**
  * The unit test for {@link LargeTopicCountFilter}.
  */
-public class LargeTopicCountFilterTest extends BrokerFilterTestBase {
+public class LargeTopicCountFilterTest extends ExtensibleLoadManagerTestBase {
 
     private LargeTopicCountFilter filter;
 

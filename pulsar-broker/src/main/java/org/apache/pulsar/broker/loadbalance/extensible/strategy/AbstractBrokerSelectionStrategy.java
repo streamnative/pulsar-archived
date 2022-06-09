@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.broker.loadbalance.extensible;
+package org.apache.pulsar.broker.loadbalance.extensible.strategy;
 
 import java.util.List;
 import java.util.Optional;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.apache.pulsar.broker.loadbalance.extensible.LoadManagerContext;
 
 public abstract class AbstractBrokerSelectionStrategy implements BrokerSelectionStrategy {
 

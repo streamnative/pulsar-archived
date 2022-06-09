@@ -40,6 +40,8 @@ import org.apache.pulsar.broker.loadbalance.extensible.reporter.TimeAverageBroke
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundleSplitScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
+import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
+import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastLongTermMessageRateStrategyImpl;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;

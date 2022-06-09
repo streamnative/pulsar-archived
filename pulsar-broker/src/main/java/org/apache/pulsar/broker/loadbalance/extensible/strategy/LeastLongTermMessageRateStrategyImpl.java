@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.broker.loadbalance.extensible;
+package org.apache.pulsar.broker.loadbalance.extensible.strategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
@@ -36,9 +37,9 @@ import org.apache.pulsar.policies.data.loadbalancer.TimeAverageMessageData;
 @Slf4j
 public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectionStrategy {
 
-
     private static final String LOAD_BALANCER_NAME = "LeastLongTermMessageRateStrategy";
-    private ArrayList<String> bestBrokers;
+
+    private final ArrayList<String> bestBrokers;
 
     public LeastLongTermMessageRateStrategyImpl() {
         bestBrokers = new ArrayList<>();
@@ -55,14 +56,12 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
                 final Optional<BrokerLoadData> localDataOpt = context.brokerLoadDataStore().get(broker);
                 if (localDataOpt.isPresent()) {
                     BrokerLoadData localData = localDataOpt.get();
-                    log.warn(
-                            "Broker {} is overloaded: CPU: {}%, MEMORY: {}%, DIRECT MEMORY: {}%, BANDWIDTH IN: {}%, "
+                    log.warn("Broker {} is overloaded: CPU: {}%, MEMORY: {}%, DIRECT MEMORY: {}%, BANDWIDTH IN: {}%, "
                                     + "BANDWIDTH OUT: {}%",
                             broker, localData.getCpu().percentUsage(), localData.getMemory().percentUsage(),
                             localData.getDirectMemory().percentUsage(), localData.getBandwidthIn().percentUsage(),
                             localData.getBandwidthOut().percentUsage());
                 }
-
             }
             if (score < minScore) {
                 // Clear best brokers since this score beats the other brokers.
@@ -119,8 +118,7 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
         final double totalMessageRateEstimate = totalMessageRate + timeAverageLongTermMessageRate;
 
         if (log.isDebugEnabled()) {
-            log.debug("Broker {} has long term message rate {}",
-                    broker, totalMessageRateEstimate);
+            log.debug("Broker {} has long term message rate {}", broker, totalMessageRateEstimate);
         }
         return totalMessageRateEstimate;
     }

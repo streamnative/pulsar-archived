@@ -31,6 +31,7 @@ import org.apache.pulsar.broker.loadbalance.BrokerFilterException;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.BrokerLookupData;
 import org.apache.pulsar.broker.loadbalance.extensible.BrokerRegistry;
+import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerTestBase;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -39,7 +40,7 @@ import org.testng.annotations.Test;
  * The unit test for {@link BrokerVersionFilter}.
  */
 @Slf4j
-public class BrokerVersionFilterTest extends BrokerFilterTestBase {
+public class ExtensibleLoadManagerTest extends ExtensibleLoadManagerTestBase {
 
     private BrokerVersionFilter filter;
 

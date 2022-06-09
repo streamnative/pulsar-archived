@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.broker.loadbalance.extensible.filter;
+package org.apache.pulsar.broker.loadbalance.extensible;
+
+import static org.testng.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,16 +29,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import org.apache.pulsar.broker.ServiceConfiguration;
-import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
-import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContextImpl;
-import org.apache.pulsar.broker.loadbalance.extensible.BrokerLookupData;
-import org.apache.pulsar.broker.loadbalance.extensible.BrokerRegistry;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreException;
 
-import static org.testng.Assert.assertTrue;
-
-public class BrokerFilterTestBase {
+public class ExtensibleLoadManagerTestBase {
 
     public BaseLoadManagerContext newBaseLoadManagerContext() {
         BaseLoadManagerContextImpl context = new BaseLoadManagerContextImpl();
