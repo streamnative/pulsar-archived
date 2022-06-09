@@ -26,6 +26,13 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode
 public class NamespaceBundleStats implements Comparable<NamespaceBundleStats>, Serializable {
 
+    // Default message rate to assume for unseen bundles.
+    public static final double DEFAULT_MESSAGE_RATE = 50;
+
+    // Default message throughput to assume for unseen bundles.
+    // Note that the default message size is implicitly defined as DEFAULT_MESSAGE_THROUGHPUT / DEFAULT_MESSAGE_RATE.
+    public static final double DEFAULT_MESSAGE_THROUGHPUT = 50000;
+
     public double msgRateIn;
     public double msgThroughputIn;
     public double msgRateOut;
@@ -46,6 +53,16 @@ public class NamespaceBundleStats implements Comparable<NamespaceBundleStats>, S
 
     public NamespaceBundleStats() {
         reset();
+    }
+
+    public static NamespaceBundleStats newDefaultNamespaceBundleStats() {
+        NamespaceBundleStats defaultNamespaceBundleStats = new NamespaceBundleStats();
+        // Initialize the default stats to assume for unseen bundles (hard-coded for now).
+        defaultNamespaceBundleStats.msgThroughputIn = DEFAULT_MESSAGE_THROUGHPUT;
+        defaultNamespaceBundleStats.msgThroughputOut = DEFAULT_MESSAGE_THROUGHPUT;
+        defaultNamespaceBundleStats.msgRateIn = DEFAULT_MESSAGE_RATE;
+        defaultNamespaceBundleStats.msgRateOut = DEFAULT_MESSAGE_RATE;
+        return defaultNamespaceBundleStats;
     }
 
     public void reset() {

@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 import java.util.ArrayList;
@@ -34,13 +52,16 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
         for (String broker : brokers) {
             final double score = getScore(context, broker, context.brokerConfiguration());
             if (score == Double.POSITIVE_INFINITY) {
-                final BrokerLoadData localData = context.brokerLoadDataStore().get(broker);
-                log.warn(
-                        "Broker {} is overloaded: CPU: {}%, MEMORY: {}%, DIRECT MEMORY: {}%, BANDWIDTH IN: {}%, "
-                                + "BANDWIDTH OUT: {}%",
-                        broker, localData.getCpu().percentUsage(), localData.getMemory().percentUsage(),
-                        localData.getDirectMemory().percentUsage(), localData.getBandwidthIn().percentUsage(),
-                        localData.getBandwidthOut().percentUsage());
+                final Optional<BrokerLoadData> localDataOpt = context.brokerLoadDataStore().get(broker);
+                if (localDataOpt.isPresent()) {
+                    BrokerLoadData localData = localDataOpt.get();
+                    log.warn(
+                            "Broker {} is overloaded: CPU: {}%, MEMORY: {}%, DIRECT MEMORY: {}%, BANDWIDTH IN: {}%, "
+                                    + "BANDWIDTH OUT: {}%",
+                            broker, localData.getCpu().percentUsage(), localData.getMemory().percentUsage(),
+                            localData.getDirectMemory().percentUsage(), localData.getBandwidthIn().percentUsage(),
+                            localData.getBandwidthOut().percentUsage());
+                }
 
             }
             if (score < minScore) {
@@ -75,8 +96,8 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
                                    final String broker,
                                    final ServiceConfiguration conf) {
         final double overloadThreshold = conf.getLoadBalancerBrokerOverloadedThresholdPercentage() / 100.0;
-        BrokerLoadData brokerLoadData = context.brokerLoadDataStore().get(broker);
-        final double maxUsage = brokerLoadData == null ? 0.0f : brokerLoadData.getMaxResourceUsage();
+        Optional<BrokerLoadData> brokerLoadDataOpt = context.brokerLoadDataStore().get(broker);
+        final double maxUsage = brokerLoadDataOpt.map(BrokerLoadData::getMaxResourceUsage).orElse(0.0);
 
         if (maxUsage > overloadThreshold) {
             log.warn("Broker {} is overloaded: max usage={}", broker, maxUsage);
@@ -90,9 +111,11 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
         }
 
         // calculate estimated score
-        final TimeAverageBrokerData timeAverageData = context.timeAverageBrokerLoadDataStore().get(broker);
-        final double timeAverageLongTermMessageRate = timeAverageData == null ? 0.0
-                : timeAverageData.getLongTermMsgRateIn() + timeAverageData.getLongTermMsgRateOut();
+        final Optional<TimeAverageBrokerData> timeAverageDataOpt = context.timeAverageBrokerLoadDataStore().get(broker);
+        final double timeAverageLongTermMessageRate = timeAverageDataOpt.map(timeAverageBrokerData ->
+                        timeAverageBrokerData.getLongTermMsgRateIn() + timeAverageBrokerData.getLongTermMsgRateOut())
+                .orElse(0.0);
+
         final double totalMessageRateEstimate = totalMessageRate + timeAverageLongTermMessageRate;
 
         if (log.isDebugEnabled()) {

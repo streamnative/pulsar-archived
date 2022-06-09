@@ -22,6 +22,18 @@ package org.apache.pulsar.policies.data.loadbalancer;
  * Data class comprising the short term and long term historical data for this bundle.
  */
 public class BundleData {
+
+    // The number of effective samples to keep for observing long term data.
+    public static final int NUM_LONG_SAMPLES = 1000;
+
+    // The number of effective samples to keep for observing short term data.
+    public static final int NUM_SHORT_SAMPLES = 10;
+
+    // The default bundle stats which are used to initialize historic data.
+    // This data is overridden after the bundle receives its first sample.
+    private static final NamespaceBundleStats DEFAULT_NAMESPACE_BUNDLE_STATS =
+            NamespaceBundleStats.newDefaultNamespaceBundleStats();
+
     // Short term data for this bundle. The time frame of this data is
     // determined by the number of short term samples
     // and the bundle update period.
@@ -34,6 +46,10 @@ public class BundleData {
 
     // number of topics present under this bundle
     private int topics;
+
+    public static BundleData newDefaultBundleData() {
+        return new BundleData(NUM_SHORT_SAMPLES, NUM_LONG_SAMPLES, DEFAULT_NAMESPACE_BUNDLE_STATS);
+    }
 
     // For JSON only.
     public BundleData() {

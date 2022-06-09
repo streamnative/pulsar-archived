@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 import java.util.ArrayList;
@@ -8,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.loadbalance.BrokerFilterException;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreException;
@@ -23,30 +42,12 @@ import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundle
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
-import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 
 /**
  * The broker discovery implementation.
  */
 public class BrokerDiscoveryImpl implements BrokerDiscovery {
-
-    // The number of effective samples to keep for observing long term data.
-    public static final int NUM_LONG_SAMPLES = 1000;
-
-    // The number of effective samples to keep for observing short term data.
-    public static final int NUM_SHORT_SAMPLES = 10;
-
-    // Default message rate to assume for unseen bundles.
-    public static final double DEFAULT_MESSAGE_RATE = 50;
-
-    // Default message throughput to assume for unseen bundles.
-    // Note that the default message size is implicitly defined as DEFAULT_MESSAGE_THROUGHPUT / DEFAULT_MESSAGE_RATE.
-    public static final double DEFAULT_MESSAGE_THROUGHPUT = 50000;
-
-    // The default bundle stats which are used to initialize historic data.
-    // This data is overridden after the bundle receives its first sample.
-    private final NamespaceBundleStats defaultStats;
 
     public static final String BROKER_LOAD_DATA_STORE_NAME = "broker-load-data";
 
@@ -94,14 +95,7 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    public BrokerDiscoveryImpl() {
-        defaultStats = new NamespaceBundleStats();
-        // Initialize the default stats to assume for unseen bundles (hard-coded for now).
-        defaultStats.msgThroughputIn = DEFAULT_MESSAGE_THROUGHPUT;
-        defaultStats.msgThroughputOut = DEFAULT_MESSAGE_THROUGHPUT;
-        defaultStats.msgRateIn = DEFAULT_MESSAGE_RATE;
-        defaultStats.msgRateOut = DEFAULT_MESSAGE_RATE;
-    }
+    public BrokerDiscoveryImpl() {}
 
     @Override
     public void start() {
@@ -143,7 +137,6 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
         this.context = new BaseLoadManagerContextImpl();
         ((BaseLoadManagerContextImpl) this.context).setConfiguration(configuration);
 
-
         brokerSelectionStrategy = new LeastLongTermMessageRateStrategyImpl();
 
         brokerFilterPipeline = new ArrayList<>();
@@ -160,6 +153,8 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
         BrokerRegistry brokerRegistry = getBrokerRegistry();
         List<String> availableBrokers = brokerRegistry.getAvailableBrokers();
 
+        // When the system namespace doing the bundle lookup,
+        // the load manager might not start yet, so we return a random broker.
         if (!started.get()) {
             return Optional.of(availableBrokers.get(ThreadLocalRandom.current().nextInt(availableBrokers.size())));
         }
@@ -168,8 +163,12 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
         // Filter out brokers that do not meet the rules.
         List<BrokerFilter> filterPipeline = getBrokerFilterPipeline();
-        for (final BrokerFilter filter : filterPipeline) {
-            filter.filter(availableBrokers, context);
+        try {
+            for (final BrokerFilter filter : filterPipeline) {
+                filter.filter(availableBrokers, context);
+            }
+        } catch (BrokerFilterException e) {
+            availableBrokers = brokerRegistry.getAvailableBrokers();
         }
 
         if (availableBrokers.isEmpty()) {
@@ -179,11 +178,9 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
         BrokerSelectionStrategy brokerSelectionStrategy = getBrokerSelectionStrategy(serviceUnit);
 
         Optional<String> selectedBroker = brokerSelectionStrategy.select(availableBrokers, context);
-        BundleData bundleData = bundleLoadDataStore.get(bundle);
-        if (bundleData == null) {
-            bundleData = new BundleData(NUM_SHORT_SAMPLES, NUM_LONG_SAMPLES, defaultStats);
-        }
-        context.preallocatedBundleData(selectedBroker.get()).put(bundle, bundleData);
+        Optional<BundleData> bundleDataOpt = bundleLoadDataStore.get(bundle);
+        context.preallocatedBundleData(selectedBroker.get())
+                .put(bundle, bundleDataOpt.orElse(BundleData.newDefaultBundleData()));
         return selectedBroker;
     }
 
