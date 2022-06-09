@@ -94,7 +94,7 @@ public class BrokerVersionFilter extends BaseBrokerFilter {
      * @return The most recent broker version
      * @throws BrokerFilterBadVersionException
      *            If the most recent version is undefined (e.g., a bad broker version was encountered or a broker
-     *            does not have a version string in its load report.
+     *            does not have a version string in its lookup data.
      */
     public Version getLatestVersionNumber(List<String> brokers, BrokerRegistry registry)
             throws BrokerFilterBadVersionException {
@@ -114,21 +114,21 @@ public class BrokerVersionFilter extends BaseBrokerFilter {
             registry.forEach((broker, lookupData) -> {
                 String brokerVersion = lookupData.getBrokerVersion();
                 if (null == brokerVersion || brokerVersion.length() == 0) {
-                    log.warn("No version string in load report for broker [{}]; disabling PreferLaterVersions feature",
+                    log.warn("No version string in lookup data for broker [{}]; disabling PreferLaterVersions feature",
                             broker);
                     // trigger the ModularLoadManager to reset all the brokers to the original set
-                    throw new RuntimeException("No version string in load report for broker \""
+                    throw new RuntimeException("No version string in lookup data for broker \""
                             + broker + "\"");
                 }
                 Version brokerVersionVersion;
                 try {
                     brokerVersionVersion = Version.valueOf(brokerVersion);
                 } catch (Exception x) {
-                    log.warn("Invalid version string in load report for broker [{}]: [{}];"
+                    log.warn("Invalid version string in lookup data for broker [{}]: [{}];"
                                     + " disabling PreferLaterVersions feature",
                             broker, brokerVersion);
-                    // trigger the ModularLoadManager to reset all the brokers to the original set
-                    throw new RuntimeException("Invalid version string in load report for broker \""
+                    // trigger the load manager to reset all the brokers to the original set
+                    throw new RuntimeException("Invalid version string in lookup data for broker \""
                             + broker + "\": \"" + brokerVersion + "\")");
                 }
 
