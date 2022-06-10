@@ -118,7 +118,7 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
         brokerLoadDataReporter =
                 new BrokerLoadDataReporter(brokerLoadDataStore, pulsar, brokerRegistry.getLookupServiceAddress());
-        bundleLoadDataReporter = new BundleLoadDataReporter(bundleLoadDataStore);
+        bundleLoadDataReporter = new BundleLoadDataReporter(bundleLoadDataStore, brokerLoadDataStore);
         timeAverageBrokerLoadDataReporter = new TimeAverageBrokerLoadDataReporter(timeAverageBrokerLoadDataStore);
 
         namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);

@@ -31,7 +31,7 @@ public class BundleData {
 
     // The default bundle stats which are used to initialize historic data.
     // This data is overridden after the bundle receives its first sample.
-    private static final NamespaceBundleStats DEFAULT_NAMESPACE_BUNDLE_STATS =
+    public static final NamespaceBundleStats DEFAULT_NAMESPACE_BUNDLE_STATS =
             NamespaceBundleStats.newDefaultNamespaceBundleStats();
 
     // Short term data for this bundle. The time frame of this data is

@@ -19,20 +19,42 @@
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
+import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 
 public class BundleLoadDataReporter extends AbstractLoadDataReporter<Map<String, BundleData>> {
 
-    private final LoadDataStore<BundleData> loadDataStore;
+    private final LoadDataStore<BundleData> bundleLoadDataStore;
 
-    public BundleLoadDataReporter(LoadDataStore<BundleData> loadDataStore) {
-        this.loadDataStore = loadDataStore;
+    public final LoadDataStore<BrokerLoadData> brokerLoadDataStore;
+
+    final Map<String, BundleData> bundleLoadDataMap;
+
+    public BundleLoadDataReporter(LoadDataStore<BundleData> bundleLoadDataStore,
+                                  LoadDataStore<BrokerLoadData> brokerLoadDataStore) {
+        this.bundleLoadDataStore = bundleLoadDataStore;
+        this.brokerLoadDataStore = brokerLoadDataStore;
+        this.bundleLoadDataMap = new ConcurrentHashMap<>();
     }
 
     @Override
     public Map<String, BundleData> generateLoadData() {
-        return null;
+        this.brokerLoadDataStore.forEach((broker, brokerLoadData) -> {
+            Map<String, NamespaceBundleStats> statsMap = brokerLoadData.getLastStats();
+            statsMap.forEach((bundle, stats) -> {
+                BundleData currentBundleData =
+                        this.bundleLoadDataMap.getOrDefault(bundle,
+                                bundleLoadDataStore.get(bundle).orElse(BundleData.newDefaultBundleData()));
+                currentBundleData.update(stats);
+                this.bundleLoadDataMap.put(bundle, currentBundleData);
+            });
+            // TODO: delete inactive bundles.
+
+        });
+        return this.bundleLoadDataMap;
     }
 
     @Override
