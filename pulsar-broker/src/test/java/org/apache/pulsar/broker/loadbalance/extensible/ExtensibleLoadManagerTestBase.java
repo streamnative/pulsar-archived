@@ -29,8 +29,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreException;
+import org.apache.pulsar.policies.data.loadbalancer.ResourceUsage;
 
 public class ExtensibleLoadManagerTestBase {
 
@@ -42,6 +44,16 @@ public class ExtensibleLoadManagerTestBase {
         context.setConfiguration(new ServiceConfiguration());
         context.setBrokerRegistry(new MockedBrokerRegistry());
         return context;
+    }
+
+    public BrokerLoadData newBrokerLoadData() {
+        BrokerLoadData brokerLoadData = new BrokerLoadData();
+        brokerLoadData.setCpu(new ResourceUsage());
+        brokerLoadData.setMemory(new ResourceUsage());
+        brokerLoadData.setBandwidthIn(new ResourceUsage());
+        brokerLoadData.setBandwidthOut(new ResourceUsage());
+        brokerLoadData.setDirectMemory(new ResourceUsage());
+        return brokerLoadData;
     }
 
     public void registerBroker(BrokerRegistry registry, String broker, BrokerLookupData lookupData) {
@@ -124,7 +136,7 @@ public class ExtensibleLoadManagerTestBase {
 
         @Override
         public Optional<T> get(String key) {
-            return Optional.empty();
+            return Optional.ofNullable(store.get(key));
         }
 
         @Override
