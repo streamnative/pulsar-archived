@@ -30,6 +30,11 @@ import org.apache.pulsar.client.api.TableView;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
 
+/**
+ * The load data store, base on {@link TableView<T>}.
+ *
+ * @param <T> Load data type.
+ */
 public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
 
     private final TableView<T> tableView;
