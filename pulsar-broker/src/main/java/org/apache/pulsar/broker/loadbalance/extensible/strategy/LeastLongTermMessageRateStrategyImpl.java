@@ -46,7 +46,7 @@ public class LeastLongTermMessageRateStrategyImpl extends AbstractBrokerSelectio
     }
 
     @Override
-    public Optional<String> doSelect(List<String> brokers, BaseLoadManagerContext context) {
+    public synchronized Optional<String> doSelect(List<String> brokers, BaseLoadManagerContext context) {
         double minScore = Double.POSITIVE_INFINITY;
         // Maintain of list of all the best scoring brokers and then randomly
         // select one of them at the end.
