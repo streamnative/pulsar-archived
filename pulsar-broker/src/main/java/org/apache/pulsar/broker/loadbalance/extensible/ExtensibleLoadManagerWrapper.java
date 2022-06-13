@@ -39,9 +39,9 @@ import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
  */
 public class ExtensibleLoadManagerWrapper implements LoadManager {
 
-    private final BrokerDiscoveryImpl brokerDiscovery;
+    private final ExtensibleLoadManagerImpl brokerDiscovery;
 
-    public ExtensibleLoadManagerWrapper(BrokerDiscoveryImpl brokerDiscovery) {
+    public ExtensibleLoadManagerWrapper(ExtensibleLoadManagerImpl brokerDiscovery) {
         this.brokerDiscovery = brokerDiscovery;
     }
 

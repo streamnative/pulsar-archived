@@ -95,6 +95,16 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     }
 
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void close() {
+
+    }
+
     private boolean isLeader() {
         return pulsar.getLeaderElectionService() != null && pulsar.getLeaderElectionService().isLeader();
     }

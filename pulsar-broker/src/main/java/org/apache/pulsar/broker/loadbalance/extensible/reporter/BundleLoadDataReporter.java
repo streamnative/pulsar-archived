@@ -52,7 +52,6 @@ public class BundleLoadDataReporter extends AbstractLoadDataReporter<Map<String,
                 this.bundleLoadDataMap.put(bundle, currentBundleData);
             });
             // TODO: delete inactive bundles.
-
         });
         return this.bundleLoadDataMap;
     }

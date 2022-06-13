@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,9 +35,8 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreFactory
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerVersionFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFilter;
-import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataReporter;
-import org.apache.pulsar.broker.loadbalance.extensible.reporter.BundleLoadDataReporter;
-import org.apache.pulsar.broker.loadbalance.extensible.reporter.TimeAverageBrokerLoadDataReporter;
+import org.apache.pulsar.broker.loadbalance.extensible.reporter.LoadDataReport;
+import org.apache.pulsar.broker.loadbalance.extensible.reporter.LoadDataReportScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundleSplitScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
@@ -49,7 +49,7 @@ import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 /**
  * The broker discovery implementation.
  */
-public class BrokerDiscoveryImpl implements BrokerDiscovery {
+public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
     public static final String BROKER_LOAD_DATA_STORE_NAME = "broker-load-data";
 
@@ -59,7 +59,7 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
     private PulsarService pulsar;
 
-    private ServiceConfiguration configuration;
+    private ServiceConfiguration conf;
 
     private BrokerRegistry brokerRegistry;
 
@@ -79,13 +79,9 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
     private LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore;
 
     /**
-     * The load reporters.
+     * The load report.
      */
-    private BrokerLoadDataReporter brokerLoadDataReporter;
-
-    private BundleLoadDataReporter bundleLoadDataReporter;
-
-    private TimeAverageBrokerLoadDataReporter timeAverageBrokerLoadDataReporter;
+    private LoadDataReport reportScheduler;
 
     /**
      * The load manager schedulers.
@@ -97,47 +93,54 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    public BrokerDiscoveryImpl() {}
+    public ExtensibleLoadManagerImpl() {}
 
     @Override
     public void start() {
-        brokerRegistry = new BrokerRegistryImpl(pulsar);
+        if (started.compareAndSet(false, true)) {
+            brokerRegistry = new BrokerRegistryImpl(pulsar);
 
-        brokerRegistry.start();
-        brokerRegistry.register();
+            brokerRegistry.start();
+            brokerRegistry.register();
 
-        try {
-            brokerLoadDataStore =
-                    LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
-            bundleLoadDataStore = LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
-            timeAverageBrokerLoadDataStore = LoadDataStoreFactory
-                    .create(pulsar, TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
-        } catch (LoadDataStoreException e) {
-            throw new RuntimeException(e);
+            try {
+                brokerLoadDataStore =
+                        LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
+                bundleLoadDataStore = LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+                timeAverageBrokerLoadDataStore = LoadDataStoreFactory
+                        .create(pulsar, TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
+            } catch (LoadDataStoreException e) {
+                throw new RuntimeException(e);
+            }
+
+            this.reportScheduler = new LoadDataReportScheduler(pulsar,
+                    brokerLoadDataStore,
+                    bundleLoadDataStore,
+                    timeAverageBrokerLoadDataStore,
+                    brokerRegistry.getLookupServiceAddress());
+
+            this.reportScheduler.start();
+
+            this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
+            this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
+
+            this.namespaceUnloadScheduler.start();
+            this.namespaceBundleSplitScheduler.start();
+
+            ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
+            ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
+            ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
+            ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
         }
-
-        brokerLoadDataReporter =
-                new BrokerLoadDataReporter(brokerLoadDataStore, pulsar, brokerRegistry.getLookupServiceAddress());
-        bundleLoadDataReporter = new BundleLoadDataReporter(bundleLoadDataStore, brokerLoadDataStore);
-        timeAverageBrokerLoadDataReporter = new TimeAverageBrokerLoadDataReporter(timeAverageBrokerLoadDataStore);
-
-        namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
-        namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
-        ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
-        ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
-        ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
-        ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
-
-        started.set(true);
     }
 
     @Override
     public void initialize(PulsarService pulsar) {
         this.pulsar = pulsar;
-        this.configuration = pulsar.getConfiguration();
+        this.conf = pulsar.getConfiguration();
 
         this.context = new BaseLoadManagerContextImpl();
-        ((BaseLoadManagerContextImpl) this.context).setConfiguration(configuration);
+        ((BaseLoadManagerContextImpl) this.context).setConfiguration(this.conf);
 
         brokerSelectionStrategy = new LeastLongTermMessageRateStrategyImpl();
 
@@ -145,7 +148,6 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
         brokerFilterPipeline.add(new BrokerVersionFilter());
         brokerFilterPipeline.add(new LargeTopicCountFilter());
-
     }
 
     @Override
@@ -216,6 +218,29 @@ public class BrokerDiscoveryImpl implements BrokerDiscovery {
 
     @Override
     public void stop() {
+        if (started.compareAndSet(true, false)) {
+            try {
+                this.brokerRegistry.close();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            this.reportScheduler.close();
+            try {
+                this.brokerLoadDataStore.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            try {
+                this.bundleLoadDataStore.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            try {
+                this.timeAverageBrokerLoadDataStore.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
 
+        }
     }
 }

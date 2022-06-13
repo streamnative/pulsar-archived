@@ -27,4 +27,8 @@ public interface LoadManagerScheduler {
      * Execute the schedule task.
      */
     void execute();
+
+    void start();
+
+    void close();
 }

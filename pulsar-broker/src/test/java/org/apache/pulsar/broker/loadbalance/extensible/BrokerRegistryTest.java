@@ -58,7 +58,7 @@ public class BrokerRegistryTest {
         // Start broker 1
         ServiceConfiguration config1 = new ServiceConfiguration();
         config1.setLoadBalancerEnabled(false);
-        config1.setLoadManagerClassName(BrokerDiscoveryImpl.class.getName());
+        config1.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
         config1.setClusterName("use");
         config1.setWebServicePort(Optional.of(0));
         config1.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());
@@ -72,7 +72,7 @@ public class BrokerRegistryTest {
         // Start broker 2
         ServiceConfiguration config2 = new ServiceConfiguration();
         config2.setLoadBalancerEnabled(false);
-        config2.setLoadManagerClassName(BrokerDiscoveryImpl.class.getName());
+        config2.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
         config2.setClusterName("use");
         config2.setWebServicePort(Optional.of(0));
         config2.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());

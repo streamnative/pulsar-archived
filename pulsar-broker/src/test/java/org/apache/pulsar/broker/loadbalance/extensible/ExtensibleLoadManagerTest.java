@@ -65,9 +65,9 @@ public class ExtensibleLoadManagerTest {
 
     private NamespaceBundleFactory nsFactory;
 
-    private BrokerDiscoveryImpl primaryBrokerDiscovery;
+    private ExtensibleLoadManagerImpl primaryBrokerDiscovery;
 
-    private BrokerDiscoveryImpl secondaryBrokerDiscovery;
+    private ExtensibleLoadManagerImpl secondaryBrokerDiscovery;
 
     @BeforeMethod
     void setup() throws Exception {
@@ -80,7 +80,7 @@ public class ExtensibleLoadManagerTest {
         // Start broker 1
         ServiceConfiguration config1 = new ServiceConfiguration();
         config1.setLoadBalancerEnabled(true);
-        config1.setLoadManagerClassName(BrokerDiscoveryImpl.class.getName());
+        config1.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
         config1.setClusterName("use");
         config1.setWebServicePort(Optional.of(0));
         config1.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());
@@ -94,7 +94,7 @@ public class ExtensibleLoadManagerTest {
         // Start broker 2
         ServiceConfiguration config2 = new ServiceConfiguration();
         config2.setLoadBalancerEnabled(true);
-        config2.setLoadManagerClassName(BrokerDiscoveryImpl.class.getName());
+        config2.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
         config2.setClusterName("use");
         config2.setWebServicePort(Optional.of(0));
         config2.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());
@@ -148,7 +148,7 @@ public class ExtensibleLoadManagerTest {
 
         @Cleanup
         LoadDataStore<BundleData> bundleLoadDataStore =
-                LoadDataStoreFactory.create(pulsar1, BrokerDiscoveryImpl.BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+                LoadDataStoreFactory.create(pulsar1, ExtensibleLoadManagerImpl.BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
         bundleLoadDataStore.push(bundles[0].toString(), bundleData);
         Awaitility.await().untilAsserted(() -> assertNotNull(bundleLoadDataStore.get(bundles[0].toString())));
 

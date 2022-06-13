@@ -96,6 +96,16 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
         }
     }
 
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void close() {
+
+    }
+
     private boolean isLoadBalancerAutoBundleSplitEnabled() {
         return conf.isLoadBalancerAutoBundleSplitEnabled();
     }
