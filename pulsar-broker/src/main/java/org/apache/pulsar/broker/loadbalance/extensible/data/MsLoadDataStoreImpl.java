@@ -21,6 +21,7 @@ package org.apache.pulsar.broker.loadbalance.extensible.data;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -95,6 +96,11 @@ public class MsLoadDataStoreImpl<T> implements LoadDataStore<T> {
     @Override
     public void forEach(BiConsumer<String, T> action) {
         map.forEach(action);
+    }
+
+    @Override
+    public Set<Map.Entry<String, T>> entrySet() {
+        return null;
     }
 
     @Override

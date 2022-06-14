@@ -20,6 +20,7 @@ package org.apache.pulsar.broker.loadbalance.extensible.data;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,6 +181,14 @@ public class BrokerLoadData {
     public double getMaxResourceUsage() {
         return max(cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
                 bandwidthOut.percentUsage()) / 100;
+    }
+
+    public String printResourceUsage() {
+        return String.format(
+                Locale.ENGLISH,
+                "cpu: %.2f%%, memory: %.2f%%, directMemory: %.2f%%, bandwidthIn: %.2f%%, bandwidthOut: %.2f%%",
+                cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
+                bandwidthOut.percentUsage());
     }
 
     private static float max(float...args) {

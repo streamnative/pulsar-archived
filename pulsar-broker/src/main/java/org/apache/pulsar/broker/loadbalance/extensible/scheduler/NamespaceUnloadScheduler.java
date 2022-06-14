@@ -74,7 +74,8 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
         recentlyUnloadedBundles.keySet().removeIf(e -> recentlyUnloadedBundles.get(e) < timeout);
 
         for (NamespaceUnloadStrategy strategy : namespaceUnloadStrategyPipeline) {
-            final Multimap<String, String> bundlesToUnload = strategy.findBundlesForUnloading(context);
+            final Multimap<String, String> bundlesToUnload =
+                    strategy.findBundlesForUnloading(context, recentlyUnloadedBundles);
 
             bundlesToUnload.asMap().forEach((broker, bundles) -> {
                 bundles.forEach(bundle -> {

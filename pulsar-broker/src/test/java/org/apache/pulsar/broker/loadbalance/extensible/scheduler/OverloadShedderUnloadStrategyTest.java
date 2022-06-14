@@ -18,18 +18,56 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
-import java.util.Map;
-import com.google.common.collect.Multimap;
-import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 
 /**
- * The namespace unload strategy.
- * Used to determine the criteria for unloading bundles.
- *
- * Migrate from {@link org.apache.pulsar.broker.loadbalance.LoadSheddingStrategy}
+ * The unit test for {@link OverloadShedderUnloadStrategy}.
  */
-public interface NamespaceUnloadStrategy {
+public class OverloadShedderUnloadStrategyTest {
 
-    Multimap<String, String> findBundlesForUnloading(BaseLoadManagerContext context,
-                                                     Map<String, Long> recentlyUnloadedBundles);
+    @BeforeMethod
+    public void setUp() {
+    }
+
+    @AfterMethod
+    public void tearDown() {
+    }
+
+    @Test
+    public void testNoBrokers() {
+
+    }
+
+    @Test
+    public void testBrokersWithNoBundles() {
+
+    }
+
+    @Test
+    public void testBrokerNotOverloaded() {
+
+    }
+
+    @Test
+    public void testBrokerWithSingleBundle() {
+
+    }
+
+    @Test
+    public void testBrokerWithMultipleBundles() {
+
+    }
+
+    @Test
+    public void testFilterRecentlyUnloaded() {
+
+    }
+
+    @Test
+    public void testPrintResourceUsage() {
+
+    }
 }

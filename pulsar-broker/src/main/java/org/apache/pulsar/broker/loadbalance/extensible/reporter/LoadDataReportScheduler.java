@@ -152,7 +152,12 @@ public class LoadDataReportScheduler implements LoadDataReport {
         if (needBrokerDataUpdate()) {
             CompletableFuture<Void> future =
                     this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, this.generateBrokerLoadData());
-            future.exceptionally(ex -> {
+            future.thenAccept(__ -> {
+                // Clear deltas.
+                localData.cleanDeltas();
+                // Update previous data.
+                lastData.update(localData);
+            }).exceptionally(ex -> {
                 log.error("Flush the broker load data failed.", ex);
                 return null;
             });

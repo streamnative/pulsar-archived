@@ -56,11 +56,6 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
         if (!this.isLoadBalancerAutoBundleSplitEnabled() || !this.isLeader()) {
             return;
         }
-        // TODO: Do we need to check the available broker's size equals the load data size?
-        if (context.brokerRegistry().getAvailableBrokers().size() != context.brokerLoadDataStore().size()) {
-            log.info("The load data synchronization is in progress, skip the bundle split.");
-            return;
-        }
         final boolean unloadSplitBundles =
                 pulsar.getConfiguration().isLoadBalancerAutoUnloadSplitBundlesEnabled();
         synchronized (bundleSplitStrategy) {
@@ -84,7 +79,7 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
                             .invalidateBundleCache(NamespaceName.get(namespaceName));
 
                     log.info("Load-manager splitting bundle {} and unloading {}", bundleName, unloadSplitBundles);
-                    // TODO: Should we check if the namespace bundle is already split?
+
                     pulsar.getAdminClient().namespaces().splitNamespaceBundle(namespaceName, bundleRange,
                             unloadSplitBundles, null);
 

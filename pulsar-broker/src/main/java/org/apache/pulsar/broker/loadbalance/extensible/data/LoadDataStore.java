@@ -19,7 +19,9 @@
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
 import java.io.Closeable;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
@@ -66,11 +68,36 @@ public interface LoadDataStore<T> extends Closeable {
      */
     CompletableFuture<Optional<T>> getAsync(String key);
 
+    /**
+     * Remove the load data by key async.
+     *
+     * @param key
+     *           The load data key.
+     */
     CompletableFuture<Void> removeAsync(String key);
 
+    /**
+     * Remove the load data by key.
+     *
+     * @param key
+     *           The load data key.
+     */
     void remove(String key) throws LoadDataStoreException;
 
+    /**
+     * Performs the given action for each entry in this map until all entries
+     * have been processed or the action throws an exception.
+     *
+     * @param action The action to be performed for each entry
+     */
     void forEach(BiConsumer<String, T> action);
+
+    /**
+     * Returns a Set view of the mappings contained in this map.
+     *
+     * @return a set view of the mappings contained in this map
+     */
+    Set<Map.Entry<String, T>> entrySet();
 
     /**
      * Listen the load data change.

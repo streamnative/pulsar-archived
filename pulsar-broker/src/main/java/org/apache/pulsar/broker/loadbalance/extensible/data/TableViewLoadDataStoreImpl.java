@@ -19,7 +19,9 @@
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
@@ -107,6 +109,10 @@ public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
     @Override
     public void listen(BiConsumer<String, T> listener) {
         tableView.forEachAndListen(listener);
+    }
+
+    public Set<Map.Entry<String, T>> entrySet() {
+        return tableView.entrySet();
     }
 
     @Override
