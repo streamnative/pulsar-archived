@@ -50,10 +50,10 @@ public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
     public TableViewLoadDataStoreImpl(PulsarClient client, String name, Class<T> clazz)
             throws LoadDataStoreException {
         try {
-            this.tableView = client.newTableViewBuilder(Schema.AVRO(clazz))
+            this.tableView = client.newTableViewBuilder(Schema.JSON(clazz))
                     .topic(TOPIC_PREFIX + name)
                     .create();
-            this.producer = client.newProducer(Schema.AVRO(clazz))
+            this.producer = client.newProducer(Schema.JSON(clazz))
                     .topic(TOPIC_PREFIX + name)
                     .create();
         } catch (Exception e) {

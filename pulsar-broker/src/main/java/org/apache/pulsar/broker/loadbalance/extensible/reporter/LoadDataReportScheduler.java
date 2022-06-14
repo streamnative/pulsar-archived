@@ -150,7 +150,8 @@ public class LoadDataReportScheduler implements LoadDataReport {
     @Override
     public CompletableFuture<Void> reportBrokerLoadDataAsync() {
         if (needBrokerDataUpdate()) {
-            CompletableFuture<Void> future = this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, this.generateBrokerLoadData());
+            CompletableFuture<Void> future =
+                    this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, this.generateBrokerLoadData());
             future.exceptionally(ex -> {
                 log.error("Flush the broker load data failed.", ex);
                 return null;
@@ -208,10 +209,9 @@ public class LoadDataReportScheduler implements LoadDataReport {
 
     @Override
     public TimeAverageBrokerData generateTimeAverageBrokerData() {
-        Map<String, BundleData> bundleDataMap = generateBundleData();
         TimeAverageBrokerData timeAverageBrokerData =
                 timeAverageBrokerLoadDataStore.get(lookupServiceAddress).orElse(new TimeAverageBrokerData());
-        timeAverageBrokerData.reset(this.getBundleStats().keySet(), bundleDataMap,
+        timeAverageBrokerData.reset(this.getBundleStats().keySet(), this.bundleLoadDataMap,
                 NamespaceBundleStats.newDefaultNamespaceBundleStats());
         return timeAverageBrokerData;
     }

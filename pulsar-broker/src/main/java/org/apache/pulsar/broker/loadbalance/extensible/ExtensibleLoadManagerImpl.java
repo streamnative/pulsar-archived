@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
@@ -81,6 +82,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     /**
      * The load report.
      */
+    @Getter
+    @VisibleForTesting
     private LoadDataReport reportScheduler;
 
     /**
@@ -97,41 +100,40 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
     @Override
     public void start() {
-        if (started.compareAndSet(false, true)) {
-            brokerRegistry = new BrokerRegistryImpl(pulsar);
+        brokerRegistry = new BrokerRegistryImpl(pulsar);
 
-            brokerRegistry.start();
-            brokerRegistry.register();
+        brokerRegistry.start();
+        brokerRegistry.register();
 
-            try {
-                brokerLoadDataStore =
-                        LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
-                bundleLoadDataStore = LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
-                timeAverageBrokerLoadDataStore = LoadDataStoreFactory
-                        .create(pulsar, TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
-            } catch (LoadDataStoreException e) {
-                throw new RuntimeException(e);
-            }
-
-            this.reportScheduler = new LoadDataReportScheduler(pulsar,
-                    brokerLoadDataStore,
-                    bundleLoadDataStore,
-                    timeAverageBrokerLoadDataStore,
-                    brokerRegistry.getLookupServiceAddress());
-
-            this.reportScheduler.start();
-
-            this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
-            this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
-
-            this.namespaceUnloadScheduler.start();
-            this.namespaceBundleSplitScheduler.start();
-
-            ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
-            ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
-            ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
-            ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
+        try {
+            brokerLoadDataStore =
+                    LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
+            bundleLoadDataStore = LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+            timeAverageBrokerLoadDataStore = LoadDataStoreFactory
+                    .create(pulsar, TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
+        } catch (LoadDataStoreException e) {
+            throw new RuntimeException(e);
         }
+
+        this.reportScheduler = new LoadDataReportScheduler(pulsar,
+                brokerLoadDataStore,
+                bundleLoadDataStore,
+                timeAverageBrokerLoadDataStore,
+                brokerRegistry.getLookupServiceAddress());
+
+        this.reportScheduler.start();
+
+        this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
+        this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
+
+        this.namespaceUnloadScheduler.start();
+        this.namespaceBundleSplitScheduler.start();
+
+        ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
+        ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
+        ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
+        ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
+        started.set(true);
     }
 
     @Override

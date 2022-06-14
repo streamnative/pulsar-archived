@@ -18,9 +18,22 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotEquals;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import com.google.common.hash.Hashing;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
@@ -28,13 +41,24 @@ import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.LoadBalancerTestingUtils;
+import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreFactory;
+import org.apache.pulsar.broker.loadbalance.extensible.reporter.LoadDataReport;
+import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.common.naming.NamespaceBundle;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
+import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
+import org.apache.pulsar.common.policies.data.Policies;
+import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.ObjectMapperFactory;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
+import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
+import org.apache.pulsar.policies.data.loadbalancer.LocalBrokerData;
+import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageMessageData;
 import org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble;
 import org.apache.zookeeper.CreateMode;
@@ -45,15 +69,12 @@ import org.powermock.reflect.Whitebox;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 
 @Slf4j
 public class ExtensibleLoadManagerTest {
+
+    private static final String CLUSTER_NAME = "use";
 
     private ExecutorService executor;
 
@@ -65,9 +86,21 @@ public class ExtensibleLoadManagerTest {
 
     private NamespaceBundleFactory nsFactory;
 
-    private ExtensibleLoadManagerImpl primaryBrokerDiscovery;
+    private ExtensibleLoadManagerImpl primaryLoadManager;
 
-    private ExtensibleLoadManagerImpl secondaryBrokerDiscovery;
+    private ExtensibleLoadManagerImpl secondaryLoadManager;
+
+    private URL url1;
+
+    private PulsarAdmin admin1;
+
+    private URL url2;
+
+    private PulsarAdmin admin2;
+
+    private String primaryHost;
+
+    private String secondaryHost;
 
     @BeforeMethod
     void setup() throws Exception {
@@ -81,7 +114,7 @@ public class ExtensibleLoadManagerTest {
         ServiceConfiguration config1 = new ServiceConfiguration();
         config1.setLoadBalancerEnabled(true);
         config1.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
-        config1.setClusterName("use");
+        config1.setClusterName(CLUSTER_NAME);
         config1.setWebServicePort(Optional.of(0));
         config1.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());
         config1.setBrokerShutdownTimeoutMs(0L);
@@ -91,11 +124,15 @@ public class ExtensibleLoadManagerTest {
         pulsar1 = new PulsarService(config1);
         pulsar1.start();
 
+        primaryHost = String.format("%s:%d", "localhost", pulsar1.getListenPortHTTP().get());
+        url1 = new URL(pulsar1.getWebServiceAddress());
+        admin1 = PulsarAdmin.builder().serviceHttpUrl(url1.toString()).build();
+
         // Start broker 2
         ServiceConfiguration config2 = new ServiceConfiguration();
         config2.setLoadBalancerEnabled(true);
         config2.setLoadManagerClassName(ExtensibleLoadManagerImpl.class.getName());
-        config2.setClusterName("use");
+        config2.setClusterName(CLUSTER_NAME);
         config2.setWebServicePort(Optional.of(0));
         config2.setMetadataStoreUrl("zk:127.0.0.1" + ":" + bkEnsemble.getZookeeperPort());
         config2.setBrokerShutdownTimeoutMs(0L);
@@ -104,10 +141,21 @@ public class ExtensibleLoadManagerTest {
         pulsar2 = new PulsarService(config2);
         pulsar2.start();
 
+        secondaryHost = String.format("%s:%d", "localhost", pulsar2.getListenPortHTTP().get());
+        url2 = new URL(pulsar2.getWebServiceAddress());
+        admin2 = PulsarAdmin.builder().serviceHttpUrl(url2.toString()).build();
+
+        admin1.tenants().createTenant("public",
+                TenantInfo.builder().allowedClusters(Collections.singleton(CLUSTER_NAME)).build());
+        Policies policies = new Policies();
+        policies.bundles = BundlesData.builder().numBundles(9).build();
+        policies.replication_clusters = Collections.singleton(CLUSTER_NAME);
+        admin1.namespaces().createNamespace("public/default", policies);
+
         nsFactory = new NamespaceBundleFactory(pulsar1, Hashing.crc32());
 
-        primaryBrokerDiscovery = Whitebox.getInternalState(pulsar1.getLoadManager().get(), "brokerDiscovery");
-        secondaryBrokerDiscovery = Whitebox.getInternalState(pulsar2.getLoadManager().get(), "brokerDiscovery");
+        primaryLoadManager = Whitebox.getInternalState(pulsar1.getLoadManager().get(), "loadManager");
+        secondaryLoadManager = Whitebox.getInternalState(pulsar2.getLoadManager().get(), "loadManager");
     }
 
     @AfterMethod(alwaysRun = true)
@@ -148,16 +196,118 @@ public class ExtensibleLoadManagerTest {
 
         @Cleanup
         LoadDataStore<BundleData> bundleLoadDataStore =
-                LoadDataStoreFactory.create(pulsar1, ExtensibleLoadManagerImpl.BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+                LoadDataStoreFactory.create(pulsar1,
+                        ExtensibleLoadManagerImpl.BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
         bundleLoadDataStore.push(bundles[0].toString(), bundleData);
         Awaitility.await().untilAsserted(() -> assertNotNull(bundleLoadDataStore.get(bundles[0].toString())));
 
-        String maxTopicOwnedBroker = primaryBrokerDiscovery.discover(bundles[0]).get();
+        String maxTopicOwnedBroker = primaryLoadManager.discover(bundles[0]).get();
 
         for (int i = 1; i < totalBundles; i++) {
-            assertNotEquals(primaryBrokerDiscovery.discover(bundles[i]).get(), maxTopicOwnedBroker);
+            assertNotEquals(primaryLoadManager.discover(bundles[i]).get(), maxTopicOwnedBroker);
         }
+    }
 
+    @Test
+    public void testReportBrokerLoadData() throws Exception {
+        LoadDataReport reportScheduler1 = primaryLoadManager.getReportScheduler();
+        BrokerLoadData brokerLoadData = reportScheduler1.generateBrokerLoadData();
+        Set<String> bundles = brokerLoadData.getBundles();
+        assertTrue(bundles.isEmpty());
+
+        String topic = "public/default/testReportBrokerLoadData";
+        admin1.topics().createPartitionedTopic(topic, 9);
+        try(Producer<byte[]> producer = pulsar1.getClient().newProducer().topic(topic).create()) {
+            for (int i = 0; i < 100; i++) {
+                producer.newMessage().value("test".getBytes(StandardCharsets.UTF_8)).send();
+            }
+        }
+        pulsar1.getBrokerService().updateRates();
+        pulsar2.getBrokerService().updateRates();
+        brokerLoadData = reportScheduler1.generateBrokerLoadData();
+        bundles = brokerLoadData.getBundles();
+        assertFalse(bundles.isEmpty());
+
+        reportScheduler1.reportBrokerLoadDataAsync().get();
+        LoadDataStore<BrokerLoadData> brokerLoadDataStore =
+                LoadDataStoreFactory.create(pulsar1,
+                        ExtensibleLoadManagerImpl.BROKER_LOAD_DATA_STORE_NAME,
+                        BrokerLoadData.class);
+        Optional<BrokerLoadData> brokerLoadDataFromStore = brokerLoadDataStore.get(primaryHost);
+        assertTrue(brokerLoadDataFromStore.isPresent());
+        assertFalse(brokerLoadDataFromStore.get().getBundles().isEmpty());
+    }
+
+    @Test
+    public void testReportBundleLoadData() throws Exception {
+        LoadDataReport reportScheduler1 = primaryLoadManager.getReportScheduler();
+        LoadDataReport reportScheduler2 = secondaryLoadManager.getReportScheduler();
+
+        String topic = "public/default/testReportBundleLoadData";
+        admin1.topics().createPartitionedTopic(topic, 9);
+        try(Producer<byte[]> producer = pulsar1.getClient().newProducer().topic(topic).create()) {
+            for (int i = 0; i < 100; i++) {
+                producer.newMessage().value("test".getBytes(StandardCharsets.UTF_8)).send();
+            }
+        }
+        pulsar1.getBrokerService().updateRates();
+        pulsar2.getBrokerService().updateRates();
+        Map<String, BundleData> bundleDataMap1 = reportScheduler1.generateBundleData();
+        Map<String, BundleData> bundleDataMap2 = reportScheduler2.generateBundleData();
+
+        assertFalse(bundleDataMap1.isEmpty());
+        assertFalse(bundleDataMap2.isEmpty());
+
+        reportScheduler1.reportBundleLoadDataAsync().get();
+        reportScheduler2.reportBundleLoadDataAsync().get();
+        @Cleanup
+        LoadDataStore<BundleData> bundleLoadDataStore =
+                LoadDataStoreFactory.create(pulsar1,
+                        ExtensibleLoadManagerImpl.BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+
+        int size = bundleLoadDataStore.size();
+        assertEquals(size, bundleDataMap1.size() + bundleDataMap2.size());
+    }
+
+    @Test
+    public void testReportTimeAverageBrokerLoadData() throws Exception {
+        LoadDataReport reportScheduler1 = primaryLoadManager.getReportScheduler();
+        LoadDataReport reportScheduler2 = secondaryLoadManager.getReportScheduler();
+        pulsar1.getBrokerService().updateRates();
+        pulsar2.getBrokerService().updateRates();
+        reportScheduler1.generateBundleData();
+        reportScheduler2.generateBundleData();
+        String topic = "public/default/testReportBundleLoadData";
+        admin1.topics().createPartitionedTopic(topic, 9);
+        try(Producer<byte[]> producer = pulsar1.getClient().newProducer().topic(topic).create()) {
+            for (int i = 0; i < 100; i++) {
+                producer.newMessage().value("test".getBytes(StandardCharsets.UTF_8)).send();
+            }
+        }
+        pulsar1.getBrokerService().updateRates();
+        pulsar2.getBrokerService().updateRates();
+
+        reportScheduler1.reportTimeAverageBrokerDataAsync().get();
+        reportScheduler2.reportTimeAverageBrokerDataAsync().get();
+        @Cleanup
+        LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore =
+                LoadDataStoreFactory.create(pulsar1,
+                        ExtensibleLoadManagerImpl.TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
+
+        Optional<TimeAverageBrokerData> timeAverageBrokerData1 = timeAverageBrokerLoadDataStore.get(primaryHost);
+        assertTrue(timeAverageBrokerData1.isPresent());
+        Optional<TimeAverageBrokerData> timeAverageBrokerData2 = timeAverageBrokerLoadDataStore.get(secondaryHost);
+        assertTrue(timeAverageBrokerData2.isPresent());
+    }
+
+    @Test
+    public void testAdminGetLoadReport() throws PulsarAdminException {
+        LoadDataReport reportScheduler1 = primaryLoadManager.getReportScheduler();
+        pulsar1.getBrokerService().updateRates();
+        BrokerLoadData brokerLoadData = reportScheduler1.generateBrokerLoadData();
+        LoadManagerReport loadReport = admin1.brokerStats().getLoadReport();
+        LocalBrokerData localBrokerData = BrokerLoadData.convertToLoadManagerReport(brokerLoadData);
+        assertEquals(loadReport, localBrokerData);
     }
 
     private void createCluster(ZooKeeper zk, ServiceConfiguration config) throws Exception {

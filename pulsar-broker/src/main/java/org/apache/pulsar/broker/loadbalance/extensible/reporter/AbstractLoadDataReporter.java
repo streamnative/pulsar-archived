@@ -18,14 +18,17 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
+import org.apache.pulsar.broker.PulsarService;
+import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
+
+import java.util.Map;
+
 /**
  * Abstract load data reporter.
  *
  * @param <T> Load data type.
  */
 public abstract class AbstractLoadDataReporter<T> implements LoadDataReporter<T> {
-
-    abstract T generateLoadData();
 
     protected double percentChange(final double oldValue, final double newValue) {
         if (oldValue == 0) {
@@ -36,6 +39,10 @@ public abstract class AbstractLoadDataReporter<T> implements LoadDataReporter<T>
             return Double.POSITIVE_INFINITY;
         }
         return 100 * Math.abs((oldValue - newValue) / oldValue);
+    }
+
+    protected Map<String, NamespaceBundleStats> getBundleStats(PulsarService pulsar) {
+        return pulsar.getBrokerService().getBundleStats();
     }
 
 }

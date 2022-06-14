@@ -18,21 +18,19 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * The load data reporter, it report the load data to load data storage.
  *
- * @param <T> load data type.
  */
-public interface LoadDataReporter<T> extends AutoCloseable {
+public interface LoadDataReporter<T> {
+
+    T generateLoadData();
 
     /**
-     * Start the {@link LoadDataReporter}.
+     * Report the load data to load data store async.
      */
-    void start();
-
-    /**
-     * Flush the load data to storage manually.
-     */
-    void flush();
+    CompletableFuture<Void> reportAsync(boolean force);
 
 }

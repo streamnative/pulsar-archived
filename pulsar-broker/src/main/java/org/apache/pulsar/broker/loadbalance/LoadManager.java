@@ -146,7 +146,8 @@ public interface LoadManager {
                 casted.initialize(pulsar);
                 return casted;
             } else if (loadManagerInstance instanceof ExtensibleLoadManagerImpl) {
-                final LoadManager casted = new ExtensibleLoadManagerWrapper((ExtensibleLoadManagerImpl) loadManagerInstance);
+                final LoadManager casted =
+                        new ExtensibleLoadManagerWrapper((ExtensibleLoadManagerImpl) loadManagerInstance);
                 casted.initialize(pulsar);
                 return casted;
             }

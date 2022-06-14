@@ -18,16 +18,23 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Data;
+import org.apache.pulsar.policies.data.loadbalancer.LocalBrokerData;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 import org.apache.pulsar.policies.data.loadbalancer.ResourceUsage;
 import org.apache.pulsar.policies.data.loadbalancer.SystemResourceUsage;
 
+/**
+ * Contains all the data that is maintained locally on each broker.
+ */
 @Data
 public class BrokerLoadData {
+
     // Most recently available system resource usage.
     private ResourceUsage cpu;
     private ResourceUsage memory;
@@ -62,6 +69,18 @@ public class BrokerLoadData {
     // The bundles lost since the last invocation of update.
     private Set<String> lastBundleLosses;
 
+    public BrokerLoadData() {
+        lastStats = new ConcurrentHashMap<>();
+        lastUpdate = System.currentTimeMillis();
+        cpu = new ResourceUsage();
+        memory = new ResourceUsage();
+        directMemory = new ResourceUsage();
+        bandwidthIn = new ResourceUsage();
+        bandwidthOut = new ResourceUsage();
+        bundles = new HashSet<>();
+        lastBundleGains = new HashSet<>();
+        lastBundleLosses = new HashSet<>();
+    }
 
     /**
      * Using the system resource usage and bundle stats acquired from the Pulsar client, update this LocalBrokerData.
@@ -173,5 +192,28 @@ public class BrokerLoadData {
         }
 
         return max;
+    }
+
+    public static LocalBrokerData convertToLoadManagerReport(BrokerLoadData brokerLoadData) {
+        LocalBrokerData localBrokerData = new LocalBrokerData();
+        localBrokerData.setCpu(brokerLoadData.getCpu());
+        localBrokerData.setMemory(brokerLoadData.getMemory());
+        localBrokerData.setBandwidthIn(brokerLoadData.getBandwidthIn());
+        localBrokerData.setBandwidthOut(brokerLoadData.getBandwidthOut());
+        localBrokerData.setBundles(brokerLoadData.getBundles());
+        localBrokerData.setDirectMemory(brokerLoadData.getDirectMemory());
+        localBrokerData.setLastStats(brokerLoadData.getLastStats());
+        localBrokerData.setLastBundleGains(brokerLoadData.getLastBundleGains());
+        localBrokerData.setLastBundleLosses(brokerLoadData.getLastBundleLosses());
+        localBrokerData.setLastUpdate(brokerLoadData.getLastUpdate());
+        localBrokerData.setNumBundles(brokerLoadData.getNumBundles());
+        localBrokerData.setNumTopics(brokerLoadData.getNumTopics());
+        localBrokerData.setNumProducers(brokerLoadData.getNumProducers());
+        localBrokerData.setNumConsumers(brokerLoadData.getNumConsumers());
+        localBrokerData.setMsgRateIn(brokerLoadData.getMsgRateIn());
+        localBrokerData.setMsgRateOut(brokerLoadData.getMsgRateOut());
+        localBrokerData.setMsgThroughputIn(brokerLoadData.getMsgThroughputIn());
+        localBrokerData.setMsgThroughputOut(brokerLoadData.getMsgThroughputOut());
+        return localBrokerData;
     }
 }

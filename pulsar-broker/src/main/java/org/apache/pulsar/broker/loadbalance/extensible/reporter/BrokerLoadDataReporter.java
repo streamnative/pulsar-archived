@@ -20,6 +20,7 @@ package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -54,17 +55,13 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
 
     private final String lookupServiceAddress;
 
-    private final ScheduledExecutorService executor;
-
     private final BrokerLoadData localData;
 
     private final BrokerLoadData lastData;
 
-    private volatile ScheduledFuture<?> scheduledFuture;
-
-    public BrokerLoadDataReporter(LoadDataStore<BrokerLoadData> brokerLoadDataStore,
-                                  PulsarService pulsar,
-                                  String lookupServiceAddress) {
+    public BrokerLoadDataReporter(PulsarService pulsar,
+                                  String lookupServiceAddress,
+                                  LoadDataStore<BrokerLoadData> brokerLoadDataStore) {
         this.brokerLoadDataStore = brokerLoadDataStore;
         this.lookupServiceAddress = lookupServiceAddress;
         this.pulsar = pulsar;
@@ -74,8 +71,6 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
         } else {
             brokerHostUsage = new GenericBrokerHostUsageImpl(pulsar);
         }
-        this.executor = Executors
-                .newSingleThreadScheduledExecutor(new DefaultThreadFactory("broker-load-data-reporter"));
         this.localData = new BrokerLoadData();
         this.lastData = new BrokerLoadData();
 
@@ -84,36 +79,23 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
     @Override
     public BrokerLoadData generateLoadData() {
         final SystemResourceUsage systemResourceUsage = LoadManagerShared.getSystemResourceUsage(brokerHostUsage);
-        localData.update(systemResourceUsage, getBundleStats());
+        localData.update(systemResourceUsage, getBundleStats(pulsar));
         localData.setLastUpdate(System.currentTimeMillis());
         return this.localData;
     }
 
-    private Map<String, NamespaceBundleStats> getBundleStats() {
-        return pulsar.getBrokerService().getBundleStats();
-    }
-
     @Override
-    public void start() {
-        this.scheduledFuture =
-                this.executor.scheduleAtFixedRate(this::schedulerFlush, 0, 10, TimeUnit.SECONDS);
-
-    }
-
-    @Override
-    public void flush() {
-        try {
-            this.brokerLoadDataStore.push(this.lookupServiceAddress, this.generateLoadData());
-            this.localData.cleanDeltas();
-        } catch (LoadDataStoreException ex) {
-            log.error("Flush the broker load data failed.", ex);
+    public CompletableFuture<Void> reportAsync(boolean force) {
+        if (needBrokerDataUpdate() || force) {
+            CompletableFuture<Void> future =
+                    this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, this.generateLoadData());
+            future.exceptionally(ex -> {
+                log.error("Flush the broker load data failed.", ex);
+                return null;
+            });
+            return future;
         }
-    }
-
-    private void schedulerFlush() {
-        if (needBrokerDataUpdate()) {
-            this.flush();
-        }
+        return CompletableFuture.completedFuture(null);
     }
 
     private boolean needBrokerDataUpdate() {
@@ -145,10 +127,5 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
             return true;
         }
         return false;
-    }
-
-    @Override
-    public void close() throws Exception {
-        scheduledFuture.cancel(false);
     }
 }

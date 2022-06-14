@@ -18,56 +18,57 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
+import org.apache.pulsar.common.util.FutureUtil;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 
+@Slf4j
 public class BundleLoadDataReporter extends AbstractLoadDataReporter<Map<String, BundleData>> {
+
+    private final PulsarService pulsar;
 
     private final LoadDataStore<BundleData> bundleLoadDataStore;
 
-    public final LoadDataStore<BrokerLoadData> brokerLoadDataStore;
+    private final Map<String, BundleData> bundleLoadDataMap;
 
-    final Map<String, BundleData> bundleLoadDataMap;
-
-    public BundleLoadDataReporter(LoadDataStore<BundleData> bundleLoadDataStore,
-                                  LoadDataStore<BrokerLoadData> brokerLoadDataStore) {
+    public BundleLoadDataReporter(PulsarService pulsar, LoadDataStore<BundleData> bundleLoadDataStore) {
+        this.pulsar = pulsar;
         this.bundleLoadDataStore = bundleLoadDataStore;
-        this.brokerLoadDataStore = brokerLoadDataStore;
         this.bundleLoadDataMap = new ConcurrentHashMap<>();
     }
 
     @Override
     public Map<String, BundleData> generateLoadData() {
-        this.brokerLoadDataStore.forEach((broker, brokerLoadData) -> {
-            Map<String, NamespaceBundleStats> statsMap = brokerLoadData.getLastStats();
-            statsMap.forEach((bundle, stats) -> {
-                BundleData currentBundleData =
-                        this.bundleLoadDataMap.getOrDefault(bundle,
-                                bundleLoadDataStore.get(bundle).orElse(BundleData.newDefaultBundleData()));
-                currentBundleData.update(stats);
-                this.bundleLoadDataMap.put(bundle, currentBundleData);
-            });
-            // TODO: delete inactive bundles.
+        this.bundleLoadDataMap.clear();
+        Map<String, NamespaceBundleStats> statsMap = this.getBundleStats(pulsar);
+        statsMap.forEach((bundle, stats) -> {
+            BundleData currentBundleData =
+                    this.bundleLoadDataMap.getOrDefault(bundle,
+                            bundleLoadDataStore.get(bundle).orElse(BundleData.newDefaultBundleData()));
+            currentBundleData.update(stats);
+            this.bundleLoadDataMap.put(bundle, currentBundleData);
         });
+        // TODO: Delete inactive bundle.
         return this.bundleLoadDataMap;
     }
 
     @Override
-    public void start() {
-
-    }
-
-    @Override
-    public void flush() {
-
-    }
-
-    @Override
-    public void close() throws Exception {
-
+    public CompletableFuture<Void> reportAsync(boolean force) {
+        List<CompletableFuture<Void>> futureList = new ArrayList<>();
+        this.generateLoadData().forEach((bundle, bundleData) -> {
+            futureList.add(this.bundleLoadDataStore.pushAsync(bundle, bundleData));
+        });
+        return FutureUtil.waitForAll(futureList).thenAccept(__ -> {}).exceptionally(ex -> {
+            log.error("Report the bundle load data failed.", ex);
+            return null;
+        }).thenAccept(__ -> {});
     }
 }

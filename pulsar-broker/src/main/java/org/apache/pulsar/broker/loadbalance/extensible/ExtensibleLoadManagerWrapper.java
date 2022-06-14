@@ -28,6 +28,7 @@ import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
+import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.impl.PulsarResourceDescription;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleResourceUnit;
 import org.apache.pulsar.common.naming.ServiceUnitId;
@@ -39,20 +40,20 @@ import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
  */
 public class ExtensibleLoadManagerWrapper implements LoadManager {
 
-    private final ExtensibleLoadManagerImpl brokerDiscovery;
+    private final ExtensibleLoadManagerImpl loadManager;
 
-    public ExtensibleLoadManagerWrapper(ExtensibleLoadManagerImpl brokerDiscovery) {
-        this.brokerDiscovery = brokerDiscovery;
+    public ExtensibleLoadManagerWrapper(ExtensibleLoadManagerImpl loadManager) {
+        this.loadManager = loadManager;
     }
 
     @Override
     public void start() throws PulsarServerException {
-        brokerDiscovery.start();
+        loadManager.start();
     }
 
     @Override
     public void initialize(PulsarService pulsar) {
-        brokerDiscovery.initialize(pulsar);
+        loadManager.initialize(pulsar);
     }
 
     @Override
@@ -62,7 +63,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public Optional<ResourceUnit> getLeastLoaded(ServiceUnitId su) throws Exception {
-        return brokerDiscovery.discover(su).map(s -> {
+        return loadManager.discover(su).map(s -> {
             String webServiceUrl = getBrokerWebServiceUrl(s);
             String brokerZnodeName = getBrokerZnodeName(s, webServiceUrl);
             return new SimpleResourceUnit(webServiceUrl,
@@ -72,7 +73,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
     }
 
     private String getBrokerWebServiceUrl(String broker) {
-        Optional<BrokerLookupData> localDataOpt = this.brokerDiscovery.getBrokerRegistry().lookup(broker);
+        Optional<BrokerLookupData> localDataOpt = this.loadManager.getBrokerRegistry().lookup(broker);
         return localDataOpt
                 .map((localData) -> localData.getWebServiceUrl() != null
                         ? localData.getWebServiceUrl() : localData.getWebServiceUrlTls())
@@ -86,22 +87,22 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public void disableBroker() throws Exception {
-        brokerDiscovery.getBrokerRegistry().unregister();
+        loadManager.getBrokerRegistry().unregister();
     }
 
     @Override
     public Set<String> getAvailableBrokers() throws Exception {
-        return new HashSet<>(brokerDiscovery.getBrokerRegistry().getAvailableBrokers());
+        return new HashSet<>(loadManager.getBrokerRegistry().getAvailableBrokers());
     }
 
     @Override
     public CompletableFuture<Set<String>> getAvailableBrokersAsync() {
-        return brokerDiscovery.getBrokerRegistry().getAvailableBrokersAsync().thenApply(HashSet::new);
+        return loadManager.getBrokerRegistry().getAvailableBrokersAsync().thenApply(HashSet::new);
     }
 
     @Override
     public void stop() throws PulsarServerException {
-        brokerDiscovery.stop();
+        loadManager.stop();
     }
 
     @Override
@@ -111,12 +112,13 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public LoadManagerReport generateLoadReport() throws Exception {
-        return null;
+        BrokerLoadData brokerLoadData = loadManager.getReportScheduler().generateBrokerLoadData();
+        return BrokerLoadData.convertToLoadManagerReport(brokerLoadData);
     }
 
     @Override
     public void doLoadShedding() {
-        brokerDiscovery.getNamespaceUnloadScheduler().execute();
+        loadManager.getNamespaceUnloadScheduler().execute();
     }
 
     @Override
