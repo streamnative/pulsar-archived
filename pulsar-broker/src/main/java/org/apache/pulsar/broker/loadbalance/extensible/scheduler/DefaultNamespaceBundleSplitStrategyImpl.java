@@ -72,9 +72,10 @@ public class DefaultNamespaceBundleSplitStrategyImpl implements NamespaceBundleS
                     totalMessageRate = longTermData.totalMsgRate();
                     totalMessageThroughput = longTermData.totalMsgThroughput();
                 }
-                if (stats.topics > maxBundleTopics || (maxBundleSessions > 0 && (stats.consumerCount
-                        + stats.producerCount > maxBundleSessions))
-                        || totalMessageRate > maxBundleMsgRate || totalMessageThroughput > maxBundleBandwidth) {
+                if (stats.topics > maxBundleTopics
+                        || (maxBundleSessions > 0 && (stats.consumerCount + stats.producerCount > maxBundleSessions))
+                        || totalMessageRate > maxBundleMsgRate
+                        || totalMessageThroughput > maxBundleBandwidth) {
                     final String namespace = LoadManagerShared.getNamespaceNameFromBundleName(bundle);
                     try {
                         final int bundleCount = namespaceService.getBundleCount(NamespaceName.get(namespace));
