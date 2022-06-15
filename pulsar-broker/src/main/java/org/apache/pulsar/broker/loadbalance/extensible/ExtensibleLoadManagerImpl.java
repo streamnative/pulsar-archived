@@ -22,12 +22,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.BrokerFilterException;
@@ -46,6 +50,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnload
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastLongTermMessageRateStrategyImpl;
 import org.apache.pulsar.common.naming.ServiceUnitId;
+import org.apache.pulsar.common.util.FutureUtil;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 
@@ -102,7 +107,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public ExtensibleLoadManagerImpl() {}
 
     @Override
-    public void start() {
+    public void start() throws PulsarServerException {
         brokerRegistry = new BrokerRegistryImpl(pulsar);
         // Start the broker registry.
         brokerRegistry.start();
@@ -117,7 +122,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             timeAverageBrokerLoadDataStore = LoadDataStoreFactory
                     .create(pulsar, TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
         } catch (LoadDataStoreException e) {
-            throw new RuntimeException(e);
+            throw new PulsarServerException(e);
         }
 
         this.reportScheduler = new LoadDataReportScheduler(pulsar,
@@ -128,14 +133,15 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // Start load reporter.
         this.reportScheduler.start();
 
-        // Listen the broker un or down, so we can flush the load data immediately.
+        // Listen the broker up or down, so we can flush the load data immediately.
         this.brokerRegistry.listen((broker) -> {
             try {
-                // TODO: Add timeout.
-                this.reportScheduler.reportBrokerLoadDataAsync().get();
-                this.reportScheduler.reportBundleLoadDataAsync().get();
-                this.reportScheduler.reportTimeAverageBrokerDataAsync().get();
-            } catch (InterruptedException | ExecutionException e) {
+                List<CompletableFuture<Void>> futureList = new ArrayList<>();
+                futureList.add(this.reportScheduler.reportBrokerLoadDataAsync());
+                futureList.add(this.reportScheduler.reportBundleLoadDataAsync());
+                futureList.add(this.reportScheduler.reportTimeAverageBrokerDataAsync());
+                FutureUtil.waitForAll(futureList).get(10, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 log.error("Report the all load data failed.", e);
             }
         });
@@ -240,29 +246,28 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     }
 
     @Override
-    public void stop() {
+    public void stop() throws PulsarServerException {
         if (started.compareAndSet(true, false)) {
             try {
                 this.brokerRegistry.close();
             } catch (Exception e) {
-                // TODO: Throw Load manager exception?
-                throw new RuntimeException(e);
+                throw new PulsarServerException(e);
             }
             this.reportScheduler.close();
             try {
                 this.brokerLoadDataStore.close();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new PulsarServerException(e);
             }
             try {
                 this.bundleLoadDataStore.close();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new PulsarServerException(e);
             }
             try {
                 this.timeAverageBrokerLoadDataStore.close();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new PulsarServerException(e);
             }
 
         }

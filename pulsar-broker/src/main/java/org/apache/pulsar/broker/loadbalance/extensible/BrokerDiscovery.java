@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 import java.util.Optional;
+import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 
@@ -32,7 +33,7 @@ public interface BrokerDiscovery {
      *
      * 1. register self broker to ZNode
      */
-    void start();
+    void start() throws PulsarServerException;
 
     /**
      * Initialize this broker discovery using the given pulsar service.
@@ -47,5 +48,8 @@ public interface BrokerDiscovery {
      */
     Optional<String> discover(ServiceUnitId serviceUnit);
 
-    void stop();
+    /**
+     * Stop the load manager.
+     */
+    void stop() throws PulsarServerException;
 }
