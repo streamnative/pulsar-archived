@@ -2386,14 +2386,12 @@ public class ServiceConfiguration implements PulsarConfiguration {
         doc = "maximum number of bundles in a namespace"
     )
     private int loadBalancerNamespaceMaximumBundles = 128;
-
     @FieldContext(
         dynamic = true,
         category = CATEGORY_LOAD_BALANCER,
         doc = "Name of load manager to use"
     )
     private String loadManagerClassName = "org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerImpl";
-
     @FieldContext(
         dynamic = true,
         category = CATEGORY_LOAD_BALANCER,
@@ -2424,7 +2422,7 @@ public class ServiceConfiguration implements PulsarConfiguration {
             category = CATEGORY_LOAD_BALANCER,
             dynamic = true,
             doc = "Choose load data store implementation. "
-                    + "Available value: TableViewStore, MetaDataStore."
+                    + "Available value: TableViewStore."
                     + "Default value: TableViewStore"
     )
     private String loadDataStoreName = "TableViewStore";

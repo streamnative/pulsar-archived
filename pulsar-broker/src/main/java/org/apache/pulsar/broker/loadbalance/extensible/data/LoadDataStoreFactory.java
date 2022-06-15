@@ -28,8 +28,6 @@ public class LoadDataStoreFactory {
 
     public static final String TABLEVIEW_STORE = "TableViewStore";
 
-    public static final String METADATA_STORE = "MetaDataStore";
-
     public static <T> LoadDataStore<T> create(PulsarService pulsar, String name, Class<T> clazz)
         throws LoadDataStoreException {
         return newInstance(pulsar, pulsar.getConfiguration().getLoadDataStoreName(), name, clazz);
@@ -43,11 +41,8 @@ public class LoadDataStoreFactory {
         try {
             if (TABLEVIEW_STORE.equals(loadDataStoreName)) {
                 return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), name, clazz);
-            } else if (METADATA_STORE.equals(loadDataStoreName)) {
-                return new MsLoadDataStoreImpl<>(pulsar.getLocalMetadataStore(), name, clazz);
-            } else {
-                return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), name, clazz);
             }
+            return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), name, clazz);
         } catch (PulsarServerException ex) {
             throw new LoadDataStoreException(ex);
         }

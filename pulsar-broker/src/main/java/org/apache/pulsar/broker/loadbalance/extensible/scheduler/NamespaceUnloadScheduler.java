@@ -51,6 +51,7 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     public NamespaceUnloadScheduler(PulsarService pulsar, BaseLoadManagerContext context) {
         this.namespaceUnloadStrategyPipeline = new ArrayList<>();
+        this.namespaceUnloadStrategyPipeline.add(new OverloadShedderUnloadStrategy());
         this.recentlyUnloadedBundles = new HashMap<>();
         this.pulsar = pulsar;
         this.context = context;
@@ -61,7 +62,7 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
     public void execute() {
         if (!(configuration.isLoadBalancerEnabled()
                 && configuration.isLoadBalancerSheddingEnabled())
-                || !isLeader()) {
+                || !this.isLeader()) {
             return;
         }
         if (context.brokerRegistry().getAvailableBrokers().size() <= 1) {

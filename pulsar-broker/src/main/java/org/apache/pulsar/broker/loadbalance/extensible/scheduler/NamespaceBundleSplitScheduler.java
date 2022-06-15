@@ -47,7 +47,7 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
         this.pulsar = pulsar;
         this.context = context;
         this.conf = context.brokerConfiguration();
-        this.bundleSplitStrategy = null;
+        this.bundleSplitStrategy = new DefaultNamespaceBundleSplitStrategyImpl();
     }
 
 

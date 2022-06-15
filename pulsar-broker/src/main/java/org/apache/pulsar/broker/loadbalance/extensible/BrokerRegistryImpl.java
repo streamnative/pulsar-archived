@@ -19,6 +19,8 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 import com.google.common.collect.Lists;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +32,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -64,6 +68,8 @@ public class BrokerRegistryImpl implements BrokerRegistry {
 
     private final ScheduledExecutorService scheduler;
 
+    private final List<Consumer<String>> listeners;
+
     private final AtomicBoolean registered;
 
     private volatile ResourceLock<BrokerLookupData> brokerLookupDataLock;
@@ -74,6 +80,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.brokerLookupDataLockManager = pulsar.getCoordinationService().getLockManager(BrokerLookupData.class);
         this.scheduler = pulsar.getLoadManagerExecutor();
         this.brokerLookupDataMap = new ConcurrentHashMap<>();
+        this.listeners = new ArrayList<>();
 
         this.registered = new AtomicBoolean(false);
         this.brokerLookupData = new BrokerLookupData(
@@ -171,15 +178,26 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.brokerLookupDataMap.forEach(action);
     }
 
+    public void listen(Consumer<String> listener) {
+        this.listeners.add(listener);
+    }
+
     @Override
     public void close() throws Exception {
         this.unregister();
+        this.listeners.clear();
     }
 
     private void handleDataNotification(Notification t) {
         if (t.getPath().startsWith(LOOKUP_DATA_PATH)) {
             try {
                 this.scheduler.submit(this::updateAllBrokerLookupData);
+                this.scheduler.submit(() -> {
+                    String lookupDataPath = t.getPath().substring(LOOKUP_DATA_PATH.length() + 1);
+                    for (Consumer<String> listener : listeners) {
+                        listener.accept(lookupDataPath);
+                    }
+                });
             } catch (RejectedExecutionException e) {
                 // Executor is shutting down
             }

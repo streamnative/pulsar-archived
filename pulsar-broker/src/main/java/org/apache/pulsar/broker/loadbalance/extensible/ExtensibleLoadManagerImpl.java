@@ -22,10 +22,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.BrokerFilterException;
@@ -50,6 +52,7 @@ import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 /**
  * The broker discovery implementation.
  */
+@Slf4j
 public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
     public static final String BROKER_LOAD_DATA_STORE_NAME = "broker-load-data";
@@ -101,10 +104,12 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     @Override
     public void start() {
         brokerRegistry = new BrokerRegistryImpl(pulsar);
-
+        // Start the broker registry.
         brokerRegistry.start();
+        // Register self to metadata store.
         brokerRegistry.register();
 
+        // Start the load data store.
         try {
             brokerLoadDataStore =
                     LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
@@ -120,19 +125,37 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                 bundleLoadDataStore,
                 timeAverageBrokerLoadDataStore,
                 brokerRegistry.getLookupServiceAddress());
-
+        // Start load reporter.
         this.reportScheduler.start();
 
+        // Listen the broker un or down, so we can flush the load data immediately.
+        this.brokerRegistry.listen((broker) -> {
+            try {
+                // TODO: Add timeout.
+                this.reportScheduler.reportBrokerLoadDataAsync().get();
+                this.reportScheduler.reportBundleLoadDataAsync().get();
+                this.reportScheduler.reportTimeAverageBrokerDataAsync().get();
+            } catch (InterruptedException | ExecutionException e) {
+                log.error("Report the all load data failed.", e);
+            }
+        });
+
+        // Init the load manager context.
+        this.context = new BaseLoadManagerContextImpl();
+        ((BaseLoadManagerContextImpl) this.context).setConfiguration(this.conf);
+        ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
+        ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
+        ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
+        ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
+
+        // Start the namespace bundle unload and bundle split scheduler.
         this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
         this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
 
         this.namespaceUnloadScheduler.start();
         this.namespaceBundleSplitScheduler.start();
 
-        ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
-        ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
-        ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
-        ((BaseLoadManagerContextImpl) this.context).setTimeAverageBrokerLoadDataStore(timeAverageBrokerLoadDataStore);
+        // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
     }
 
@@ -141,9 +164,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.pulsar = pulsar;
         this.conf = pulsar.getConfiguration();
 
-        this.context = new BaseLoadManagerContextImpl();
-        ((BaseLoadManagerContextImpl) this.context).setConfiguration(this.conf);
-
+        // Use least long term message rate strategy to select best broker.
         brokerSelectionStrategy = new LeastLongTermMessageRateStrategyImpl();
 
         brokerFilterPipeline = new ArrayList<>();
@@ -224,6 +245,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             try {
                 this.brokerRegistry.close();
             } catch (Exception e) {
+                // TODO: Throw Load manager exception?
                 throw new RuntimeException(e);
             }
             this.reportScheduler.close();
