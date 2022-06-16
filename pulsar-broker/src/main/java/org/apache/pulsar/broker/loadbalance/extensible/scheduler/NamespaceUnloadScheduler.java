@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
@@ -47,7 +49,9 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     private final ServiceConfiguration configuration;
 
-    final Map<String, Long> recentlyUnloadedBundles;
+    private final Map<String, Long> recentlyUnloadedBundles;
+
+    private volatile ScheduledFuture<?> loadSheddingTask;
 
     public NamespaceUnloadScheduler(PulsarService pulsar, BaseLoadManagerContext context) {
         this.namespaceUnloadStrategyPipeline = new ArrayList<>();
@@ -99,12 +103,18 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     @Override
     public void start() {
-
+        ScheduledExecutorService loadManagerExecutor = this.pulsar.getLoadManagerExecutor();
+        long loadSheddingInterval = TimeUnit.MINUTES
+                .toMillis(configuration.getLoadBalancerSheddingIntervalMinutes());
+        this.loadSheddingTask = loadManagerExecutor.scheduleAtFixedRate(
+                this::execute, loadSheddingInterval, loadSheddingInterval, TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void close() {
-
+        if (this.loadSheddingTask != null) {
+            this.loadSheddingTask.cancel(false);
+        }
     }
 
     private boolean isLeader() {

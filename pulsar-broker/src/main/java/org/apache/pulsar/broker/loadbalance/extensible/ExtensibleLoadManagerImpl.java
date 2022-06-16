@@ -133,19 +133,6 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // Start load reporter.
         this.reportScheduler.start();
 
-        // Listen the broker up or down, so we can flush the load data immediately.
-        this.brokerRegistry.listen((broker) -> {
-            try {
-                List<CompletableFuture<Void>> futureList = new ArrayList<>();
-                futureList.add(this.reportScheduler.reportBrokerLoadDataAsync());
-                futureList.add(this.reportScheduler.reportBundleLoadDataAsync());
-                futureList.add(this.reportScheduler.reportTimeAverageBrokerDataAsync());
-                FutureUtil.waitForAll(futureList).get(10, TimeUnit.SECONDS);
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                log.error("Report the all load data failed.", e);
-            }
-        });
-
         // Init the load manager context.
         this.context = new BaseLoadManagerContextImpl();
         ((BaseLoadManagerContextImpl) this.context).setConfiguration(this.conf);
@@ -160,6 +147,23 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
         this.namespaceUnloadScheduler.start();
         this.namespaceBundleSplitScheduler.start();
+
+        // Listen the broker up or down, so we can flush the load data immediately.
+        this.brokerRegistry.listen((broker) -> {
+            try {
+                List<CompletableFuture<Void>> futureList = new ArrayList<>();
+                futureList.add(this.reportScheduler.reportBrokerLoadDataAsync());
+                futureList.add(this.reportScheduler.reportBundleLoadDataAsync());
+                futureList.add(this.reportScheduler.reportTimeAverageBrokerDataAsync());
+                FutureUtil.waitForAll(futureList).thenApply(__ -> {
+                    // Trigger the namespace bundle split.
+                    namespaceBundleSplitScheduler.execute();
+                    return null;
+                }).get(10, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                log.error("Report the all load data failed.", e);
+            }
+        });
 
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
