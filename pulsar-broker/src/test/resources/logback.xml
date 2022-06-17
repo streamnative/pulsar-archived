@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,18 +20,17 @@
 
 -->
 <configuration scan="true">
-<!--
+  <!--
 	<logger name="org.apache" level="IN" />
 	<logger name="org.apache.bookkeeper.mledger" level="ERROR" />
  -->
-	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
 			</pattern>
-		</encoder>
-	</appender>
-
-	<root level="INFO">
-		<appender-ref ref="STDOUT" />
-	</root>
+    </encoder>
+  </appender>
+  <root level="INFO">
+    <appender-ref ref="STDOUT"/>
+  </root>
 </configuration>
