@@ -192,7 +192,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
         // When the system namespace doing the bundle lookup,
         // the load manager might not start yet, so we return a random broker.
-        if (!started.get()) {
+        if (!started.get() || !isLeader()) {
             return Optional.of(availableBrokers.get(ThreadLocalRandom.current().nextInt(availableBrokers.size())));
         }
 
@@ -275,5 +275,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             }
 
         }
+    }
+
+    private boolean isLeader() {
+        return pulsar.getLeaderElectionService() != null && pulsar.getLeaderElectionService().isLeader();
     }
 }
