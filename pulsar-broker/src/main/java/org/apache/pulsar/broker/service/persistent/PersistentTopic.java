@@ -2876,6 +2876,25 @@ public class PersistentTopic extends AbstractTopic
         }
     }
 
+    public synchronized void triggerOffloadService(String operationType) throws AlreadyRunningException {
+        log.info("[{}] Starting offload operation {}", topic, operationType);
+        CompletableFuture<Void> promise = new CompletableFuture<>();
+        getManagedLedger().asyncOffloadService(topic, operationType,
+            new AsyncCallbacks.OffloadServiceCallback() {
+                @Override
+                public void offloadComplete(Object ctx) {
+                    log.info("[{}] {} offload service succeed.", topic, operationType);
+                    promise.complete(null);
+                }
+
+                @Override
+                public void offloadFailed(ManagedLedgerException exception, Object ctx) {
+                    log.warn("[{}] {} offload service failed", topic, operationType, exception);
+                    promise.completeExceptionally(exception);
+                }
+            }, null);
+    }
+
     public synchronized OffloadProcessStatus offloadStatus() {
         if (!currentOffload.isDone()) {
             return OffloadProcessStatus.forStatus(LongRunningProcessStatus.Status.RUNNING);

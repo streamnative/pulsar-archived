@@ -20,9 +20,14 @@ package org.apache.bookkeeper.mledger;
 
 import java.io.IOException;
 import java.util.Map;
+import org.apache.bookkeeper.client.api.BookKeeper;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience.LimitedPrivate;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Evolving;
+import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
+import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.common.policies.data.OffloadPoliciesImpl;
 import org.apache.pulsar.common.protocol.schema.SchemaStorage;
 
@@ -31,7 +36,7 @@ import org.apache.pulsar.common.protocol.schema.SchemaStorage;
  */
 @LimitedPrivate
 @Evolving
-public interface LedgerOffloaderFactory<T extends LedgerOffloader> {
+public interface LedgerOffloaderFactory<T> {
 
     /**
      * Check whether the provided driver <tt>driverName</tt> is supported.
@@ -70,6 +75,18 @@ public interface LedgerOffloaderFactory<T extends LedgerOffloader> {
                      SchemaStorage schemaStorage,
                      OrderedScheduler scheduler)
             throws IOException {
+        return create(offloadPolicies, userMetadata, scheduler);
+    }
+
+
+    default T create(ServiceConfiguration conf,
+                     OffloadPoliciesImpl offloadPolicies,
+                     Map<String, String> userMetadata,
+                     PulsarClient pulsarClient,
+                     PulsarAdmin pulsarAdmin,
+                     BookKeeper bkc,
+                     OrderedExecutor executor,
+                     OrderedScheduler scheduler) throws IOException {
         return create(offloadPolicies, userMetadata, scheduler);
     }
 }

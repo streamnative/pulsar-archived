@@ -33,6 +33,7 @@ import org.apache.bookkeeper.common.annotation.InterfaceAudience;
 import org.apache.bookkeeper.common.annotation.InterfaceStability;
 import org.apache.bookkeeper.mledger.impl.NullLedgerOffloader;
 
+import org.apache.bookkeeper.mledger.impl.NullOffloadService;
 import org.apache.bookkeeper.mledger.intercept.ManagedLedgerInterceptor;
 import org.apache.pulsar.common.util.collections.ConcurrentOpenLongPairRangeSet;
 
@@ -74,6 +75,7 @@ public class ManagedLedgerConfig {
     private Class<? extends EnsemblePlacementPolicy>  bookKeeperEnsemblePlacementPolicyClassName;
     private Map<String, Object> bookKeeperEnsemblePlacementPolicyProperties;
     private LedgerOffloader ledgerOffloader = NullLedgerOffloader.INSTANCE;
+    private OffloadService offloadService = NullOffloadService.INSTANCE;
     private int newEntriesCheckDelayInMillis = 10;
     private Clock clock = Clock.systemUTC();
     private ManagedLedgerInterceptor managedLedgerInterceptor;
@@ -506,6 +508,28 @@ public class ManagedLedgerConfig {
      */
     public ManagedLedgerConfig setLedgerOffloader(LedgerOffloader offloader) {
         this.ledgerOffloader = offloader;
+        return this;
+    }
+
+    /**
+     * Get offload service which will be used to offload ledgers to longterm storage.
+     *
+     * The default offloader throws an exception on any attempt to offload.
+     *
+     * @return offloadService
+     */
+    public OffloadService getOffloadService() {
+        return offloadService;
+    }
+
+    /**
+     * Set offload service to use to offloading ledgers to long term storage.
+     *
+     * @param offloadService the offload service to use.
+     * @return
+     */
+    public ManagedLedgerConfig setOffloadService(OffloadService offloadService) {
+        this.offloadService = offloadService;
         return this;
     }
 

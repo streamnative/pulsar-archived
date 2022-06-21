@@ -43,6 +43,7 @@ import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.admin.impl.PersistentTopicsBase;
 import org.apache.pulsar.broker.web.RestException;
 import org.apache.pulsar.client.admin.LongRunningProcessStatus;
@@ -2630,6 +2631,38 @@ public class PersistentTopics extends PersistentTopicsBase {
             @QueryParam("authoritative") @DefaultValue("false") boolean authoritative) {
         validateTopicName(tenant, namespace, encodedTopic);
         return internalOffloadStatus(authoritative);
+    }
+
+    @PUT
+    @Path("/{tenant}/{namespace}/{topic}/offloadService")
+    @ApiOperation(value = "Offload a topic to long term storage")
+    @ApiResponses(value = {
+        @ApiResponse(code = 307, message = "Current broker doesn't serve the namespace of this topic"),
+        @ApiResponse(code = 401, message = "Don't have permission to administrate resources on this tenant or"
+            + "subscriber is not authorized to access this operation"),
+        @ApiResponse(code = 403, message = "Don't have admin permission"),
+        @ApiResponse(code = 404, message = "Topic does not exist"),
+        @ApiResponse(code = 405, message = "Operation is not allowed on the persistent topic"),
+        @ApiResponse(code = 409, message = "Offload already running"),
+        @ApiResponse(code = 412, message = "Topic name is not valid"),
+        @ApiResponse(code = 500, message = "Internal server error"),
+        @ApiResponse(code = 503, message = "Failed to validate global cluster configuration")})
+    public void triggerOffloadService(
+        @ApiParam(value = "Specify the tenant", required = true)
+        @PathParam("tenant") String tenant,
+        @ApiParam(value = "Specify the namespace", required = true)
+        @PathParam("namespace") String namespace,
+        @ApiParam(value = "Specify topic name", required = true)
+        @PathParam("topic") @Encoded String encodedTopic,
+        @ApiParam(value = "Is authentication required to perform this operation")
+        @QueryParam("authoritative") @DefaultValue("false") boolean authoritative,
+        String operationType) {
+        if (StringUtils.isBlank(operationType)
+            || (!"start".equals(operationType) && !"stop".equals(operationType) && !"status".equals(operationType))) {
+            throw new RestException(Response.Status.BAD_REQUEST, "operation type is invalid");
+        }
+        validateTopicName(tenant, namespace, encodedTopic);
+        internalTriggerOffloadService(authoritative, operationType);
     }
 
     @GET

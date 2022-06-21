@@ -1575,7 +1575,22 @@ public interface Topics {
     void triggerOffload(String topic, MessageId messageId) throws PulsarAdminException;
 
     /**
-     * Trigger offloading messages in topic to longterm storage asynchronously.
+     * start, stop or get status of the offload service.
+     * @param topic
+     * @param operationType
+     * @throws PulsarAdminException
+     */
+    void offloadService(String topic, String operationType) throws PulsarAdminException;
+
+    /**
+     * start, stop or get status of the offload service asynchronously.
+     * @param topic
+     * @param operationType
+     * @return
+     */
+    CompletableFuture<Void> offloadServiceAsync(String topic, String operationType);
+    /**
+     * Trigger offloading messages in topic to long term storage asynchronously.
      *
      * @param topic the topic to offload
      * @param messageId ID of maximum message which should be offloaded

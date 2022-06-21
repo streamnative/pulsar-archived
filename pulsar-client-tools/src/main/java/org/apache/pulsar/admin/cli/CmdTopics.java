@@ -122,6 +122,7 @@ public class CmdTopics extends CmdBase {
         jcommander.addCommand("compact", new Compact());
         jcommander.addCommand("compaction-status", new CompactionStatusCmd());
         jcommander.addCommand("offload", new Offload());
+        jcommander.addCommand("offload-service", new OffloadService());
         jcommander.addCommand("offload-status", new OffloadStatusCmd());
         jcommander.addCommand("last-message-id", new GetLastMessageId());
         jcommander.addCommand("get-backlog-quotas", new GetBacklogQuotaMap());
@@ -1127,6 +1128,25 @@ public class CmdTopics extends CmdBase {
 
             getTopics().triggerOffload(persistentTopic, messageId);
             System.out.println("Offload triggered for " + persistentTopic + " for messages before " + messageId);
+        }
+    }
+
+    @Parameters(commandDescription = "Start or stop offload service")
+    private class OffloadService extends CliCommand {
+        @Parameter(description = "persistent://tenent/namespace/topic", required = true)
+        private List<String> params;
+
+        @Parameter(names = {"-t", "--type"},
+            description = "The operation type of offload service. (start, stop, status)")
+        private String type;
+
+        @Override
+        void run() throws PulsarAdminException {
+            String persistentTopic = validatePersistentTopic(params);
+            String operationType = validateOperationType(type);
+
+            getTopics().offloadService(persistentTopic, operationType);
+            System.out.println("Offload Service for " + persistentTopic + " operation " + operationType);
         }
     }
 

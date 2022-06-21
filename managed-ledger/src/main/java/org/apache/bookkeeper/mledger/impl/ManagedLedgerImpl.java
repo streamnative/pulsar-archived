@@ -110,6 +110,7 @@ import org.apache.bookkeeper.mledger.ManagedLedgerException.MetadataNotFoundExce
 import org.apache.bookkeeper.mledger.ManagedLedgerException.NonRecoverableLedgerException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.TooManyRequestsException;
 import org.apache.bookkeeper.mledger.ManagedLedgerMXBean;
+import org.apache.bookkeeper.mledger.OffloadService;
 import org.apache.bookkeeper.mledger.Position;
 import org.apache.bookkeeper.mledger.WaitingEntryCallBack;
 import org.apache.bookkeeper.mledger.impl.ManagedCursorImpl.VoidCallback;
@@ -140,6 +141,7 @@ import org.slf4j.LoggerFactory;
 
 public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
     private static final long MegaByte = 1024 * 1024;
+    private static final String OFFLOAD_SUB_NAME = "__OFFLOAD";
 
     protected static final int AsyncOperationTimeoutSeconds = 30;
 
@@ -1755,6 +1757,7 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
 
             LedgerInfo info = ledgers.get(ledgerId);
             CompletableFuture<ReadHandle> openFuture;
+            ManagedCursor offloadCursor = cursors.get(OFFLOAD_SUB_NAME);
 
             if (config.getLedgerOffloader() != null
                     && config.getLedgerOffloader().getOffloadPolicies() != null
@@ -1773,6 +1776,11 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
                 offloadDriverMetadata.put("ManagedLedgerName", name);
                 openFuture = config.getLedgerOffloader().readOffloaded(ledgerId, uid,
                         offloadDriverMetadata);
+            } else if (config.getOffloadService() != null
+                && !config.getOffloadService().equals(NullOffloadService.INSTANCE)
+                && info != null && offloadCursor != null
+                && ledgerId <= offloadCursor.getMarkDeletedPosition().getLedgerId()) {
+                openFuture = config.getOffloadService().readOffloaded(ledgerId);
             } else {
                 openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();
@@ -2772,6 +2780,17 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             log.error("[{}] Error offloading. pos = {}", name, pos, e.getCause());
             throw ManagedLedgerException.getManagedLedgerException(e.getCause());
         }
+    }
+
+    @Override
+    public void asyncOffloadService(String topicName, String operationType, AsyncCallbacks.OffloadServiceCallback callback, Object ctx) {
+        config.getOffloadService().offload(topicName).whenComplete((ignore, e) -> {
+            if (e != null) {
+                callback.offloadFailed(ManagedLedgerException.getManagedLedgerException(e), null);
+            } else {
+                callback.offloadComplete(null);
+            }
+        });
     }
 
     @Override

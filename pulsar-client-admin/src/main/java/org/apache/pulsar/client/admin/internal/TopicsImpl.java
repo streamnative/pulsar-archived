@@ -1529,6 +1529,28 @@ public class TopicsImpl extends BaseResource implements Topics {
     }
 
     @Override
+    public void offloadService(String topic, String operationType) throws PulsarAdminException {
+        try {
+            offloadServiceAsync(topic, operationType).get(this.readTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException e) {
+            throw (PulsarAdminException) e.getCause();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new PulsarAdminException(e);
+        } catch (TimeoutException e) {
+            throw new PulsarAdminException.TimeoutException(e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> offloadServiceAsync(String topic, String operationType) {
+        TopicName tn = validateTopic(topic);
+        WebTarget path = topicPath(tn, "offloadService");
+        final CompletableFuture<Void> future = new CompletableFuture<>();
+        return asyncPutRequest(path, Entity.entity(operationType, MediaType.APPLICATION_JSON));
+    }
+
+    @Override
     public OffloadProcessStatus offloadStatus(String topic)
             throws PulsarAdminException {
         try {

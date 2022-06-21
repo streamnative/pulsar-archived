@@ -504,6 +504,16 @@ public interface ManagedLedger {
     void asyncOffloadPrefix(Position pos, OffloadCallback callback, Object ctx);
 
     /**
+     * Start offload service.
+     * @param topicName
+     * @param operationType
+     * @param callback
+     * @param ctx
+     */
+    void asyncOffloadService(String topicName, String operationType,
+                             AsyncCallbacks.OffloadServiceCallback callback, Object ctx);
+
+    /**
      * Get the slowest consumer.
      *
      * @return the slowest consumer

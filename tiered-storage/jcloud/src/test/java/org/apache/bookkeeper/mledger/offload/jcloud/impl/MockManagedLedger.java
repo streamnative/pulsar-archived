@@ -255,6 +255,12 @@ public class MockManagedLedger implements ManagedLedger {
     }
 
     @Override
+    public void asyncOffloadService(String topic, String operationType,
+                                    AsyncCallbacks.OffloadServiceCallback callback, Object ctx) {
+
+    }
+
+    @Override
     public ManagedCursor getSlowestConsumer() {
         return null;
     }

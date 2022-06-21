@@ -143,6 +143,12 @@ public interface AsyncCallbacks {
         void offloadFailed(ManagedLedgerException exception, Object ctx);
     }
 
+    interface OffloadServiceCallback {
+        void offloadComplete(Object ctx);
+
+        void offloadFailed(ManagedLedgerException exception, Object ctx);
+    }
+
     interface UpdatePropertiesCallback {
         void updatePropertiesComplete(Map<String, String> properties, Object ctx);
 

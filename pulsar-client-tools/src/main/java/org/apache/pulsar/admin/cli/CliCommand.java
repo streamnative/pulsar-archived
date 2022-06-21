@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.impl.MessageIdImpl;
@@ -61,6 +62,15 @@ abstract class CliCommand {
             throw new ParameterException("Need to provide a persistent topic name");
         }
         return topicName.toString();
+    }
+
+    static String validateOperationType(String type) {
+        if (StringUtils.isBlank(type) ||
+            (!"start".equals(type) && !"stop".equals(type) && !"status".equals(type))) {
+            throw new ParameterException("Invalid operation type. Only support start, stop or status");
+        }
+
+        return type;
     }
 
     static String validateNonPersistentTopic(List<String> params) {

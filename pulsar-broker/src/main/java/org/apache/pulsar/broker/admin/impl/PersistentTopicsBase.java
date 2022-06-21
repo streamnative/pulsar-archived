@@ -3547,6 +3547,21 @@ public class PersistentTopicsBase extends AdminResource {
         }
     }
 
+    protected void internalTriggerOffloadService(boolean authoritative, String operationType) {
+        validateTopicOwnership(topicName, authoritative);
+        validateTopicOperation(topicName, TopicOperation.OFFLOAD);
+
+        PersistentTopic topic = (PersistentTopic) getTopicReference(topicName);
+        try {
+            topic.triggerOffloadService(operationType);
+        } catch (AlreadyRunningException e) {
+            throw new RestException(Status.CONFLICT, e.getMessage());
+        } catch (Exception e) {
+            log.warn("Unexpected error triggering offload", e);
+            throw new RestException(e);
+        }
+    }
+
     protected OffloadProcessStatus internalOffloadStatus(boolean authoritative) {
         validateTopicOwnership(topicName, authoritative);
         validateTopicOperation(topicName, TopicOperation.OFFLOAD);
