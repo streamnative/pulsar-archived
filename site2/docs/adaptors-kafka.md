@@ -26,7 +26,7 @@ Then include this dependency for the Pulsar Kafka wrapper:
 ```xml
 
 <dependency>
-  <groupId>org.apache.pulsar</groupId>
+  <groupId>io.streamnative</groupId>
   <artifactId>pulsar-client-kafka</artifactId>
   <version>@pulsar:version@</version>
 </dependency>
@@ -46,7 +46,7 @@ unshaded pulsar kafka client wrapper.
 ```xml
 
 <dependency>
-  <groupId>org.apache.pulsar</groupId>
+  <groupId>io.streamnative</groupId>
   <artifactId>pulsar-client-kafka-original</artifactId>
   <version>@pulsar:version@</version>
 </dependency>
