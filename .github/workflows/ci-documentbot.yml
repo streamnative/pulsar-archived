@@ -20,13 +20,13 @@
 name: Auto Labeling
 
 on:
-  pull_request_target :
+  pull_request_target:
     types:
-      - opened
-      - edited
-      - labeled
+    - opened
+    - edited
+    - labeled
 
-  
+
 
 # A GitHub token created for a PR coming from a fork doesn't have
 # 'admin' or 'write' permission (which is required to add labels)
@@ -38,12 +38,18 @@ jobs:
   labeling:
     if: ${{ github.repository == 'apache/pulsar' }}
     permissions:
-      pull-requests: write 
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+    - name: Login to cloudsmith
+      run: docker login -u="${{ secrets.CLOUDSMITH_USERNAME }}" -p="${{ secrets.CLOUDSMITH_API_KEY
+        }}" docker.cloudsmith.io
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+    - uses: actions/checkout@v2
 
-      - uses: apache/pulsar-test-infra/doc-label-check@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          label-pattern: '- \[(.*?)\] ?`(.+?)`' # matches '- [x] `label`'
+    - uses: apache/pulsar-test-infra/doc-label-check@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        label-pattern: '- \[(.*?)\] ?`(.+?)`'   # matches '- [x] `label`'
