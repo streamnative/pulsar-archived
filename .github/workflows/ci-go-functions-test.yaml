@@ -21,19 +21,20 @@ name: CI - Go Functions Tests
 on:
   pull_request:
     branches:
-      - branch-*
+    - branch-*
     paths:
-      - '.github/workflows/**'
-      - 'pulsar-function-go/**'
+    - '.github/workflows/**'
+    - 'pulsar-function-go/**'
   push:
     branches:
-      - branch-*
+    - branch-*
     paths:
-      - '.github/workflows/**'
-      - 'pulsar-function-go/**'
+    - '.github/workflows/**'
+    - 'pulsar-function-go/**'
 
 env:
-  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard
+    -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
 
@@ -47,31 +48,45 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+    - name: Login to cloudsmith
+      run: docker login -u="${{ secrets.CLOUDSMITH_USERNAME }}" -p="${{ secrets.CLOUDSMITH_API_KEY
+        }}" docker.cloudsmith.io
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
 
-      - name: Tune Runner VM
-        uses: ./.github/actions/tune-runner-vm
+    - name: Tune Runner VM
+      uses: ./.github/actions/tune-runner-vm
 
-      - name: Detect changed files
-        id:   changes
-        uses: apache/pulsar-test-infra/paths-filter@master
-        with:
-          filters: .github/changes-filter.yaml
+    - name: Detect changed files
+      id: changes
+      uses: apache/pulsar-test-infra/paths-filter@master
+      with:
+        filters: .github/changes-filter.yaml
 
-      - name: Check changed files
-        id: check_changes
-        run: echo "::set-output name=docs_only::${{ fromJSON(steps.changes.outputs.all_count) == fromJSON(steps.changes.outputs.docs_count) && fromJSON(steps.changes.outputs.docs_count) > 0 }}"
+    - name: Check changed files
+      id: check_changes
+      run: echo "::set-output name=docs_only::${{ fromJSON(steps.changes.outputs.all_count)
+        == fromJSON(steps.changes.outputs.docs_count) && fromJSON(steps.changes.outputs.docs_count)
+        > 0 }}"
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
-        with:
-          go-version: ${{ matrix.go-version }}
-        id: go
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
+      with:
+        go-version: ${{ matrix.go-version }}
+      id: go
 
-      - name: Run tests
-        if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
-        run: |
-          cd pulsar-function-go
-          go test -v $(go list ./... | grep -v examples)
+    - name: Run tests
+      if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
+      run: |
+        cd pulsar-function-go
+        go test -v $(go list ./... | grep -v examples)
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}

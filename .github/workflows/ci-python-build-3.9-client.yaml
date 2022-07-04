@@ -21,42 +21,56 @@ name: CI - Python - Build 3.9 client
 on:
   pull_request:
     branches:
-      - branch-*
+    - branch-*
     paths:
-      - '.github/workflows/**'
-      - 'pulsar-client-cpp/**'
+    - '.github/workflows/**'
+    - 'pulsar-client-cpp/**'
   push:
     branches:
-      - branch-*
+    - branch-*
     paths:
-      - '.github/workflows/**'
-      - 'pulsar-client-cpp/**'
+    - '.github/workflows/**'
+    - 'pulsar-client-cpp/**'
 jobs:
 
   build-wheel:
-    name:
+    name: null
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v2
+    - name: Login to cloudsmith
+      run: docker login -u="${{ secrets.CLOUDSMITH_USERNAME }}" -p="${{ secrets.CLOUDSMITH_API_KEY
+        }}" docker.cloudsmith.io
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+    - name: checkout
+      uses: actions/checkout@v2
 
-      - name: Tune Runner VM
-        uses: ./.github/actions/tune-runner-vm
+    - name: Tune Runner VM
+      uses: ./.github/actions/tune-runner-vm
 
-      - name: Detect changed files
-        id:   changes
-        uses: apache/pulsar-test-infra/paths-filter@master
-        with:
-          filters: .github/changes-filter.yaml
+    - name: Detect changed files
+      id: changes
+      uses: apache/pulsar-test-infra/paths-filter@master
+      with:
+        filters: .github/changes-filter.yaml
 
-      - name: Check changed files
-        id: check_changes
-        run: echo "::set-output name=docs_only::${{ fromJSON(steps.changes.outputs.all_count) == fromJSON(steps.changes.outputs.docs_count) && fromJSON(steps.changes.outputs.docs_count) > 0 }}"
+    - name: Check changed files
+      id: check_changes
+      run: echo "::set-output name=docs_only::${{ fromJSON(steps.changes.outputs.all_count)
+        == fromJSON(steps.changes.outputs.docs_count) && fromJSON(steps.changes.outputs.docs_count)
+        > 0 }}"
 
-      - name: build python3.9 client
-        if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
-        run: |
-          echo "Build Python3.9 client library"
-          pulsar-client-cpp/docker-build-python3.9.sh
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+    - name: build python3.9 client
+      if: ${{ steps.check_changes.outputs.docs_only != 'true' }}
+      run: |-
+        echo "Build Python3.9 client library"
+        pulsar-client-cpp/docker-build-python3.9.sh
+      env:
+        CLOUDSMITH_USERNAME: ${{ secrets.CLOUDSMITH_USERNAME }}
+        CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
