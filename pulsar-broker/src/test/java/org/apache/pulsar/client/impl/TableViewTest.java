@@ -23,6 +23,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 import com.google.common.collect.Sets;
@@ -275,6 +277,47 @@ public class TableViewTest extends MockedPulsarServiceBaseTest {
                 .untilAsserted(()
                         -> verify(consumerBase, times(msgCount)).acknowledgeCumulativeAsync(any(MessageId.class)));
 
+        // Try to remove key1 by publishing the tombstones message.
+        producer.newMessage().key("key1").value(null).send();
+        Awaitility.await().untilAsserted(() -> assertEquals(tv.size(), 0));
 
+        producer.newMessage().key("key2").value("value2").send();
+        Awaitility.await().untilAsserted(() -> assertEquals(tv.get("key2"), "value2"));
+        assertEquals(tv.size(), 1);
+    }
+
+
+    @Test(timeOut = 30 * 1000)
+    public void testNonPersistentTTl() throws Exception {
+        String topic = "non-persistent://public/default/test-ttl";
+        final TableView<String> tv = pulsarClient.newTableViewBuilder(Schema.STRING)
+                .topic(topic)
+                .ttl(5, TimeUnit.SECONDS)
+                .autoUpdatePartitionsInterval(5, TimeUnit.SECONDS)
+                .create();
+
+        @Cleanup
+        Producer<String> producer = pulsarClient.newProducer(Schema.STRING).topic(topic).create();
+
+        producer.newMessage().key("key1").value("value1").send();
+
+        Awaitility.await().untilAsserted(() -> assertEquals(tv.get("key1"), "value1"));
+        assertEquals(tv.size(), 1);
+
+        // Try to remove key1 by publishing the tombstones message.
+        producer.newMessage().key("key1").value(null).send();
+        Awaitility.await().untilAsserted(() -> assertEquals(tv.size(), 0));
+
+        long time = System.currentTimeMillis();
+        producer.newMessage().key("key2").value("value2").send();
+        Awaitility.await().untilAsserted(() -> assertEquals(tv.get("key2"), "value2"));
+        assertEquals(tv.size(), 1);
+
+        Awaitility.await().untilAsserted(() ->{
+            assertNull(tv.get("key2"));
+            assertEquals(tv.size(), 0);
+        });
+
+        assertTrue(System.currentTimeMillis() - time >= TimeUnit.SECONDS.toMillis(5));
     }
 }

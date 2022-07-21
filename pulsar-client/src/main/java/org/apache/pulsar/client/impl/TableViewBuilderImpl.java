@@ -78,7 +78,7 @@ public class TableViewBuilderImpl<T> implements TableViewBuilder<T> {
 
     @Override
     public TableViewBuilder<T> ttl(int ttl, TimeUnit unit) {
-        conf.setTtl(unit.toMillis(ttl));
+        conf.setTtl(unit.toNanos(ttl));
         return this;
     }
 }
