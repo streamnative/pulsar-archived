@@ -29,6 +29,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
@@ -111,6 +113,11 @@ public class ExtensibleLoadManagerTestBase {
         @Override
         public void forEach(BiConsumer<String, BrokerLookupData> action) {
             brokerLookupDataMap.forEach(action);
+        }
+
+        @Override
+        public void listen(Consumer<String> listener) {
+
         }
 
         @Override
