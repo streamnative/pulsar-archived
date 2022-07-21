@@ -91,4 +91,11 @@ public interface TableViewBuilder<T> {
      * @return the {@link TableViewBuilder} builder instance
      */
     TableViewBuilder<T> autoUpdatePartitionsInterval(int interval, TimeUnit unit);
+
+
+    /**
+     * Only use for non-persistent topic.
+     * TODO: add more doc.
+     */
+    TableViewBuilder<T> ttl(int ttl, TimeUnit unit);
 }

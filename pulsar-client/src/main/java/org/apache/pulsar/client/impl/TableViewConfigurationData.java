@@ -30,6 +30,8 @@ public class TableViewConfigurationData implements Serializable, Cloneable {
     private String topicName = null;
     private long autoUpdatePartitionsSeconds = 60;
 
+    private long ttl = -1;
+
     @Override
     public TableViewConfigurationData clone() {
         try {

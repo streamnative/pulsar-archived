@@ -75,4 +75,10 @@ public class TableViewBuilderImpl<T> implements TableViewBuilder<T> {
        conf.setAutoUpdatePartitionsSeconds(unit.toSeconds(interval));
        return this;
     }
+
+    @Override
+    public TableViewBuilder<T> ttl(int ttl, TimeUnit unit) {
+        conf.setTtl(unit.toMillis(ttl));
+        return this;
+    }
 }

@@ -36,8 +36,10 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Reader;
+import org.apache.pulsar.client.api.ReaderListener;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TableView;
+import org.apache.pulsar.common.naming.TopicDomain;
 
 @Slf4j
 public class TableViewImpl<T> implements TableView<T> {
@@ -52,12 +54,23 @@ public class TableViewImpl<T> implements TableView<T> {
     private final List<BiConsumer<String, T>> listeners;
     private final ReentrantLock listenersMutex;
 
+    private final boolean isNonPersistentTopic;
+
     TableViewImpl(PulsarClientImpl client, Schema<T> schema, TableViewConfigurationData conf) {
         this.conf = conf;
         this.data = new ConcurrentHashMap<>();
         this.immutableData = Collections.unmodifiableMap(data);
         this.listeners = new ArrayList<>();
         this.listenersMutex = new ReentrantLock();
+        this.isNonPersistentTopic = conf.getTopicName().startsWith(TopicDomain.non_persistent.toString());
+        if (isNonPersistentTopic) {
+            this.reader = client.newReader(schema)
+                    .topic(conf.getTopicName())
+                    .startMessageId(MessageId.latest)
+                    .readerListener((ReaderListener<T>) (reader, msg) -> handleMessage(msg))
+                    .createAsync();
+            return;
+        }
         this.reader = client.newReader(schema)
                 .topic(conf.getTopicName())
                 .startMessageId(MessageId.earliest)
@@ -69,6 +82,9 @@ public class TableViewImpl<T> implements TableView<T> {
     }
 
     CompletableFuture<TableView<T>> start() {
+        if (isNonPersistentTopic) {
+            return reader.thenApply(__ -> this);
+        }
         return reader.thenCompose(this::readAllExistingMessages)
                 .thenApply(__ -> this);
     }
