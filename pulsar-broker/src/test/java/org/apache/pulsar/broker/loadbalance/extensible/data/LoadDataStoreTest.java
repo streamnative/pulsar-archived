@@ -19,14 +19,19 @@
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
 import static org.testng.Assert.assertEquals;
-import static org.testng.AssertJUnit.assertNull;
+import static org.testng.Assert.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
+import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Cleanup;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.pulsar.broker.auth.MockedPulsarServiceBaseTest;
+import org.apache.pulsar.common.naming.NamespaceName;
+import org.apache.pulsar.common.naming.TopicDomain;
+import org.apache.pulsar.common.policies.data.ClusterData;
+import org.apache.pulsar.common.policies.data.TenantInfoImpl;
 import org.awaitility.Awaitility;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -73,32 +78,43 @@ public class LoadDataStoreTest extends MockedPulsarServiceBaseTest {
     @Test(dataProvider = "impl")
     public void testPushGetAndRemove(String impl) throws IOException {
 
+        String topic = TopicDomain.persistent + "://" + NamespaceName.SYSTEM_NAMESPACE + "/" + UUID.randomUUID();
+
         @Cleanup
         LoadDataStore<MyClass> loadDataStore =
-                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), MyClass.class);
+                LoadDataStoreFactory.newInstance(pulsar, impl, topic, MyClass.class);
         MyClass myClass1 = new MyClass("1", 1);
         loadDataStore.push("key1", myClass1);
 
-        Awaitility.await().untilAsserted(() -> assertEquals(loadDataStore.get("key1"), myClass1));
+        Awaitility.await().untilAsserted(() -> {
+            assertTrue(loadDataStore.get("key1").isPresent());
+            assertEquals(loadDataStore.get("key1").get(), myClass1);
+        });
         assertEquals(loadDataStore.size(), 1);
 
         MyClass myClass2 = new MyClass("2", 2);
         loadDataStore.push("key2", myClass2);
 
-        Awaitility.await().untilAsserted(() -> assertEquals(loadDataStore.get("key2"), myClass2));
+        Awaitility.await().untilAsserted(() -> {
+            assertTrue(loadDataStore.get("key2").isPresent());
+            assertEquals(loadDataStore.get("key2").get(), myClass2);
+        });
         assertEquals(loadDataStore.size(), 2);
 
         loadDataStore.remove("key2");
-        Awaitility.await().untilAsserted(() -> assertNull(loadDataStore.get("key2")));
+        Awaitility.await().untilAsserted(() -> assertFalse(loadDataStore.get("key2").isPresent()));
         assertEquals(loadDataStore.size(), 1);
 
     }
 
     @Test(dataProvider = "impl")
     public void testForEach(String impl) throws IOException {
+
+        String topic = TopicDomain.persistent + "://" + NamespaceName.SYSTEM_NAMESPACE + "/" + UUID.randomUUID();
+
         @Cleanup
         LoadDataStore<Integer> loadDataStore =
-                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), Integer.class);
+                LoadDataStoreFactory.newInstance(pulsar, impl, topic, Integer.class);
 
         Map<String, Integer> map = new HashMap<>();
         for (int i = 0; i < 10; i++) {
@@ -110,16 +126,19 @@ public class LoadDataStoreTest extends MockedPulsarServiceBaseTest {
         Awaitility.await().untilAsserted(() -> assertEquals(loadDataStore.size(), 10));
 
         loadDataStore.forEach((key, value) -> {
-            assertTrue(map.containsKey(key));
-            assertEquals(loadDataStore.get(key), map.get(key));
+            assertTrue(loadDataStore.get(key).isPresent());
+            assertEquals(loadDataStore.get(key).get(), map.get(key));
         });
     }
 
     @Test(dataProvider = "impl")
     public void testListen(String impl) throws IOException {
+
+        String topic = TopicDomain.persistent + "://" + NamespaceName.SYSTEM_NAMESPACE + "/" + UUID.randomUUID();
+
         @Cleanup
         LoadDataStore<Integer> loadDataStore =
-                LoadDataStoreFactory.newInstance(pulsar, impl, UUID.randomUUID().toString(), Integer.class);
+                LoadDataStoreFactory.newInstance(pulsar, impl, topic, Integer.class);
 
         Map<String, Integer> map = new ConcurrentHashMap<>();
         loadDataStore.listen(map::put);

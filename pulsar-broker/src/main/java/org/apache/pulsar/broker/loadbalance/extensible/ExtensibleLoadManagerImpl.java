@@ -49,7 +49,9 @@ import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundle
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastLongTermMessageRateStrategyImpl;
+import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.ServiceUnitId;
+import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
@@ -60,11 +62,20 @@ import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 @Slf4j
 public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
-    public static final String BROKER_LOAD_DATA_STORE_NAME = "broker-load-data";
+    public static final String BROKER_LOAD_DATA_STORE_NAME = TopicDomain.persistent
+            + "://"
+            + NamespaceName.SYSTEM_NAMESPACE
+            +"/broker-load-data";
 
-    public static final String BUNDLE_LOAD_DATA_STORE_NAME = "bundle-load-data";
+    public static final String BUNDLE_LOAD_DATA_STORE_NAME = TopicDomain.persistent
+            + "://"
+            + NamespaceName.SYSTEM_NAMESPACE
+            + "/bundle-load-data";
 
-    public static final String TIME_AVERAGE_BROKER_LOAD_DATA = "time-average-broker-load-data";
+    public static final String TIME_AVERAGE_BROKER_LOAD_DATA = TopicDomain.persistent
+            + "://"
+            + NamespaceName.SYSTEM_NAMESPACE
+            + "/time-average-broker-load-data";
 
     private PulsarService pulsar;
 

@@ -35,14 +35,14 @@ public class LoadDataStoreFactory {
 
     protected static <T> LoadDataStore<T> newInstance(PulsarService pulsar,
                                                     String loadDataStoreName,
-                                                    String name,
+                                                    String topic,
                                                     Class<T> clazz)
         throws LoadDataStoreException {
         try {
             if (TABLEVIEW_STORE.equals(loadDataStoreName)) {
-                return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), name, clazz);
+                return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), topic, clazz);
             }
-            return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), name, clazz);
+            return new TableViewLoadDataStoreImpl<>(pulsar.getClient(), topic, clazz);
         } catch (PulsarServerException ex) {
             throw new LoadDataStoreException(ex);
         }

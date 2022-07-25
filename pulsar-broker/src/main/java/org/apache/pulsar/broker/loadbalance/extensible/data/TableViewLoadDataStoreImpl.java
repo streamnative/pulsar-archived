@@ -24,13 +24,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TableView;
+import org.apache.pulsar.client.api.TableViewBuilder;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
+import org.apache.pulsar.common.naming.TopicName;
 
 /**
  * The load data store, base on {@link TableView<T>}.
@@ -49,15 +52,16 @@ public class TableViewLoadDataStoreImpl<T> implements LoadDataStore<T> {
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/load-data/";
 
-    public TableViewLoadDataStoreImpl(PulsarClient client, String name, Class<T> clazz)
+    public TableViewLoadDataStoreImpl(PulsarClient client, String topic, Class<T> clazz)
             throws LoadDataStoreException {
         try {
-            this.tableView = client.newTableViewBuilder(Schema.JSON(clazz))
-                    .topic(TOPIC_PREFIX + name)
-                    .create();
-            this.producer = client.newProducer(Schema.JSON(clazz))
-                    .topic(TOPIC_PREFIX + name)
-                    .create();
+            TableViewBuilder<T> tableViewBuilder = client.newTableViewBuilder(Schema.JSON(clazz));
+            // TODO: Make it configurable
+            if (TopicDomain.non_persistent.toString().startsWith(topic)) {
+                tableViewBuilder.ttl(60, TimeUnit.SECONDS);
+            }
+            this.tableView = tableViewBuilder.topic(topic).create();
+            this.producer = client.newProducer(Schema.JSON(clazz)).topic(topic).create();
         } catch (Exception e) {
             throw new LoadDataStoreException(e);
         }

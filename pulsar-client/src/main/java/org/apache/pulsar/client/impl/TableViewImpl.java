@@ -64,7 +64,7 @@ public class TableViewImpl<T> implements TableView<T> {
         if (isNonPersistentTopic && conf.getTtl() > 0) {
             caffeineBuilder.expireAfterWrite(conf.getTtl(), TimeUnit.NANOSECONDS);
         }
-        cache = caffeineBuilder.build();
+        this.cache = caffeineBuilder.build();
         this.immutableData = Collections.unmodifiableMap(cache.asMap());
         this.listeners = new ArrayList<>();
         this.listenersMutex = new ReentrantLock();
