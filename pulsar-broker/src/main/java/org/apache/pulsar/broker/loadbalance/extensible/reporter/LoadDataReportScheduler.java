@@ -59,8 +59,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
 
     private final LoadDataStore<BundleData> bundleLoadDataStore;
 
-    private final LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore;
-
     private final ScheduledExecutorService executor;
 
     private final BrokerHostUsage brokerHostUsage;
@@ -78,7 +76,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
 
     private volatile ScheduledFuture<?> bundleLoadDataReportFuture;
 
-    private volatile ScheduledFuture<?> timeAverageBrokerDataReportFuture;
 
     private final AtomicBoolean started = new AtomicBoolean(false);
 
@@ -87,11 +84,9 @@ public class LoadDataReportScheduler implements LoadDataReport {
             PulsarService pulsar,
             LoadDataStore<BrokerLoadData> brokerLoadDataStore,
             LoadDataStore<BundleData> bundleLoadDataStore,
-            LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore,
             String lookupServiceAddress) {
         this.brokerLoadDataStore = brokerLoadDataStore;
         this.bundleLoadDataStore = bundleLoadDataStore;
-        this.timeAverageBrokerLoadDataStore = timeAverageBrokerLoadDataStore;
         this.lookupServiceAddress = lookupServiceAddress;
         this.pulsar = pulsar;
         this.conf = this.pulsar.getConfiguration();
@@ -122,12 +117,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
                     resourceQuotaUpdateInterval,
                     resourceQuotaUpdateInterval,
                     TimeUnit.MINUTES);
-
-            this.timeAverageBrokerDataReportFuture =
-                    executor.scheduleAtFixedRate(this::reportTimeAverageBrokerDataAsync,
-                    resourceQuotaUpdateInterval,
-                    resourceQuotaUpdateInterval,
-                    TimeUnit.MINUTES);
         }
 
     }
@@ -140,9 +129,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
             }
             if (this.bundleLoadDataReportFuture != null) {
                 this.bundleLoadDataReportFuture.cancel(false);
-            }
-            if (this.timeAverageBrokerDataReportFuture != null) {
-                this.timeAverageBrokerDataReportFuture.cancel(false);
             }
         }
     }
@@ -179,18 +165,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
     }
 
     @Override
-    public CompletableFuture<Void> reportTimeAverageBrokerDataAsync() {
-        CompletableFuture<Void> future = this.timeAverageBrokerLoadDataStore.pushAsync(
-                this.lookupServiceAddress,
-                this.generateTimeAverageBrokerData());
-        future.exceptionally(ex -> {
-            log.error("Flush the time average broker data failed.", ex);
-            return null;
-        });
-        return future;
-    }
-
-    @Override
     public BrokerLoadData generateBrokerLoadData() {
         final SystemResourceUsage systemResourceUsage = LoadManagerShared.getSystemResourceUsage(brokerHostUsage);
         localData.update(systemResourceUsage, getBundleStats());
@@ -210,15 +184,6 @@ public class LoadDataReportScheduler implements LoadDataReport {
             this.bundleLoadDataMap.put(bundle, currentBundleData);
         });
         return this.bundleLoadDataMap;
-    }
-
-    @Override
-    public TimeAverageBrokerData generateTimeAverageBrokerData() {
-        TimeAverageBrokerData timeAverageBrokerData =
-                timeAverageBrokerLoadDataStore.get(lookupServiceAddress).orElse(new TimeAverageBrokerData());
-        timeAverageBrokerData.reset(this.getBundleStats().keySet(), this.bundleLoadDataMap,
-                NamespaceBundleStats.newDefaultNamespaceBundleStats());
-        return timeAverageBrokerData;
     }
 
     private Map<String, NamespaceBundleStats> getBundleStats() {

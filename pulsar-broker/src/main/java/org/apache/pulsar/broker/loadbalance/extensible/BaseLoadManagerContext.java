@@ -21,6 +21,7 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 import java.util.Map;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
+import org.apache.pulsar.broker.loadbalance.extensible.data.TopBundlesLoadData;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 
@@ -31,9 +32,7 @@ public interface BaseLoadManagerContext extends LoadManagerContext {
 
     LoadDataStore<BrokerLoadData> brokerLoadDataStore();
 
-    LoadDataStore<BundleData> bundleLoadDataStore();
-
-    LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore();
+    LoadDataStore<TopBundlesLoadData> bundleLoadDataStore();
 
     /**
      * <Broker, <Bundle, BundleLoadData>>.

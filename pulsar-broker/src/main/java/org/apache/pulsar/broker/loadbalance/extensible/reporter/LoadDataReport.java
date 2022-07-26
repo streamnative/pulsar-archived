@@ -16,11 +16,7 @@ public interface LoadDataReport {
 
     CompletableFuture<Void> reportBundleLoadDataAsync();
 
-    CompletableFuture<Void> reportTimeAverageBrokerDataAsync();
-
     BrokerLoadData generateBrokerLoadData();
 
     Map<String, BundleData> generateBundleData();
-
-    TimeAverageBrokerData generateTimeAverageBrokerData();
 }

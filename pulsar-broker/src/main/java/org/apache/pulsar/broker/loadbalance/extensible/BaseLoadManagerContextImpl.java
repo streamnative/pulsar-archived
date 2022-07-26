@@ -40,8 +40,6 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
 
     private LoadDataStore<BundleData> bundleLoadDataStore;
 
-    private LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore;
-
     private Map<String, Map<String, BundleData>> preallocatedBundleData;
 
     private BrokerRegistry brokerRegistry;
@@ -56,11 +54,6 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
     @Override
     public LoadDataStore<BundleData> bundleLoadDataStore() {
         return this.bundleLoadDataStore;
-    }
-
-    @Override
-    public LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore() {
-        return this.timeAverageBrokerLoadDataStore;
     }
 
     @Override
