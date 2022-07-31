@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -18,20 +19,17 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.pulsar</groupId>
+    <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>2.11.0-SNAPSHOT</version>
+    <version>2.11.0-rc-202207312205</version>
     <relativePath>..</relativePath>
   </parent>
-
   <artifactId>pulsar-client-tools</artifactId>
   <name>Pulsar Client Tools</name>
   <description>Pulsar Client Tools</description>
-
   <dependencies>
     <dependency>
       <groupId>com.beust</groupId>
@@ -98,7 +96,6 @@
       <groupId>io.swagger</groupId>
       <artifactId>swagger-core</artifactId>
     </dependency>
-
     <!-- functions related dependencies (begin) -->
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -106,9 +103,8 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-io-batch-discovery-triggerers</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -123,9 +119,7 @@
       <artifactId>commons-text</artifactId>
       <version>${commons-text.version}</version>
     </dependency>
-
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
@@ -145,7 +139,6 @@
           </execution>
         </executions>
       </plugin>
-
       <!-- this task is used for copy all python files together to provide a instance directory
            for running python instance -->
       <plugin>
@@ -165,7 +158,6 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
@@ -181,5 +173,4 @@
       </plugin>
     </plugins>
   </build>
-
 </project>
