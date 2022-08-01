@@ -2228,15 +2228,27 @@ flexible messaging model and an intuitive client API.</description>
         <enabled>false</enabled>
       </snapshots>
     </repository>
+    <repository>
+      <id>staging</id>
+      <url>https://dl.cloudsmith.io/${env.CLOUDSMITH_API_KEY}/streamnative/staging/maven/</url>
+      <releases>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
   </repositories>
   <distributionManagement>
     <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+      <id>staging</id>
+      <url>https://maven.cloudsmith.io/streamnative/staging/</url>
     </snapshotRepository>
     <repository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <id>staging</id>
+      <url>https://maven.cloudsmith.io/streamnative/staging/</url>
     </repository>
   </distributionManagement>
 </project>
