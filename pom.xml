@@ -1583,6 +1583,7 @@ flexible messaging model and an intuitive client API.</description>
           <serverId>ossrh</serverId>
           <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
           <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <stagingProfileId>60285aee9d4161</stagingProfileId>
         </configuration>
       </plugin>
       <plugin>
