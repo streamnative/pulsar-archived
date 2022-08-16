@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
@@ -39,11 +39,11 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreException;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreFactory;
+import org.apache.pulsar.broker.loadbalance.extensible.data.TopBundlesLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerVersionFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.LoadDataReport;
-import org.apache.pulsar.broker.loadbalance.extensible.reporter.LoadDataReportScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundleSplitScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
@@ -52,7 +52,6 @@ import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.common.util.FutureUtil;
-import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 
 /**
  * The broker discovery implementation.
@@ -63,17 +62,12 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public static final String BROKER_LOAD_DATA_STORE_NAME = TopicDomain.persistent
             + "://"
             + NamespaceName.SYSTEM_NAMESPACE
-            +"/broker-load-data";
+            + "/broker-load-data";
 
     public static final String BUNDLE_LOAD_DATA_STORE_NAME = TopicDomain.persistent
             + "://"
             + NamespaceName.SYSTEM_NAMESPACE
             + "/bundle-load-data";
-
-    public static final String TIME_AVERAGE_BROKER_LOAD_DATA = TopicDomain.persistent
-            + "://"
-            + NamespaceName.SYSTEM_NAMESPACE
-            + "/time-average-broker-load-data";
 
     private PulsarService pulsar;
 
@@ -92,7 +86,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
      */
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
-    private LoadDataStore<BundleData> bundleLoadDataStore;
+    private LoadDataStore<TopBundlesLoadData> bundleLoadDataStore;
 
     /**
      * The load report.
@@ -125,15 +119,12 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         try {
             brokerLoadDataStore =
                     LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
-            bundleLoadDataStore = LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, BundleData.class);
+            bundleLoadDataStore =
+                    LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, TopBundlesLoadData.class);
         } catch (LoadDataStoreException e) {
             throw new PulsarServerException(e);
         }
 
-        this.reportScheduler = new LoadDataReportScheduler(pulsar,
-                brokerLoadDataStore,
-                bundleLoadDataStore,
-                brokerRegistry.getLookupServiceAddress());
         // Start load reporter.
         this.reportScheduler.start();
 
@@ -214,11 +205,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
         BrokerSelectionStrategy brokerSelectionStrategy = getBrokerSelectionStrategy(serviceUnit);
 
-        Optional<String> selectedBroker = brokerSelectionStrategy.select(availableBrokers, context);
-        Optional<BundleData> bundleDataOpt = bundleLoadDataStore.get(bundle);
-        context.preallocatedBundleData(selectedBroker.get())
-                .put(bundle, bundleDataOpt.orElse(BundleData.newDefaultBundleData()));
-        return selectedBroker;
+        return brokerSelectionStrategy.select(availableBrokers, context);
     }
 
     /**

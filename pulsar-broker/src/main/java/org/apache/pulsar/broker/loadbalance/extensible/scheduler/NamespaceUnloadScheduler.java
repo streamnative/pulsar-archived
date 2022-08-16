@@ -55,7 +55,7 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     public NamespaceUnloadScheduler(PulsarService pulsar, BaseLoadManagerContext context) {
         this.namespaceUnloadStrategyPipeline = new ArrayList<>();
-        this.namespaceUnloadStrategyPipeline.add(new OverloadShedderUnloadStrategy());
+//        this.namespaceUnloadStrategyPipeline.add(new OverloadShedderUnloadStrategy());
         this.recentlyUnloadedBundles = new HashMap<>();
         this.pulsar = pulsar;
         this.context = context;

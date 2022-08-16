@@ -25,8 +25,8 @@ import lombok.Setter;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
+import org.apache.pulsar.broker.loadbalance.extensible.data.TopBundlesLoadData;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
-import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 
 @Data
 @Setter
@@ -38,7 +38,7 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
 
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
-    private LoadDataStore<BundleData> bundleLoadDataStore;
+    private LoadDataStore<TopBundlesLoadData> bundleLoadDataStore;
 
     private Map<String, Map<String, BundleData>> preallocatedBundleData;
 
@@ -52,7 +52,7 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
     }
 
     @Override
-    public LoadDataStore<BundleData> bundleLoadDataStore() {
+    public LoadDataStore<TopBundlesLoadData> bundleLoadDataStore() {
         return this.bundleLoadDataStore;
     }
 

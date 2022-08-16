@@ -18,8 +18,8 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
-import java.util.Map;
 import com.google.common.collect.Multimap;
+import java.util.Map;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 
 /**

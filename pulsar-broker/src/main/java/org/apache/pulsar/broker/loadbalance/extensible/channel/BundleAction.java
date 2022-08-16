@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
 /**
@@ -6,8 +24,7 @@ package org.apache.pulsar.broker.loadbalance.extensible.channel;
 public enum BundleAction {
 
     /**
-     * Own the bundle ownership
-     *    The owner broker is selected by the local load manager.
+     * Own the bundle ownership. The owner broker is selected by the local load manager.
      */
     Own,
 
@@ -19,8 +36,8 @@ public enum BundleAction {
     Transfer,
 
     /**
-     * Return deferred client connections with the destination broker URL
-     *   Close the connections if already being served
+     * Return deferred client connections with the destination broker URL.
+     * Close the connections if already being served
      */
     Return,
 
@@ -35,12 +52,12 @@ public enum BundleAction {
     Create,
 
     /**
-     * Discard the bundle entry in the channel(tombstone operation)
+     * Discard the bundle entry in the channel(tombstone operation).
      */
     Discard,
 
     /**
-     * Unload the bundle ownership from the owner broker
+     * Unload the bundle ownership from the owner broker.
      *   Disable the bundle ownership
      *   Close client connections under the bundle
      *   Run the Discard action

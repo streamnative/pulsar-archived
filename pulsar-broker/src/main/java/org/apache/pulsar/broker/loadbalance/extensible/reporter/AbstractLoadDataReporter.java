@@ -18,10 +18,10 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
+import java.util.Map;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 
-import java.util.Map;
 
 /**
  * Abstract load data reporter.

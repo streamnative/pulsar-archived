@@ -58,7 +58,6 @@ import org.apache.pulsar.common.util.ObjectMapperFactory;
 import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
 import org.apache.pulsar.policies.data.loadbalancer.LocalBrokerData;
-import org.apache.pulsar.policies.data.loadbalancer.TimeAverageBrokerData;
 import org.apache.pulsar.policies.data.loadbalancer.TimeAverageMessageData;
 import org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble;
 import org.apache.zookeeper.CreateMode;
@@ -286,18 +285,6 @@ public class ExtensibleLoadManagerTest {
         }
         pulsar1.getBrokerService().updateRates();
         pulsar2.getBrokerService().updateRates();
-
-        reportScheduler1.reportTimeAverageBrokerDataAsync().get();
-        reportScheduler2.reportTimeAverageBrokerDataAsync().get();
-        @Cleanup
-        LoadDataStore<TimeAverageBrokerData> timeAverageBrokerLoadDataStore =
-                LoadDataStoreFactory.create(pulsar1,
-                        ExtensibleLoadManagerImpl.TIME_AVERAGE_BROKER_LOAD_DATA, TimeAverageBrokerData.class);
-
-        Optional<TimeAverageBrokerData> timeAverageBrokerData1 = timeAverageBrokerLoadDataStore.get(primaryHost);
-        assertTrue(timeAverageBrokerData1.isPresent());
-        Optional<TimeAverageBrokerData> timeAverageBrokerData2 = timeAverageBrokerLoadDataStore.get(secondaryHost);
-        assertTrue(timeAverageBrokerData2.isPresent());
     }
 
     @Test
