@@ -29,6 +29,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerImpl
 import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerWrapper;
 import org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerWrapper;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleLoadManagerImpl;
+import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.stats.Metrics;
 import org.apache.pulsar.common.util.Reflections;
@@ -59,6 +60,14 @@ public interface LoadManager {
      * Returns the Least Loaded Resource Unit decided by some algorithm or criteria which is implementation specific.
      */
     Optional<ResourceUnit> getLeastLoaded(ServiceUnitId su) throws Exception;
+
+    default CompletableFuture<Optional<LookupResult>> findBrokerServiceUrl(ServiceUnitId topic, ServiceUnitId bundle) {
+        return null;
+    }
+
+    default CompletableFuture<Boolean> checkOwnership(ServiceUnitId topic, ServiceUnitId bundle) {
+        return null;
+    }
 
     /**
      * Generate the load report.

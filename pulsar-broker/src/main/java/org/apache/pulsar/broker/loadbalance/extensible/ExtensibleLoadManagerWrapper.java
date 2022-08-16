@@ -31,6 +31,7 @@ import org.apache.pulsar.broker.loadbalance.ResourceUnit;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.impl.PulsarResourceDescription;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleResourceUnit;
+import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.stats.Metrics;
 import org.apache.pulsar.policies.data.loadbalancer.LoadManagerReport;
@@ -63,6 +64,8 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public Optional<ResourceUnit> getLeastLoaded(ServiceUnitId su) throws Exception {
+
+        // first check the bundle ownership in the bundle state channel.
         return loadManager.discover(su).map(s -> {
             String webServiceUrl = getBrokerWebServiceUrl(s);
             String brokerZnodeName = getBrokerZnodeName(s, webServiceUrl);
@@ -70,6 +73,26 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
                     new PulsarResourceDescription(),
                     Map.of(ResourceUnit.PROPERTY_KEY_BROKER_ZNODE_NAME, brokerZnodeName));
         });
+    }
+
+
+
+    @Override
+    public CompletableFuture<Optional<LookupResult>> findBrokerServiceUrl(ServiceUnitId topic, ServiceUnitId bundle) {
+
+        return loadManager.assign(topic, bundle)
+                .thenApply(brokerLookupData -> Optional.of(brokerLookupData.get().toLookupResult()))
+                .exceptionally(e -> {
+                    LOG.warn("Failed to find the owner broker for topic: {}, bundle: {}, {}",
+                            topic.toString(), bundle.toString(), e.getMessage(), e);
+                    return null;
+                });
+
+    }
+
+    @Override
+    public CompletableFuture<Boolean> checkOwnership(ServiceUnitId topic, ServiceUnitId bundle) {
+        return loadManager.checkOwnershipAsync(topic, bundle);
     }
 
     private String getBrokerWebServiceUrl(String broker) {

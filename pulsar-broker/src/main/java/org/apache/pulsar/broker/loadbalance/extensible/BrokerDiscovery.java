@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.common.naming.ServiceUnitId;
@@ -47,6 +48,15 @@ public interface BrokerDiscovery {
      * @return Simple resource.
      */
     Optional<String> discover(ServiceUnitId serviceUnit);
+
+
+    /**
+     * The incoming bundle selects the appropriate broker through strategies.
+     *
+     * @param serviceUnit Bundle.
+     * @return Simple resource.
+     */
+    CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId serviceUnit);
 
     /**
      * Stop the load manager.

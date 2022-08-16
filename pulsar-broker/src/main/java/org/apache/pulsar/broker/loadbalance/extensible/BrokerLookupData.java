@@ -24,6 +24,7 @@ import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.policies.data.loadbalancer.AdvertisedListener;
 import org.apache.pulsar.policies.data.loadbalancer.ServiceLookupData;
 
@@ -92,5 +93,10 @@ public class BrokerLookupData implements ServiceLookupData {
 
     public void setAdvertisedListeners(Map<String, AdvertisedListener> advertisedListeners) {
         this.advertisedListeners = advertisedListeners;
+    }
+
+    public LookupResult toLookupResult() {
+        return new LookupResult(pulsarServiceUrl, pulsarServiceUrlTls, webServiceUrl, webServiceUrlTls,
+                LookupResult.Type.BrokerUrl, false);
     }
 }

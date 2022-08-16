@@ -55,6 +55,7 @@ import org.apache.pulsar.broker.loadbalance.LeaderBroker;
 import org.apache.pulsar.broker.loadbalance.LeaderElectionService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
+import org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerWrapper;
 import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.broker.resources.NamespaceResources;
 import org.apache.pulsar.broker.service.BrokerServiceException.ServiceUnitNotReadyException;
@@ -192,8 +193,15 @@ public class NamespaceService implements AutoCloseable {
     public CompletableFuture<Optional<LookupResult>> getBrokerServiceUrlAsync(TopicName topic, LookupOptions options) {
         long startTime = System.nanoTime();
 
-        CompletableFuture<Optional<LookupResult>> future = getBundleAsync(topic)
-                .thenCompose(bundle -> findBrokerServiceUrl(bundle, options));
+        CompletableFuture<Optional<LookupResult>> future =
+                getBundleAsync(topic).thenCompose(bundle -> {
+                            if (isExtensibleLoadManager()) {
+                                return loadManager.get().findBrokerServiceUrl(topic, bundle);
+                            } else {
+                                return findBrokerServiceUrl(bundle, options);
+                            }
+                        }
+                );
 
         future.thenAccept(optResult -> {
             lookupLatency.observe(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
@@ -1086,7 +1094,17 @@ public class NamespaceService implements AutoCloseable {
         return getBundleAsync(topic).thenApply(bundle -> ownershipCache.isNamespaceBundleOwned(bundle));
     }
 
+    public boolean isExtensibleLoadManager(){
+        return loadManager.get() instanceof ModularLoadManagerWrapper;
+    }
+
     public CompletableFuture<Boolean> checkTopicOwnership(TopicName topicName) {
+
+        if (isExtensibleLoadManager()) {
+            return getBundleAsync(topicName)
+                    .thenCompose(bundle -> loadManager.get().checkOwnership(topicName, bundle));
+        }
+
         return getBundleAsync(topicName)
                 .thenCompose(ownershipCache::checkOwnershipAsync);
     }
