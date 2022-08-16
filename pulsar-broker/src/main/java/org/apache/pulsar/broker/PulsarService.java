@@ -1255,7 +1255,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         });
     }
 
-    public synchronized LedgerOffloader createManagedLedgerOffloader(OffloadPoliciesImpl offloadPolicies)
+    public LedgerOffloader createManagedLedgerOffloader(OffloadPoliciesImpl offloadPolicies)
             throws PulsarServerException {
         try {
             if (StringUtils.isNotBlank(offloadPolicies.getManagedLedgerOffloadDriver())) {
@@ -1294,7 +1294,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         return NullLedgerOffloader.INSTANCE;
     }
 
-    public synchronized OffloadService createOffloadService(ServiceConfiguration conf,
+    public OffloadService createOffloadService(ServiceConfiguration conf,
                                                             OffloadPoliciesImpl offloadPolicies,
                                                             PulsarClient pulsarClient,
                                                             PulsarAdmin pulsarAdmin,
@@ -1307,30 +1307,31 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 checkNotNull(offloadPolicies.getOffloadersDirectory(),
                     "Offloader driver is configured to be '%s' but no offloaders directory is configured.",
                     offloadPolicies.getManagedLedgerOffloadDriver());
+                synchronized (this) {
+                    Offloaders offloaders = offloadersCache.getOrLoadOffloaders(
+                        offloadPolicies.getOffloadersDirectory(), config.getNarExtractionDirectory());
 
-                Offloaders offloaders = offloadersCache.getOrLoadOffloaders(
-                    offloadPolicies.getOffloadersDirectory(), config.getNarExtractionDirectory());
+                    LedgerOffloaderFactory offloaderFactory = offloaders.getOffloaderFactory(
+                        offloadPolicies.getManagedLedgerOffloadDriver());
 
-                LedgerOffloaderFactory offloaderFactory = offloaders.getOffloaderFactory(
-                    offloadPolicies.getManagedLedgerOffloadDriver());
-
-                try {
-                    Object offloader = offloaderFactory.create(conf,
-                        offloadPolicies,
-                        ImmutableMap.of(
-                            LedgerOffloader.METADATA_SOFTWARE_VERSION_KEY.toLowerCase(), PulsarVersion.getVersion(),
-                            LedgerOffloader.METADATA_SOFTWARE_GITSHA_KEY.toLowerCase(), PulsarVersion.getGitSha()
-                        ),
-                        pulsarClient,
-                        pulsarAdmin,
-                        bkc,
-                        executor,
-                        scheduler);
-                    if (offloader instanceof OffloadService) {
-                        return (OffloadService) offloader;
+                    try {
+                        Object offloader = offloaderFactory.create(conf,
+                            offloadPolicies,
+                            ImmutableMap.of(
+                                LedgerOffloader.METADATA_SOFTWARE_VERSION_KEY.toLowerCase(), PulsarVersion.getVersion(),
+                                LedgerOffloader.METADATA_SOFTWARE_GITSHA_KEY.toLowerCase(), PulsarVersion.getGitSha()
+                            ),
+                            pulsarClient,
+                            pulsarAdmin,
+                            bkc,
+                            executor,
+                            scheduler);
+                        if (offloader instanceof OffloadService) {
+                            return (OffloadService) offloader;
+                        }
+                    } catch (IOException ioe) {
+                        throw new PulsarServerException(ioe.getMessage(), ioe.getCause());
                     }
-                } catch (IOException ioe) {
-                    throw new PulsarServerException(ioe.getMessage(), ioe.getCause());
                 }
             } else {
                 LOG.info("No ledger offloader configured, using NULL instance");
