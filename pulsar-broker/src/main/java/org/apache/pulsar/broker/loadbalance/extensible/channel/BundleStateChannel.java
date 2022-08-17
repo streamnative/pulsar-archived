@@ -122,7 +122,9 @@ public class BundleStateChannel {
             return future;
         }
         BundleStateData data = tv.get(bundle);
-        if (data.getState() == BundleState.Assigned) {
+        if (data == null) {
+            return null;
+        } else if (data.getState() == BundleState.Assigned) {
             future.complete(Optional.of(data.getBroker()));
             return future;
         } else if (data.state == BundleState.Assigning) {

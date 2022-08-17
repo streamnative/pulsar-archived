@@ -47,6 +47,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionS
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.common.naming.TopicDomain;
+import org.apache.pulsar.metadata.api.coordination.LeaderElectionState;
 
 /**
  * The broker discovery implementation.
@@ -106,6 +107,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         brokerRegistry.start();
         // Register self to metadata store.
         brokerRegistry.register();
+        startBundleStateChannelLeaderElectionService();
+        this.bundleStateChannel = new BundleStateChannel(pulsar.getClient());
 
         // Start the load data store.
         try {
@@ -148,29 +151,29 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 //            }
 //        });
 
-        this.bundleStateChannel = new BundleStateChannel(pulsar.getClient());
+
 
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
     }
 
-//    protected void startBundleStateChannelLeaderElectionService() {
-//        this.bundleStateChannelLeaderElectionService = new LeaderElectionService(
-//                pulsar.getCoordinationService(), pulsar.getSafeWebServiceAddress(),
-//                state -> {
-//                    if (state == LeaderElectionState.Leading) {
-//                        log.info("This broker was elected as bundleStateChanel leader");
-//
-//                    } else {
-//                        if (bundleStateChannelLeaderElectionService != null) {
-//                            log.info("This broker is a bundleStateChanel follower. "
-//                                            + "Current bundleStateChanel leader is {}",
-//                                    bundleStateChannelLeaderElectionService.getCurrentLeader());
-//                        }
-//                    }
-//                });
-//        bundleStateChannelLeaderElectionService.start();
-//    }
+    protected void startBundleStateChannelLeaderElectionService() {
+        this.bundleStateChannelLeaderElectionService = new LeaderElectionService(
+                pulsar.getCoordinationService(), pulsar.getSafeWebServiceAddress(),
+                state -> {
+                    if (state == LeaderElectionState.Leading) {
+                        log.info("This broker was elected as bundleStateChanel leader");
+
+                    } else {
+                        if (bundleStateChannelLeaderElectionService != null) {
+                            log.info("This broker is a bundleStateChanel follower. "
+                                            + "Current bundleStateChanel leader is {}",
+                                    bundleStateChannelLeaderElectionService.getCurrentLeader());
+                        }
+                    }
+                });
+        bundleStateChannelLeaderElectionService.start();
+    }
 
     @Override
     public void initialize(PulsarService pulsar) {
@@ -219,7 +222,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     }
 
     private CompletableFuture<Optional<String>> getChannelOwnerBroker(ServiceUnitId topic) {
-        Optional<LeaderBroker> leader = pulsar.getLeaderElectionService().getCurrentLeader();
+        Optional<LeaderBroker> leader = bundleStateChannelLeaderElectionService.getCurrentLeader();
         if (leader.isPresent()) {
             String broker = leader.get().getServiceUrl();
             broker = broker.substring(broker.lastIndexOf('/') + 1);
@@ -241,29 +244,32 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             owner = bundleStateChannel.getOwner(bundle);
         }
 
-        if (owner == null){
-            CompletableFuture.failedFuture(new IllegalStateException("is not owned by broker"));
+        if (owner == null) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException(
+                            String.format("topic:%s, bundle:%s not owned by broker", topic, bundle)));
         }
         return owner.thenApply(broker -> {
-            if (pulsar.getBrokerServiceUrl()
-                    .substring(pulsar.getBrokerServiceUrl().lastIndexOf('/') + 1)
-                    .equals(broker.get())) {
+            if (getBrokerName(broker.get())
+                    .equals(getBrokerName(pulsar.getBrokerServiceUrl()))) {
                 return true;
             } else {
                 return false;
             }
         });
+    }
 
-
+    public static String getBrokerName(String brokerUrl) {
+        return brokerUrl.substring(brokerUrl.lastIndexOf('/') + 1, brokerUrl.lastIndexOf(':'));
     }
 
     @Override
     public CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (topic.toString().startsWith(BundleStateChannel.TOPIC)
+        if (topic != null && (topic.toString().startsWith(BundleStateChannel.TOPIC)
                 || topic.toString().startsWith(BROKER_LOAD_DATA_STORE_NAME)
-                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME)) {
+                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME))) {
             owner = getChannelOwnerBroker(topic);
         } else {
             owner = bundleStateChannel.getOwner(bundle);
