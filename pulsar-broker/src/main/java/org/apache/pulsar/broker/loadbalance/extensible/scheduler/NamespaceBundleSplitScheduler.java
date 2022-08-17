@@ -74,7 +74,7 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
                     }
 
                     // Make sure the same bundle is not selected again.
-                    context.bundleLoadDataStore().remove(bundleName);
+                    context.topBundleLoadDataStore().remove(bundleName);
                     // Clear namespace bundle-cache
                     namespaceBundleFactory
                             .invalidateBundleCache(NamespaceName.get(namespaceName));

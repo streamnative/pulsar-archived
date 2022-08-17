@@ -42,7 +42,7 @@ public class ExtensibleLoadManagerTestBase {
     public BaseLoadManagerContext newBaseLoadManagerContext() {
         BaseLoadManagerContextImpl context = new BaseLoadManagerContextImpl();
         context.setBrokerLoadDataStore(new MockedLoadDataStore<>());
-        context.setBundleLoadDataStore(new MockedLoadDataStore<>());
+        context.setTopBundleLoadDataStore(new MockedLoadDataStore<>());
         context.setConfiguration(new ServiceConfiguration());
         context.setBrokerRegistry(new MockedBrokerRegistry());
         return context;

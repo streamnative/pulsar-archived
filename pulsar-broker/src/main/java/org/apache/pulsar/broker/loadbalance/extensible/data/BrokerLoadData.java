@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Data;
+import org.apache.pulsar.common.naming.NamespaceName;
+import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.policies.data.loadbalancer.LocalBrokerData;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 import org.apache.pulsar.policies.data.loadbalancer.ResourceUsage;
@@ -35,6 +37,12 @@ import org.apache.pulsar.policies.data.loadbalancer.SystemResourceUsage;
  */
 @Data
 public class BrokerLoadData {
+
+    public static final String TOPIC =
+            TopicDomain.persistent
+                    + "://"
+                    + NamespaceName.SYSTEM_NAMESPACE
+                    + "/broker-load-data";
 
     // Most recently available system resource usage.
     private ResourceUsage cpu;

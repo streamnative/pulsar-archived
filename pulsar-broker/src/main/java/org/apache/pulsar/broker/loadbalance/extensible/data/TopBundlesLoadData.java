@@ -24,10 +24,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.pulsar.common.naming.NamespaceName;
+import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 
 @Getter
 public class TopBundlesLoadData {
+
+    public static final String TOPIC =
+            TopicDomain.persistent
+                    + "://"
+                    + NamespaceName.SYSTEM_NAMESPACE
+                    + "/top-bundle-load-data";
 
     private final List<Pair<String, NamespaceBundleStats>> topBundlesLoadData;
 

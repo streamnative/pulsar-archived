@@ -44,9 +44,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerVersionFilte
 import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
-import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.ServiceUnitId;
-import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.metadata.api.coordination.LeaderElectionState;
 
 /**
@@ -54,16 +52,6 @@ import org.apache.pulsar.metadata.api.coordination.LeaderElectionState;
  */
 @Slf4j
 public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
-
-    public static final String BROKER_LOAD_DATA_STORE_NAME = TopicDomain.persistent
-            + "://"
-            + NamespaceName.SYSTEM_NAMESPACE
-            + "/broker-load-data";
-
-    public static final String BUNDLE_LOAD_DATA_STORE_NAME = TopicDomain.persistent
-            + "://"
-            + NamespaceName.SYSTEM_NAMESPACE
-            + "/bundle-load-data";
 
     private PulsarService pulsar;
 
@@ -82,7 +70,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
      */
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
-    private LoadDataStore<TopBundlesLoadData> bundleLoadDataStore;
+    private LoadDataStore<TopBundlesLoadData> topBundleLoadDataStore;
 
     /**
      * The load manager schedulers.
@@ -113,9 +101,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // Start the load data store.
         try {
             brokerLoadDataStore =
-                    LoadDataStoreFactory.create(pulsar, BROKER_LOAD_DATA_STORE_NAME, BrokerLoadData.class);
-            bundleLoadDataStore =
-                    LoadDataStoreFactory.create(pulsar, BUNDLE_LOAD_DATA_STORE_NAME, TopBundlesLoadData.class);
+                    LoadDataStoreFactory.create(pulsar, BrokerLoadData.TOPIC, BrokerLoadData.class);
+            topBundleLoadDataStore =
+                    LoadDataStoreFactory.create(pulsar, TopBundlesLoadData.TOPIC, TopBundlesLoadData.class);
         } catch (LoadDataStoreException e) {
             throw new PulsarServerException(e);
         }
@@ -126,7 +114,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         ((BaseLoadManagerContextImpl) this.context).setConfiguration(this.conf);
         ((BaseLoadManagerContextImpl) this.context).setBrokerRegistry(brokerRegistry);
         ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
-        ((BaseLoadManagerContextImpl) this.context).setBundleLoadDataStore(bundleLoadDataStore);
+        ((BaseLoadManagerContextImpl) this.context).setTopBundleLoadDataStore(topBundleLoadDataStore);
 
         // Start the namespace bundle unload and bundle split scheduler.
 //        this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
@@ -179,12 +167,13 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public void initialize(PulsarService pulsar) {
         this.pulsar = pulsar;
         this.conf = pulsar.getConfiguration();
-        brokerSelectionStrategy = null;
+        // TODO: Add a test strategy.
+        this.brokerSelectionStrategy = null;
 
-        brokerFilterPipeline = new ArrayList<>();
+        this.brokerFilterPipeline = new ArrayList<>();
 
-        brokerFilterPipeline.add(new BrokerVersionFilter());
-        brokerFilterPipeline.add(new LargeTopicCountFilter());
+        this.brokerFilterPipeline.add(new BrokerVersionFilter());
+        this.brokerFilterPipeline.add(new LargeTopicCountFilter());
     }
 
     @Override
@@ -236,9 +225,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public CompletableFuture<Boolean> checkOwnershipAsync(ServiceUnitId topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (topic.toString().startsWith(BundleStateChannel.TOPIC)
-                || topic.toString().startsWith(BROKER_LOAD_DATA_STORE_NAME)
-                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME)) {
+        if (isInternalTopic(topic.toString())) {
             owner = getChannelOwnerBroker(topic);
         } else {
             owner = bundleStateChannel.getOwner(bundle);
@@ -267,9 +254,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (topic.toString().startsWith(BundleStateChannel.TOPIC)
-                || topic.toString().startsWith(BROKER_LOAD_DATA_STORE_NAME)
-                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME)) {
+        if (isInternalTopic(topic.toString())) {
             owner = getChannelOwnerBroker(topic);
         } else {
             owner = bundleStateChannel.getOwner(bundle);
@@ -290,7 +275,6 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
         return owner.thenApply(broker -> getBrokerRegistry().lookup(broker.get()));
     }
-
 
     /**
      * Get the broker registry.
@@ -335,11 +319,17 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                 throw new PulsarServerException(e);
             }
             try {
-                this.bundleLoadDataStore.close();
+                this.topBundleLoadDataStore.close();
             } catch (IOException e) {
                 throw new PulsarServerException(e);
             }
         }
+    }
+
+    private boolean isInternalTopic(String topic) {
+        return topic.startsWith(BundleStateChannel.TOPIC)
+                || topic.startsWith(BrokerLoadData.TOPIC)
+                || topic.startsWith(TopBundlesLoadData.TOPIC);
     }
 
     private boolean isLeader() {

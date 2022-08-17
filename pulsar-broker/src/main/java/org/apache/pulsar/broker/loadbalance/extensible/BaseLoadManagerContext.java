@@ -31,7 +31,7 @@ public interface BaseLoadManagerContext extends LoadManagerContext {
 
     LoadDataStore<BrokerLoadData> brokerLoadDataStore();
 
-    LoadDataStore<TopBundlesLoadData> bundleLoadDataStore();
+    LoadDataStore<TopBundlesLoadData> topBundleLoadDataStore();
 
     /**
      * <Broker, <Bundle, BundleLoadData>>.

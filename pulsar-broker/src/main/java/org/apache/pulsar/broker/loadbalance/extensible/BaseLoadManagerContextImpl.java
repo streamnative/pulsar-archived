@@ -38,7 +38,7 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
 
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
-    private LoadDataStore<TopBundlesLoadData> bundleLoadDataStore;
+    private LoadDataStore<TopBundlesLoadData> topBundleLoadDataStore;
 
     private Map<String, Map<String, BundleData>> preallocatedBundleData;
 
@@ -52,8 +52,8 @@ public class BaseLoadManagerContextImpl implements BaseLoadManagerContext {
     }
 
     @Override
-    public LoadDataStore<TopBundlesLoadData> bundleLoadDataStore() {
-        return this.bundleLoadDataStore;
+    public LoadDataStore<TopBundlesLoadData> topBundleLoadDataStore() {
+        return this.topBundleLoadDataStore;
     }
 
     @Override
