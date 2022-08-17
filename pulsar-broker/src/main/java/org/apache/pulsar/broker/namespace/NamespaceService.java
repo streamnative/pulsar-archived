@@ -55,7 +55,7 @@ import org.apache.pulsar.broker.loadbalance.LeaderBroker;
 import org.apache.pulsar.broker.loadbalance.LeaderElectionService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
-import org.apache.pulsar.broker.loadbalance.impl.ModularLoadManagerWrapper;
+import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerWrapper;
 import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.broker.resources.NamespaceResources;
 import org.apache.pulsar.broker.service.BrokerServiceException.ServiceUnitNotReadyException;
@@ -1095,7 +1095,7 @@ public class NamespaceService implements AutoCloseable {
     }
 
     public boolean isExtensibleLoadManager(){
-        return loadManager.get() instanceof ModularLoadManagerWrapper;
+        return loadManager.get() instanceof ExtensibleLoadManagerWrapper;
     }
 
     public CompletableFuture<Boolean> checkTopicOwnership(TopicName topicName) {

@@ -28,7 +28,6 @@ import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
-import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.impl.PulsarResourceDescription;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleResourceUnit;
 import org.apache.pulsar.broker.lookup.LookupResult;
@@ -135,8 +134,8 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public LoadManagerReport generateLoadReport() throws Exception {
-        BrokerLoadData brokerLoadData = loadManager.getReportScheduler().generateBrokerLoadData();
-        return BrokerLoadData.convertToLoadManagerReport(brokerLoadData);
+        // TODO: generate load report.
+        return null;
     }
 
     @Override
