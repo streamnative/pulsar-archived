@@ -267,9 +267,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     public CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (topic != null && (topic.toString().startsWith(BundleStateChannel.TOPIC)
+        if (topic.toString().startsWith(BundleStateChannel.TOPIC)
                 || topic.toString().startsWith(BROKER_LOAD_DATA_STORE_NAME)
-                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME))) {
+                || topic.toString().startsWith(BUNDLE_LOAD_DATA_STORE_NAME)) {
             owner = getChannelOwnerBroker(topic);
         } else {
             owner = bundleStateChannel.getOwner(bundle);

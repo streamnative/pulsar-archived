@@ -286,7 +286,8 @@ public class NamespaceService implements AutoCloseable {
     private CompletableFuture<Optional<URL>> internalGetWebServiceUrl(NamespaceBundle bundle, LookupOptions options) {
 
         return (isExtensibleLoadManager()
-                ? findBrokerServiceUrl(bundle, options) : loadManager.get().findBrokerServiceUrl(null, bundle))
+                ? loadManager.get().findBrokerServiceUrl(TopicName.get(""), bundle) :
+                findBrokerServiceUrl(bundle, options))
                 .thenApply(lookupResult -> {
             if (lookupResult.isPresent()) {
                 try {
