@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,8 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.TopBundlesLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.BrokerVersionFilter;
 import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFilter;
+import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataReporter;
+import org.apache.pulsar.broker.loadbalance.extensible.reporter.TopBundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.common.naming.ServiceUnitId;
@@ -71,6 +74,13 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     private LoadDataStore<BrokerLoadData> brokerLoadDataStore;
 
     private LoadDataStore<TopBundlesLoadData> topBundleLoadDataStore;
+
+    /**
+     * The load data reporter.
+     */
+    private BrokerLoadDataReporter brokerLoadDataReporter;
+
+    private TopBundleLoadDataReporter topBundleLoadDataReporter;
 
     /**
      * The load manager schedulers.
@@ -116,30 +126,16 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         ((BaseLoadManagerContextImpl) this.context).setBrokerLoadDataStore(brokerLoadDataStore);
         ((BaseLoadManagerContextImpl) this.context).setTopBundleLoadDataStore(topBundleLoadDataStore);
 
-        // Start the namespace bundle unload and bundle split scheduler.
-//        this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context);
-//        this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, context);
+        this.brokerLoadDataReporter =
+                new BrokerLoadDataReporter(pulsar, brokerRegistry.getLookupServiceAddress(), brokerLoadDataStore);
 
-//        this.namespaceUnloadScheduler.start();
-//        this.namespaceBundleSplitScheduler.start();
+        this.topBundleLoadDataReporter =
+                new TopBundleLoadDataReporter(pulsar, brokerRegistry.getLookupServiceAddress(), topBundleLoadDataStore);
 
-        // Listen the broker up or down, so we can flush the load data immediately.
-//        this.brokerRegistry.listen((broker) -> {
-//            try {
-//                List<CompletableFuture<Void>> futureList = new ArrayList<>();
-////                futureList.add(this.reportScheduler.reportBrokerLoadDataAsync());
-////                futureList.add(this.reportScheduler.reportBundleLoadDataAsync());
-//                FutureUtil.waitForAll(futureList).thenApply(__ -> {
-//                    // Trigger the namespace bundle split.
-//                    namespaceBundleSplitScheduler.execute();
-//                    return null;
-//                }).get(10, TimeUnit.SECONDS);
-//            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-//                log.error("Report the all load data failed.", e);
-//            }
-//        });
-
-
+        this.pulsar.getLoadManagerExecutor()
+                .schedule(() -> brokerLoadDataReporter.reportAsync(false), 500, TimeUnit.MILLISECONDS);
+        this.pulsar.getLoadManagerExecutor()
+                .schedule(() -> topBundleLoadDataReporter.reportAsync(false), 500, TimeUnit.MILLISECONDS);
 
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
