@@ -56,7 +56,7 @@ public interface BrokerDiscovery {
      * @param serviceUnit Bundle.
      * @return Simple resource.
      */
-    CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId serviceUnit);
+    CompletableFuture<Optional<BrokerLookupData>> assign(Optional<ServiceUnitId> topic, ServiceUnitId serviceUnit);
 
     /**
      * Stop the load manager.

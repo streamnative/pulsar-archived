@@ -96,7 +96,7 @@ public class BrokerLookupData implements ServiceLookupData {
     }
 
     public LookupResult toLookupResult() {
-        return new LookupResult(pulsarServiceUrl, pulsarServiceUrlTls, webServiceUrl, webServiceUrlTls,
+        return new LookupResult(webServiceUrl, webServiceUrlTls, pulsarServiceUrl, pulsarServiceUrlTls,
                 LookupResult.Type.BrokerUrl, false);
     }
 }

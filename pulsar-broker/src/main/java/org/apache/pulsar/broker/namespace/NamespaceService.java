@@ -196,7 +196,7 @@ public class NamespaceService implements AutoCloseable {
         CompletableFuture<Optional<LookupResult>> future =
                 getBundleAsync(topic).thenCompose(bundle -> {
                             if (isExtensibleLoadManager()) {
-                                return loadManager.get().findBrokerServiceUrl(topic, bundle);
+                                return loadManager.get().findBrokerServiceUrl(Optional.of(topic), bundle);
                             } else {
                                 return findBrokerServiceUrl(bundle, options);
                             }
@@ -286,7 +286,7 @@ public class NamespaceService implements AutoCloseable {
     private CompletableFuture<Optional<URL>> internalGetWebServiceUrl(NamespaceBundle bundle, LookupOptions options) {
 
         return (isExtensibleLoadManager()
-                ? loadManager.get().findBrokerServiceUrl(TopicName.get(""), bundle) :
+                ? loadManager.get().findBrokerServiceUrl(Optional.empty(), bundle) :
                 findBrokerServiceUrl(bundle, options))
                 .thenApply(lookupResult -> {
             if (lookupResult.isPresent()) {
@@ -1099,6 +1099,11 @@ public class NamespaceService implements AutoCloseable {
     }
 
     private CompletableFuture<Boolean> isTopicOwnedAsync(TopicName topic) {
+
+        if (isExtensibleLoadManager()) {
+            return getBundleAsync(topic)
+                    .thenCompose(bundle -> loadManager.get().checkOwnership(topic, bundle));
+        }
         return getBundleAsync(topic).thenApply(bundle -> ownershipCache.isNamespaceBundleOwned(bundle));
     }
 

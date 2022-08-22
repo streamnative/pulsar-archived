@@ -247,11 +247,12 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     }
 
     @Override
-    public CompletableFuture<Optional<BrokerLookupData>> assign(ServiceUnitId topic, ServiceUnitId bundleUnit) {
+    public CompletableFuture<Optional<BrokerLookupData>> assign(
+            Optional<ServiceUnitId> topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (isInternalTopic(topic.toString())) {
-            owner = getChannelOwnerBroker(topic);
+        if (topic.isPresent() && isInternalTopic(topic.get().toString())) {
+            owner = getChannelOwnerBroker(topic.get());
         } else {
             owner = bundleStateChannel.getOwner(bundle);
             if (owner == null) {

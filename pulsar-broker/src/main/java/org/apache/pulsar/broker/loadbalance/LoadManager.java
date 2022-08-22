@@ -61,7 +61,8 @@ public interface LoadManager {
      */
     Optional<ResourceUnit> getLeastLoaded(ServiceUnitId su) throws Exception;
 
-    default CompletableFuture<Optional<LookupResult>> findBrokerServiceUrl(ServiceUnitId topic, ServiceUnitId bundle) {
+    default CompletableFuture<Optional<LookupResult>> findBrokerServiceUrl(
+            Optional<ServiceUnitId> topic, ServiceUnitId bundle) {
         return null;
     }
 

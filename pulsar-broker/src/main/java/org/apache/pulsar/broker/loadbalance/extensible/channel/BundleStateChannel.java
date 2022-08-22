@@ -96,6 +96,9 @@ public class BundleStateChannel {
             assigning.complete(Optional.of(data.getBroker()));
         }
         assigningBundles.remove(data.getBundle());
+
+        //TODO: remove log
+        log.info("handled-Assigned:{}", data);
     }
 
     private void handleAssigning(BundleStateData data) {
@@ -103,6 +106,9 @@ public class BundleStateChannel {
         ownershipCache.put(data.bundle, next.broker);
         pubAsync(next);
         assigningBundles.remove(data.getBundle());
+
+        //TODO: remove log
+        log.info("handled-Assigning:{}", data);
     }
 
 

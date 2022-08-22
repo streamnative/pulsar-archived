@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,9 @@ public class TopBundlesLoadData {
 
     private final List<Pair<String, NamespaceBundleStats>> topBundlesLoadData;
 
+    public TopBundlesLoadData() {
+        topBundlesLoadData = new ArrayList<>();
+    }
     private TopBundlesLoadData(Map<String, NamespaceBundleStats> bundleStats, int topK) {
         topBundlesLoadData = bundleStats.entrySet()
                 .stream()

@@ -830,6 +830,11 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 this.webSocketService.setLocalCluster(clusterData);
             }
 
+            // By starting the Load manager service, the broker will also become visible
+            // to the rest of the broker by creating the registration z-node. This needs
+            // to be done only when the broker is fully operative.
+            this.startLoadManagementService();
+
             // Initialize namespace service, after service url assigned. Should init zk and refresh self owner info.
             this.nsService.initialize();
 
@@ -870,11 +875,6 @@ public class PulsarService implements AutoCloseable, ShutdownService {
             }
 
             this.metricsGenerator = new MetricsGenerator(this);
-
-            // By starting the Load manager service, the broker will also become visible
-            // to the rest of the broker by creating the registration z-node. This needs
-            // to be done only when the broker is fully operative.
-            this.startLoadManagementService();
 
             // Initialize the message protocol handlers.
             // start the protocol handlers only after the broker is ready,
