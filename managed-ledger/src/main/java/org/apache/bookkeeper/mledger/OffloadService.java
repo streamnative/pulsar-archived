@@ -73,7 +73,7 @@ public interface OffloadService {
      * @param ledgerId
      * @return
      */
-    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId) {
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId, String managedLedgerName) {
         return CompletableFuture.completedFuture(null);
     };
 
@@ -84,7 +84,9 @@ public interface OffloadService {
      * @param conf
      * @return
      */
-    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId, OrderedExecutor executor, ServiceConfiguration conf) {
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId,
+                                                        String managedLedgerName,
+                                                        OrderedExecutor executor, ServiceConfiguration conf) {
         return CompletableFuture.completedFuture(null);
     };
 

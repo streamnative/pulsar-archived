@@ -65,12 +65,12 @@ public class NullOffloadService implements OffloadService {
     }
 
     @Override
-    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId) {
+    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, String managedLedgerName) {
         return CompletableFuture.completedFuture(null);
     }
 
     @Override
-    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId,
+    public CompletableFuture<ReadHandle> readOffloaded(long ledgerId, String managedLedgerName,
                                                        OrderedExecutor executor,
                                                        ServiceConfiguration conf) {
         return CompletableFuture.completedFuture(null);

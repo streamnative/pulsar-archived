@@ -110,7 +110,6 @@ import org.apache.bookkeeper.mledger.ManagedLedgerException.MetadataNotFoundExce
 import org.apache.bookkeeper.mledger.ManagedLedgerException.NonRecoverableLedgerException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.TooManyRequestsException;
 import org.apache.bookkeeper.mledger.ManagedLedgerMXBean;
-import org.apache.bookkeeper.mledger.OffloadService;
 import org.apache.bookkeeper.mledger.Position;
 import org.apache.bookkeeper.mledger.WaitingEntryCallBack;
 import org.apache.bookkeeper.mledger.impl.ManagedCursorImpl.VoidCallback;
@@ -1779,8 +1778,8 @@ public class ManagedLedgerImpl implements ManagedLedger, CreateCallback {
             } else if (config.getOffloadService() != null
                 && !config.getOffloadService().equals(NullOffloadService.INSTANCE)
                 && info != null && offloadCursor != null
-                && ledgerId <= offloadCursor.getMarkDeletedPosition().getLedgerId()) {
-                openFuture = config.getOffloadService().readOffloaded(ledgerId);
+                && ledgerId < offloadCursor.getMarkDeletedPosition().getLedgerId()) {
+                openFuture = config.getOffloadService().readOffloaded(ledgerId, name);
             } else {
                 openFuture = bookKeeper.newOpenLedgerOp().withRecovery(!isReadOnly()).withLedgerId(ledgerId)
                         .withDigestType(config.getDigestType()).withPassword(config.getPassword()).execute();

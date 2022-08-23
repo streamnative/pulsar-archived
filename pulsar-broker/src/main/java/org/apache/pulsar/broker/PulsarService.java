@@ -78,6 +78,7 @@ import org.apache.bookkeeper.mledger.impl.NullLedgerOffloader;
 import org.apache.bookkeeper.mledger.impl.NullOffloadService;
 import org.apache.bookkeeper.mledger.offload.Offloaders;
 import org.apache.bookkeeper.mledger.offload.OffloadersCache;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
@@ -110,6 +111,7 @@ import org.apache.pulsar.broker.service.schema.SchemaRegistryService;
 import org.apache.pulsar.broker.stats.MetricsGenerator;
 import org.apache.pulsar.broker.stats.prometheus.PrometheusMetricsServlet;
 import org.apache.pulsar.broker.stats.prometheus.PrometheusRawMetricsProvider;
+import org.apache.pulsar.broker.stats.prometheus.metrics.PrometheusMetricsProvider;
 import org.apache.pulsar.broker.storage.ManagedLedgerStorage;
 import org.apache.pulsar.broker.transaction.buffer.TransactionBufferProvider;
 import org.apache.pulsar.broker.transaction.buffer.impl.TransactionBufferClientImpl;
@@ -281,6 +283,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
     private NamespaceName heartbeatNamespaceV2;
     private NamespaceName heartbeatNamespaceV1;
 
+    private PrometheusMetricsProvider statsProvider;
+
     public PulsarService(ServiceConfiguration config) {
         this(config, Optional.empty(), (exitCode) -> {
                 LOG.info("Process termination requested with code {}. "
@@ -331,6 +335,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
 
         this.ioEventLoopGroup = EventLoopUtil.newEventLoopGroup(config.getNumIOThreads(), config.isEnableBusyWait(),
                 new DefaultThreadFactory("pulsar-io"));
+
+        this.statsProvider = new PrometheusMetricsProvider();
     }
 
     public MetadataStore createConfigurationMetadataStore() throws MetadataStoreException {
@@ -388,6 +394,10 @@ public class PulsarService implements AutoCloseable, ShutdownService {
             if (this.resourceUsageTransportManager != null) {
                 this.resourceUsageTransportManager.close();
                 this.resourceUsageTransportManager = null;
+            }
+
+            if (statsProvider != null) {
+                statsProvider.stop();
             }
 
             if (this.webService != null) {
@@ -676,7 +686,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 adminClient,
                 getBookKeeperClient(),
                 orderedExecutor,
-                offloaderScheduler);
+                offloaderScheduler,
+                statsProvider.getStatsLogger("offload_service"));
             this.brokerInterceptor = BrokerInterceptors.load(config);
             brokerService.setInterceptor(getBrokerInterceptor());
             this.brokerInterceptor.initialize(this);
@@ -1036,6 +1047,10 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         }
     }
 
+    public PrometheusMetricsProvider getStatsProvider() {
+        return statsProvider;
+    }
+
     protected void startNamespaceService() throws PulsarServerException {
 
         LOG.info("Starting name space service, bootstrap namespaces=" + config.getBootstrapNamespaces());
@@ -1231,7 +1246,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                                             PulsarAdmin pulsarAdmin,
                                             BookKeeper bkc,
                                             OrderedExecutor executor,
-                                            OrderedScheduler scheduler) {
+                                            OrderedScheduler scheduler,
+                                            StatsLogger statsLogger) {
         if (offloadPolicies == null) {
             return getDefaultOffloadService();
         }
@@ -1246,8 +1262,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
 //                    }
 
                     return createOffloadService(conf, offloadPolicies,
-                        pulsarClient, pulsarAdmin, bkc, executor, scheduler);
-//                }
+                        pulsarClient, pulsarAdmin, bkc, executor, scheduler, statsLogger);
             } catch (PulsarServerException e) {
                 LOG.error("create offload service failed for namespace {}", namespaceName, e);
                 return new NullOffloadService();
@@ -1300,7 +1315,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                                                             PulsarAdmin pulsarAdmin,
                                                             BookKeeper bkc,
                                                             OrderedExecutor executor,
-                                                            OrderedScheduler scheduler)
+                                                            OrderedScheduler scheduler,
+                                                            StatsLogger statsLogger)
         throws PulsarServerException {
         if (StringUtils.isNotBlank(offloadPolicies.getManagedLedgerOffloadDriver())) {
 
@@ -1325,7 +1341,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                         pulsarAdmin,
                         bkc,
                         executor,
-                        scheduler);
+                        scheduler,
+                        statsLogger);
                 } catch (IOException ioe) {
                     throw new PulsarServerException(ioe.getMessage(), ioe.getCause());
                 }

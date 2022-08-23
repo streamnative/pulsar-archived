@@ -25,6 +25,7 @@ import org.apache.bookkeeper.common.annotation.InterfaceAudience.LimitedPrivate;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Evolving;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.common.util.OrderedScheduler;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -86,7 +87,8 @@ public interface LedgerOffloaderFactory<T> {
                      PulsarAdmin pulsarAdmin,
                      BookKeeper bkc,
                      OrderedExecutor executor,
-                     OrderedScheduler scheduler) throws IOException {
+                     OrderedScheduler scheduler,
+                     StatsLogger statsLogger) throws IOException {
         return create(offloadPolicies, userMetadata, scheduler);
     }
 }
