@@ -47,7 +47,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataRe
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.TopBundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
-import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeightBrokerSelectionStrategy;
+import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeight;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.metadata.api.coordination.LeaderElectionState;
 
@@ -165,7 +165,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.pulsar = pulsar;
         this.conf = pulsar.getConfiguration();
         // TODO: Add a test strategy.
-        this.brokerSelectionStrategy = new LeastResourceUsageWithWeightBrokerSelectionStrategy();
+        this.brokerSelectionStrategy = new LeastResourceUsageWithWeight();
 
         this.brokerFilterPipeline = new ArrayList<>();
 
@@ -174,9 +174,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     }
 
     @Override
-    public Optional<String> discover(ServiceUnitId serviceUnit) {
+    public Optional<String> discover(ServiceUnitId bundle) {
 
-        final String bundle = serviceUnit.toString();
         BrokerRegistry brokerRegistry = getBrokerRegistry();
         List<String> availableBrokers = brokerRegistry.getAvailableBrokers();
 
@@ -202,9 +201,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             return Optional.empty();
         }
 
-        BrokerSelectionStrategy brokerSelectionStrategy = getBrokerSelectionStrategy(serviceUnit);
+        BrokerSelectionStrategy brokerSelectionStrategy = getBrokerSelectionStrategy();
 
-        return brokerSelectionStrategy.select(availableBrokers, context);
+        return brokerSelectionStrategy.select(availableBrokers, bundle, context);
     }
 
     private CompletableFuture<Optional<String>> getChannelOwnerBroker(ServiceUnitId topic) {
@@ -284,7 +283,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     /**
      * Get current load balancer we used.
      */
-    protected BrokerSelectionStrategy getBrokerSelectionStrategy(ServiceUnitId serviceUnitId) {
+    protected BrokerSelectionStrategy getBrokerSelectionStrategy() {
         return this.brokerSelectionStrategy;
     }
 

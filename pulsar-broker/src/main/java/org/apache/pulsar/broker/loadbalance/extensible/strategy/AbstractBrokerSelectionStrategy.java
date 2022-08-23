@@ -23,11 +23,12 @@ import java.util.Optional;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.LoadManagerContext;
+import org.apache.pulsar.common.naming.ServiceUnitId;
 
 public abstract class AbstractBrokerSelectionStrategy implements BrokerSelectionStrategy {
 
     @Override
-    public Optional<String> select(List<String> brokers, LoadManagerContext context) {
+    public Optional<String> select(List<String> brokers, ServiceUnitId bundle, LoadManagerContext context) {
         if (CollectionUtils.isEmpty(brokers)) {
             return Optional.empty();
         }
@@ -40,8 +41,10 @@ public abstract class AbstractBrokerSelectionStrategy implements BrokerSelection
             throw new IllegalStateException("The context must be BaseContext.");
         }
 
-        return doSelect(brokers, (BaseLoadManagerContext) context);
+        return doSelect(brokers, bundle, (BaseLoadManagerContext) context);
     }
 
-    public abstract Optional<String> doSelect(List<String> brokers, BaseLoadManagerContext context);
+    public abstract Optional<String> doSelect(List<String> brokers,
+                                              ServiceUnitId bundle,
+                                              BaseLoadManagerContext context);
 }

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Data;
+import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.policies.data.loadbalancer.LocalBrokerData;
@@ -189,6 +190,31 @@ public class BrokerLoadData {
     public double getMaxResourceUsage() {
         return max(cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
                 bandwidthOut.percentUsage()) / 100;
+    }
+
+    public double getMaxResourceUsageWithWeightWithinLimit(ServiceConfiguration conf) {
+        return maxWithinLimit(100.0d,
+                cpu.percentUsage() * conf.getLoadBalancerCPUResourceWeight(),
+                memory.percentUsage() * conf.getLoadBalancerMemoryResourceWeight(),
+                directMemory.percentUsage() * conf.getLoadBalancerDirectMemoryResourceWeight(),
+                bandwidthIn.percentUsage() * conf.getLoadBalancerBandwithInResourceWeight(),
+                bandwidthOut.percentUsage() * conf.getLoadBalancerBandwithOutResourceWeight())
+                / 100;
+    }
+
+    public double getMaxResourceUsage(ServiceConfiguration conf) {
+        return max(cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
+                bandwidthOut.percentUsage()) / 100;
+    }
+
+    private static double maxWithinLimit(double limit, double...args) {
+        double max = 0.0;
+        for (double d : args) {
+            if (d > max && d <= limit) {
+                max = d;
+            }
+        }
+        return max;
     }
 
     public String printResourceUsage() {
