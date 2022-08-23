@@ -47,6 +47,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataRe
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.TopBundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
+import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeightBrokerSelectionStrategy;
 import org.apache.pulsar.common.naming.ServiceUnitId;
 import org.apache.pulsar.metadata.api.coordination.LeaderElectionState;
 
@@ -164,7 +165,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.pulsar = pulsar;
         this.conf = pulsar.getConfiguration();
         // TODO: Add a test strategy.
-        this.brokerSelectionStrategy = null;
+        this.brokerSelectionStrategy = new LeastResourceUsageWithWeightBrokerSelectionStrategy();
 
         this.brokerFilterPipeline = new ArrayList<>();
 

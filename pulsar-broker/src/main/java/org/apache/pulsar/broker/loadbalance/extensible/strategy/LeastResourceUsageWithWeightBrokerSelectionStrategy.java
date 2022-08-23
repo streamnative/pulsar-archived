@@ -26,7 +26,7 @@ public class LeastResourceUsageWithWeightBrokerSelectionStrategy extends Abstrac
 
     @Override
     public Optional<String> doSelect(List<String> brokers, BaseLoadManagerContext context) {
-        return Optional.empty();
+        return Optional.of(brokers.get(0));
     }
 
     @Override
