@@ -91,21 +91,21 @@ public class BundleStateChannel {
     }
 
     private void handleAssigned(BundleStateData data) {
-        val assigning = assigningBundles.get(data.getBundle());
-        if (assigning != null){
+        ownershipCache.invalidate(data.getBundle());
+        val assigning = assigningBundles.remove(data.getBundle());
+        if (assigning != null) {
             assigning.complete(Optional.of(data.getBroker()));
         }
-        assigningBundles.remove(data.getBundle());
-
         //TODO: remove log
         log.info("handled-Assigned:{}", data);
     }
 
     private void handleAssigning(BundleStateData data) {
         BundleStateData next = new BundleStateData(BundleState.Assigned, data.bundle, data.broker);
+
+        //TODO: check the broker is the same as the current broker
         ownershipCache.put(data.bundle, next.broker);
         pubAsync(next);
-        assigningBundles.remove(data.getBundle());
 
         //TODO: remove log
         log.info("handled-Assigning:{}", data);
