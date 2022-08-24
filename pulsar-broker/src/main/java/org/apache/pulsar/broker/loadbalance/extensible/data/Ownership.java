@@ -16,28 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pulsar.broker.loadbalance.extensible.channel;
+package org.apache.pulsar.broker.loadbalance.extensible.data;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class BundleStateData {
+public class Ownership {
 
-    BundleState state;
+    boolean active;
     String broker;
-
-    @JsonProperty("dest_broker")
-    String destBroker;
-
-    public BundleStateData(BundleState state, String broker) {
-        this.state = state;
-        this.broker = broker;
-        this.destBroker = null;
-    }
-
 }

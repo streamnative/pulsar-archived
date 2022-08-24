@@ -85,7 +85,7 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
                                                           ServiceConfiguration conf) {
         final double historyPercentage = conf.getLoadBalancerHistoryResourcePercentage();
         Double historyUsage = brokerAvgResourceUsageWithWeight.get(broker);
-        double resourceUsage = brokerData.getMaxResourceUsageWithWeightWithinLimit(conf);
+        double resourceUsage = brokerData.getMaxResourceUsageWithinLimit(conf);
         historyUsage = historyUsage == null
                 ? resourceUsage : historyUsage * historyPercentage + (1 - historyPercentage) * resourceUsage;
         if (log.isDebugEnabled()) {

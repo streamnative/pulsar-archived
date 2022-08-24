@@ -188,11 +188,16 @@ public class BrokerLoadData {
     }
 
     public double getMaxResourceUsage() {
-        return max(cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
-                bandwidthOut.percentUsage()) / 100;
+        return max(
+                cpu.percentUsage(),
+                memory.percentUsage(),
+                directMemory.percentUsage(),
+                bandwidthIn.percentUsage(),
+                bandwidthOut.percentUsage())
+                / 100;
     }
 
-    public double getMaxResourceUsageWithWeightWithinLimit(ServiceConfiguration conf) {
+    public double getMaxResourceUsageWithinLimit(ServiceConfiguration conf) {
         return maxWithinLimit(100.0d,
                 cpu.percentUsage() * conf.getLoadBalancerCPUResourceWeight(),
                 memory.percentUsage() * conf.getLoadBalancerMemoryResourceWeight(),
@@ -203,8 +208,13 @@ public class BrokerLoadData {
     }
 
     public double getMaxResourceUsage(ServiceConfiguration conf) {
-        return max(cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
-                bandwidthOut.percentUsage()) / 100;
+        return max(
+                cpu.percentUsage() * conf.getLoadBalancerCPUResourceWeight(),
+                memory.percentUsage() * conf.getLoadBalancerMemoryResourceWeight(),
+                directMemory.percentUsage() * conf.getLoadBalancerDirectMemoryResourceWeight(),
+                bandwidthIn.percentUsage() * conf.getLoadBalancerBandwithInResourceWeight(),
+                bandwidthOut.percentUsage() * conf.getLoadBalancerBandwithOutResourceWeight())
+                / 100;
     }
 
     private static double maxWithinLimit(double limit, double...args) {
@@ -225,10 +235,10 @@ public class BrokerLoadData {
                 bandwidthOut.percentUsage());
     }
 
-    private static float max(float...args) {
-        float max = Float.NEGATIVE_INFINITY;
+    private static double max(double...args) {
+        double max = Double.NEGATIVE_INFINITY;
 
-        for (float d : args) {
+        for (double d : args) {
             if (d > max) {
                 max = d;
             }

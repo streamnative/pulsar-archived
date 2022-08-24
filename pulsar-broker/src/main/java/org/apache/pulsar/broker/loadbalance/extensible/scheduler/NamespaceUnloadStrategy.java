@@ -18,9 +18,10 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
-import com.google.common.collect.Multimap;
+import java.util.List;
 import java.util.Map;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 
 /**
  * The namespace unload strategy.
@@ -30,6 +31,8 @@ import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
  */
 public interface NamespaceUnloadStrategy {
 
-    Multimap<String, String> findBundlesForUnloading(BaseLoadManagerContext context,
-                                                     Map<String, Long> recentlyUnloadedBundles);
+
+    List<Unload> findBundlesForUnloading(BaseLoadManagerContext context,
+                                         Map<String, Long> recentlyUnloadedBundles);
+
 }

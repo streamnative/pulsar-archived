@@ -46,6 +46,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFil
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.TopBundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
+import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeight;
 import org.apache.pulsar.common.naming.ServiceUnitId;
@@ -99,6 +100,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
     public ExtensibleLoadManagerImpl() {}
 
+
     @Override
     public void start() throws PulsarServerException {
         brokerRegistry = new BrokerRegistryImpl(pulsar);
@@ -107,7 +109,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // Register self to metadata store.
         brokerRegistry.register();
         startBundleStateChannelLeaderElectionService();
-        this.bundleStateChannel = new BundleStateChannel(pulsar.getClient());
+        this.bundleStateChannel = new BundleStateChannel(pulsar);
 
         // Start the load data store.
         try {
@@ -138,6 +140,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.pulsar.getLoadManagerExecutor()
                 .schedule(() -> topBundleLoadDataReporter.reportAsync(false), 500, TimeUnit.MILLISECONDS);
 
+
+        this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context, bundleStateChannel);
+        namespaceUnloadScheduler.start();
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
     }

@@ -18,7 +18,6 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
-import com.google.common.collect.Multimap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,12 +26,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
-import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
-import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 
 /**
  * As a leader, it will select bundles for the namespace service to unload
@@ -53,13 +51,18 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
 
     private volatile ScheduledFuture<?> loadSheddingTask;
 
-    public NamespaceUnloadScheduler(PulsarService pulsar, BaseLoadManagerContext context) {
+    private final BundleStateChannel bundleStateChannel;
+
+    public NamespaceUnloadScheduler(PulsarService pulsar,
+                                    BaseLoadManagerContext context,
+                                    BundleStateChannel bundleStateChannel) {
         this.namespaceUnloadStrategyPipeline = new ArrayList<>();
-//        this.namespaceUnloadStrategyPipeline.add(new OverloadShedderUnloadStrategy());
+        this.namespaceUnloadStrategyPipeline.add(new ThresholdShedder());
         this.recentlyUnloadedBundles = new HashMap<>();
         this.pulsar = pulsar;
         this.context = context;
         this.configuration = context.brokerConfiguration();
+        this.bundleStateChannel = bundleStateChannel;
     }
 
     @Override
@@ -79,23 +82,15 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
         recentlyUnloadedBundles.keySet().removeIf(e -> recentlyUnloadedBundles.get(e) < timeout);
 
         for (NamespaceUnloadStrategy strategy : namespaceUnloadStrategyPipeline) {
-            final Multimap<String, String> bundlesToUnload =
+            final List<Unload> bundlesToUnload =
                     strategy.findBundlesForUnloading(context, recentlyUnloadedBundles);
 
-            bundlesToUnload.asMap().forEach((broker, bundles) -> {
-                bundles.forEach(bundle -> {
-                    final String namespaceName = LoadManagerShared.getNamespaceNameFromBundleName(bundle);
-                    final String bundleRange = LoadManagerShared.getBundleRangeFromBundleName(bundle);
-
-                    log.info("[{}] Unloading bundle: {} from broker {}",
-                            strategy.getClass().getSimpleName(), bundle, broker);
-                    try {
-                        pulsar.getAdminClient().namespaces().unloadNamespaceBundle(namespaceName, bundleRange);
-                        recentlyUnloadedBundles.put(bundle, System.currentTimeMillis());
-                    } catch (PulsarServerException | PulsarAdminException e) {
-                        log.warn("Error when trying to perform load shedding on {} for broker {}", bundle, broker, e);
-                    }
-                });
+            bundlesToUnload.forEach(data -> {
+                log.info("[{}] Unloading bundle: {}",
+                        strategy.getClass().getSimpleName(), data);
+                // TODO: wait for the complete
+                bundleStateChannel.unloadBundle(data);
+                recentlyUnloadedBundles.put(data.getBundle(), System.currentTimeMillis());
             });
         }
 
