@@ -79,6 +79,8 @@ import org.apache.bookkeeper.mledger.impl.NullOffloadService;
 import org.apache.bookkeeper.mledger.offload.Offloaders;
 import org.apache.bookkeeper.mledger.offload.OffloadersCache;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.configuration.BaseConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
@@ -678,6 +680,10 @@ public class PulsarService implements AutoCloseable, ShutdownService {
             schemaRegistryService = SchemaRegistryService.create(
                     schemaStorage, config.getSchemaRegistryCompatibilityCheckers());
 
+            Configuration configuration = new BaseConfiguration();
+            configuration.setProperty(PrometheusMetricsProvider.CLUSTER_NAME, config.getClusterName());
+            this.statsProvider.start(configuration);
+
             this.defaultOffloader = createManagedLedgerOffloader(
                     OffloadPoliciesImpl.create(this.getConfiguration().getProperties()));
             this.defaultOffloadService = createOffloadService(config,
@@ -688,6 +694,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 orderedExecutor,
                 offloaderScheduler,
                 statsProvider.getStatsLogger("offload_service"));
+            addPrometheusRawMetricsProvider(statsProvider);
+
             this.brokerInterceptor = BrokerInterceptors.load(config);
             brokerService.setInterceptor(getBrokerInterceptor());
             this.brokerInterceptor.initialize(this);

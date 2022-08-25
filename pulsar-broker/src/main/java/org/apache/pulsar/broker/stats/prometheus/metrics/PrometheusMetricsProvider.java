@@ -34,11 +34,13 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.pulsar.broker.stats.prometheus.PrometheusRawMetricsProvider;
+import org.apache.pulsar.common.util.SimpleTextOutputStream;
 
 /**
  * A <i>Prometheus</i> based {@link StatsProvider} implementation.
  */
-public class PrometheusMetricsProvider implements StatsProvider {
+public class PrometheusMetricsProvider implements StatsProvider, PrometheusRawMetricsProvider {
     private ScheduledExecutorService executor;
 
     public static final String PROMETHEUS_STATS_LATENCY_ROLLOVER_SECONDS = "prometheusStatsLatencyRolloverSeconds";
@@ -128,5 +130,13 @@ public class PrometheusMetricsProvider implements StatsProvider {
         opStats.forEach((name, metric) -> {
             metric.rotateLatencyCollection();
         });
+    }
+
+    @Override
+    public void generate(SimpleTextOutputStream writer) {
+        gauges.forEach((sc, gauge) -> PrometheusTextFormatUtilV2.writeGauge(writer, sc, cluster, gauge));
+        counters.forEach((sc, counter) -> PrometheusTextFormatUtilV2.writeCounter(writer, sc, cluster, counter));
+        opStats.forEach((sc, opStatLogger) ->
+            PrometheusTextFormatUtilV2.writeOpStat(writer, sc, cluster, opStatLogger));
     }
 }
