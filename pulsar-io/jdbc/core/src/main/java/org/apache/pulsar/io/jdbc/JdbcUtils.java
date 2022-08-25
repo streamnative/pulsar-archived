@@ -26,8 +26,10 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -238,4 +240,18 @@ public class JdbcUtils {
         throw new Exception("Provided JDBC connection string contains unknown driver: " + jdbcUrl);
     }
 
+    public static String createListOfColumns(List<String> columns, String delimiter, UnaryOperator<String> transform) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < columns.size(); i++) {
+            if (i != 0) {
+                sb.append(delimiter);
+            }
+            sb.append(transform.apply(columns.get(i)));
+        }
+        return sb.toString();
+    }
+
+    public static String quoted(String s) {
+        return "\"" + s + "\"";
+    }
 }
