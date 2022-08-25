@@ -64,6 +64,7 @@ import org.apache.bookkeeper.mledger.impl.ManagedLedgerFactoryImpl;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerImpl;
 import org.apache.bookkeeper.mledger.impl.ManagedLedgerOfflineBacklog;
 import org.apache.bookkeeper.mledger.impl.PositionImpl;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -651,7 +652,62 @@ public class PersistentTopicsBase extends AdminResource {
         });
     }
 
-    protected void internalDeletePartitionedTopic(AsyncResponse asyncResponse, boolean authoritative,
+    protected CompletableFuture<Void> internalUpdatePropertiesAsync(boolean authoritative,
+                                                                    Map<String, String> properties) {
+        if (properties == null || properties.isEmpty()) {
+            log.warn("[{}] [{}] properties is empty, ignore update", clientAppId(), topicName);
+            return CompletableFuture.completedFuture(null);
+        }
+        return validateTopicOwnershipAsync(topicName, authoritative)
+            .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.PRODUCE))
+            .thenCompose(__ -> {
+                if (topicName.isPartitioned()) {
+                    return internalUpdateNonPartitionedTopicProperties(properties);
+                } else {
+                    return pulsar().getBrokerService().fetchPartitionedTopicMetadataAsync(topicName)
+                        .thenCompose(metadata -> {
+                            if (metadata.partitions == 0) {
+                                return internalUpdateNonPartitionedTopicProperties(properties);
+                            }
+                            return namespaceResources()
+                                .getPartitionedTopicResources().updatePartitionedTopicAsync(topicName,
+                                    p -> new PartitionedTopicMetadata(p.partitions,
+                                        MapUtils.putAll(p.properties, properties.entrySet().toArray())));
+                        });
+                }
+            }).thenAccept(__ ->
+                log.info("[{}] [{}] update properties success with properties {}",
+                    clientAppId(), topicName, properties));
+    }
+
+    private CompletableFuture<Void> internalUpdateNonPartitionedTopicProperties(Map<String, String> properties) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        pulsar().getBrokerService().getTopicIfExists(topicName.toString())
+            .thenAccept(opt -> {
+                if (!opt.isPresent()) {
+                    throw new RestException(Status.NOT_FOUND,
+                        getTopicNotFoundErrorMessage(topicName.toString()));
+                }
+                ManagedLedger managedLedger = ((PersistentTopic) opt.get()).getManagedLedger();
+                managedLedger.asyncSetProperties(properties, new AsyncCallbacks.UpdatePropertiesCallback() {
+
+                    @Override
+                    public void updatePropertiesComplete(Map<String, String> properties, Object ctx) {
+                        managedLedger.getConfig().getProperties().putAll(properties);
+                        future.complete(null);
+                    }
+
+                    @Override
+                    public void updatePropertiesFailed(ManagedLedgerException exception, Object ctx) {
+                        future.completeExceptionally(exception);
+                    }
+                }, null);
+            });
+        return future;
+    }
+
+    protected void internalDeletePartitionedTopic(AsyncResponse asyncResponse,
+                                                  boolean authoritative,
                                                   boolean force, boolean deleteSchema) {
         validateTopicOwnershipAsync(topicName, authoritative)
                 .thenCompose(__ -> validateNamespaceOperationAsync(topicName.getNamespaceObject(),
