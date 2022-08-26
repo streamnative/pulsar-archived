@@ -31,9 +31,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
+import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
 import org.apache.pulsar.common.policies.data.Policies;
@@ -153,7 +156,23 @@ public class ExtensibleLoadManagerTest {
         admin1.topics().createPartitionedTopic(topic, 1);
         String broker = admin1.lookups().lookupTopic(topic);
         log.info("Topic {} broker url: {}", topic, broker);
+
+
+        // basic transfer test
+        // TODO: make it a separate test with client connection closes
+        var bundle =  pulsar1.getNamespaceService()
+                .getBundleAsync(TopicName.get(topic))
+                .orTimeout(5, TimeUnit.SECONDS).join();
+        log.info("bundle: {}", bundle.toString());
+        BundleStateChannel channel = primaryLoadManager.getBundleStateChannel();
+        String dstBroker = url1.toString().contains(broker) ? url2.toString() : url1.toString();
+        dstBroker = dstBroker.substring(dstBroker.lastIndexOf('/') + 1);
+        Unload unload = new Unload(broker, bundle.toString(), Optional.of(dstBroker));
+        channel.unloadBundle(unload);
+        String broker2 = admin1.lookups().lookupTopic(topic);
+        log.info("Topic {} broker2 url: {} after transfer", topic, broker2);
     }
+
 
     private void createCluster(ZooKeeper zk, ServiceConfiguration config) throws Exception {
         ZkUtils.createFullPathOptimistic(zk, "/admin/clusters/" + config.getClusterName(),

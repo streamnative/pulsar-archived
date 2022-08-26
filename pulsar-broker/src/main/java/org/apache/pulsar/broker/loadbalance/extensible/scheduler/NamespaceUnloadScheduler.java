@@ -57,7 +57,8 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
                                     BaseLoadManagerContext context,
                                     BundleStateChannel bundleStateChannel) {
         this.namespaceUnloadStrategyPipeline = new ArrayList<>();
-        this.namespaceUnloadStrategyPipeline.add(new ThresholdShedder());
+        // TODO make it configurable
+        this.namespaceUnloadStrategyPipeline.add(new MinMaxTransferShedder());
         this.recentlyUnloadedBundles = new HashMap<>();
         this.pulsar = pulsar;
         this.context = context;

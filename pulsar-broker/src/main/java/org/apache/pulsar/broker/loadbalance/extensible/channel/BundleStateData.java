@@ -28,16 +28,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BundleStateData {
 
-    BundleState state;
-    String broker;
+    private BundleState state;
+    private String broker;
 
-    @JsonProperty("dest_broker")
-    String destBroker;
+    @JsonProperty("src_broker")
+    private String sourceBroker;
 
     public BundleStateData(BundleState state, String broker) {
         this.state = state;
         this.broker = broker;
-        this.destBroker = null;
+        this.sourceBroker = null;
     }
 
 }

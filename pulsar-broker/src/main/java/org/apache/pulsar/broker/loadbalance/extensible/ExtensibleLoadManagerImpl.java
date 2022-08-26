@@ -306,6 +306,11 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         return this.context;
     }
 
+    protected BundleStateChannel getBundleStateChannel() {
+        return this.bundleStateChannel;
+    }
+
+
     @Override
     public void stop() throws PulsarServerException {
         if (started.compareAndSet(true, false)) {

@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Ownership;
@@ -92,7 +93,7 @@ public class BundleStateChannel {
             return;
         }
         // TODO : Add state validation
-        switch (data.state) {
+        switch (data.getState()) {
             case Assigned -> handleAssigned(bundle, data);
             case Assigning -> handleAssigning(bundle, data);
             case Unassigned -> handleUnassigned(bundle, data);
@@ -109,19 +110,31 @@ public class BundleStateChannel {
             assigning.complete(Optional.of(data.getBroker()));
         }
 
+        if (isTargetBroker(data.getSourceBroker())) {
+            // TODO: when close, pass message to clients to connect to the new broker
+            disableOwnership(bundle);
+            closeBundle(bundle);
+        }
+
         //TODO: remove log
-        log.info("handled-Assigned:{}", data);
+        log.info("handled-Assigned:{},{}", bundle, data);
     }
 
-    private void handleAssigning(String bundle, BundleStateData data) {
-        BundleStateData next = new BundleStateData(BundleState.Assigned, data.broker);
 
-        //TODO: check the broker is the same as the current broker
-        if (isTargetBroker(data.broker)) {
-            ownershipCache.put(bundle, new Ownership(true, next.broker));
+    private void handleAssigning(String bundle, BundleStateData data) {
+
+        if (isTargetBroker(data.getSourceBroker())) {
+            disableOwnership(bundle);
+            return;
+        }
+
+        if (isTargetBroker(data.getBroker())) {
+            BundleStateData next = new BundleStateData(
+                    BundleState.Assigned, data.getBroker(), data.getSourceBroker());
+            ownershipCache.put(bundle, new Ownership(true, next.getBroker()));
             pubAsync(bundle, next);
             //TODO: remove log
-            log.info("broker {} handled-Assigning:{}", pulsar.getBrokerServiceUrl(), data);
+            log.info("broker {} handled-Assigning:{},{}", pulsar.getBrokerServiceUrl(), bundle, data);
         }
     }
 
@@ -129,14 +142,10 @@ public class BundleStateChannel {
     private void handleUnassigned(String bundle, BundleStateData data) {
         if (isTargetBroker(data.getBroker())) {
             disableOwnership(bundle);
-            pulsar.getBrokerService().unloadServiceUnit(
-                            getNamespaceBundle(bundle),
-                            true,
-                            pulsar.getConfig().getNamespaceBundleUnloadingTimeoutMs(),
-                            TimeUnit.MILLISECONDS)
-                    .thenAccept(x -> pubTombstoneAsync(bundle));
+            closeBundle(bundle)
+                    .thenAccept(x -> tombstoneAsync(bundle)); // TODO: do we need to tombstoneAsync unload bundle?
             //TODO: remove log
-            log.info("handled-UnAssigned:{}", bundle);
+            log.info("handled-UnAssigned:{},{}", bundle, data);
         }
     }
 
@@ -153,13 +162,16 @@ public class BundleStateChannel {
                 .sendAsync();
     }
 
-    private CompletableFuture<MessageId> pubTombstoneAsync(String bundle) {
+    private CompletableFuture<MessageId> tombstoneAsync(String bundle) {
         return producer.newMessage()
                 .key(bundle)
                 .sendAsync();
     }
 
     private boolean isTargetBroker(String broker) {
+        if (broker == null) {
+            return false;
+        }
         // TODO: remove broker port from the input broker
         return broker.startsWith(pulsar.getAdvertisedAddress());
     }
@@ -191,6 +203,34 @@ public class BundleStateChannel {
         }
     }
 
+    private CompletableFuture<Integer> closeBundle(String bundleName) {
+        long unloadBundleStartTime = System.nanoTime();
+        MutableInt unloadedTopics = new MutableInt();
+        NamespaceBundle bundle = getNamespaceBundle(bundleName);
+        return pulsar.getBrokerService().unloadServiceUnit(
+                        bundle,
+                        false,
+                        pulsar.getConfig().getNamespaceBundleUnloadingTimeoutMs(),
+                        TimeUnit.MILLISECONDS)
+                .handle((numUnloadedTopics, ex) -> {
+                    if (ex != null) {
+                        // ignore topic-close failure to unload bundle
+                        log.error("Failed to close topics under namespace {}", bundle.toString(), ex);
+                    } else {
+                        unloadedTopics.setValue(numUnloadedTopics);
+                    }
+                    // clean up topics that failed to unload from the broker ownership cache
+                    pulsar.getBrokerService().cleanUnloadedTopicFromCache(bundle);
+                    return numUnloadedTopics;
+                })
+                .whenComplete((ignored, ex) -> {
+                    double unloadBundleTime = TimeUnit.NANOSECONDS
+                            .toMillis((System.nanoTime() - unloadBundleStartTime));
+                    log.info("Unloading {} namespace-bundle with {} topics completed in {} ms", bundle,
+                            unloadedTopics, unloadBundleTime, ex);
+                });
+    }
+
     private static CompletableFuture<Optional<String>> completeOwnership(String broker){
         return CompletableFuture.completedFuture(Optional.of(broker));
     }
@@ -210,7 +250,7 @@ public class BundleStateChannel {
             return null;
         } else if (data.getState() == BundleState.Assigned) {
             return completeOwnership(data.getBroker());
-        } else if (data.state == BundleState.Assigning) {
+        } else if (data.getState() == BundleState.Assigning) {
             return waitForAssignment(bundle);
         }
         return null;
@@ -227,14 +267,16 @@ public class BundleStateChannel {
                 });
     }
 
+
+    // TODO make it CompletableFuture
     public void unloadBundle(Unload unload) {
         String bundle = unload.getBundle();
         BundleStateData data = tv.get(bundle);
-        if (data.broker.equals(unload.getSourceBroker())) {
+        if (data.getBroker().equals(unload.getSourceBroker())) {
             throw new IllegalStateException("source broker does not match with the current state broker");
         }
         BundleStateData next = unload.getDestBroker().isPresent()
-                ? new BundleStateData(BundleState.Assigning, data.getBroker(), unload.getDestBroker().get())
+                ? new BundleStateData(BundleState.Assigning, unload.getDestBroker().get(), unload.getSourceBroker())
                 : new BundleStateData(BundleState.Unassigned, data.getBroker());
         pubAsync(bundle, next);
     }

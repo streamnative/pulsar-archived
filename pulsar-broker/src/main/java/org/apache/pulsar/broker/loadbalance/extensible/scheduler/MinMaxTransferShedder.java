@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.AllArgsConstructor;
+import lombok.ToString;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.tuple.Pair;
@@ -61,6 +62,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
     }
 
     @AllArgsConstructor
+    @ToString
     private static class LoadStats {
         double avg;
         double std;
@@ -70,9 +72,11 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
         String maxBroker;
         double max;
 
+
         @Override
         public String toString() {
-            return String.format("avg:{}%, std:%.2f", toPercentage(avg), std);
+            return String.format("avg:%.2f, std:%.2f, minBroker:%s, min:%.2f, maxBroker:%s, max:%.2f",
+                    avg, std, minBroker, min, maxBroker, max);
         }
     }
 
@@ -89,15 +93,15 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
             log.info("brokers' load stats:{}", stats);
         }
 
-        if (stats.avg == 0) {
-            log.warn("average max resource usage is 0");
+        if (stats.maxBroker == null) {
+            log.warn("no target broker is found. skip unloading. stats:{}", stats);
             return selectedBundlesCache;
         }
 
         final double threshold = conf.getLoadBalancerBrokerMinMaxTransferShedderThreshold();
         if (stats.std <= threshold) {
             if (sampleLog) {
-                log.info("std <= threshold:{}. skip unloading. stats:{}", stats);
+                log.info("std:{} <= threshold:{}. skip unloading.", stats.std, threshold);
             }
             return selectedBundlesCache;
         }
@@ -107,17 +111,14 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
                 && stats.maxBroker != null
                 && stats.maxBroker.equals(stats.minBroker)) {
             if (sampleLog) {
-                log.error("maxBroker = minBroker. skip unloading. stats:{}", stats);
+                log.info("maxBroker:{} = minBroker:{}. skip unloading.", stats.maxBroker, stats.maxBroker);
             }
             return selectedBundlesCache;
         }
 
-
         Optional<BrokerLoadData> maxBrokerLoadData = context.brokerLoadDataStore().get(stats.maxBroker);
         if (maxBrokerLoadData.isEmpty()) {
-            if (sampleLog) {
-                log.error("maxBrokerLoadData is empty. skip unloading. stats:{}");
-            }
+            log.error("maxBrokerLoadData is empty. skip unloading. stats:{}", stats);
             return selectedBundlesCache;
         }
         double offload = (stats.max - stats.min) / 2;
@@ -136,9 +137,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
 
         Optional<TopBundlesLoadData> bundlesLoadData = context.topBundleLoadDataStore().get(stats.maxBroker);
         if (bundlesLoadData.isEmpty()) {
-            if (sampleLog) {
-                log.error("topBundlesLoadData is empty. skip unloading.");
-            }
+            log.error("topBundlesLoadData is empty. skip unloading.");
             return selectedBundlesCache;
         }
 
@@ -187,9 +186,9 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
         double sum = 0.0;
         double sqSum = 0.0;
         int totalBrokers = 0;
-        double min = Double.MAX_VALUE;
+        double min = 100.0;
         String minBroker = null;
-        double max = Double.MIN_VALUE;
+        double max = 0.0;
         String maxBroker = null;
 
 

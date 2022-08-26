@@ -30,7 +30,6 @@ import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.common.naming.ServiceUnitId;
-import org.apache.pulsar.policies.data.loadbalancer.BundleData;
 
 @Slf4j
 public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrategy {
@@ -116,11 +115,12 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
         // select one of them at the end.
         double totalUsage = 0.0d;
         for (String broker : candidates) {
-            BundleData loadData = context.preallocatedBundleData(broker).get(bundle);
             Optional<BrokerLoadData> brokerData = context.brokerLoadDataStore().get(broker);
             if (brokerData.isEmpty()) {
                 log.error("there is no broker load data for broker: {}. Skipping this select", broker);
-                return Optional.empty();
+
+                // TODO: is random best choice?
+                return selectRandomBroker(candidates);
             }
 
             double usageWithWeight = getMaxResourceUsageWithWeight(broker, brokerData.get(), conf);
@@ -148,7 +148,11 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
             log.debug("Selected {} best brokers: {} from candidate brokers: {}", bestBrokers.size(), bestBrokers,
                     candidates);
         }
-        return Optional.of(bestBrokers.get(ThreadLocalRandom.current().nextInt(bestBrokers.size())));
+        return selectRandomBroker(bestBrokers);
+    }
+
+    private static Optional<String> selectRandomBroker(List<String> candidates) {
+        return Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())));
     }
 
     @Override
