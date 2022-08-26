@@ -34,36 +34,48 @@ public interface OffloadService {
      * Initialize the offload service.
      * @return
      */
-    CompletableFuture<Void> initialize();
+    default CompletableFuture<Void> initialize() {
+        return CompletableFuture.completedFuture(null);
+    };
 
     /**
      * Trigger offload process for the topic. The offload process can keep running or stop in specific condition.
      * @param topic
      * @return
      */
-    CompletableFuture<Void> offload(String topic);
+    default CompletableFuture<Void> offload(String topic) {
+        return CompletableFuture.completedFuture(null);
+    }
 
     /**
      * Close the offload service.
      * @return
      */
-    CompletableFuture<Void> closeAsync();
+    default CompletableFuture<Void> closeAsync() {
+        return CompletableFuture.completedFuture(null);
+    };
 
-    String getOffloadDriverName();
+    default String getOffloadDriverName() {
+        return "default";
+    };
 
     /**
      * Get offload policies of this LedgerOffloader
      *
      * @return offload policies
      */
-    OffloadPoliciesImpl getOffloadPolicies();
+    default OffloadPoliciesImpl getOffloadPolicies() {
+        return null;
+    };
 
     /**
      * Get related ledger's ReadHandle.
      * @param ledgerId
      * @return
      */
-    CompletableFuture<ReadHandle> readOffloaded(long ledgerId);
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId) {
+        return CompletableFuture.completedFuture(null);
+    };
 
     /**
      * Get related ledger's ReadHandle.
@@ -72,8 +84,11 @@ public interface OffloadService {
      * @param conf
      * @return
      */
-    CompletableFuture<ReadHandle> readOffloaded(long ledgerId, OrderedExecutor executor, ServiceConfiguration conf);
+    default CompletableFuture<ReadHandle> readOffloaded(long ledgerId, OrderedExecutor executor, ServiceConfiguration conf) {
+        return CompletableFuture.completedFuture(null);
+    };
 
-    void close();
+    default void close() {
+    };
 }
 

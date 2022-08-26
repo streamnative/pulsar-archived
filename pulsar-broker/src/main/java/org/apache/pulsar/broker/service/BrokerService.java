@@ -84,8 +84,8 @@ import org.apache.bookkeeper.mledger.ManagedLedgerConfig;
 import org.apache.bookkeeper.mledger.ManagedLedgerException;
 import org.apache.bookkeeper.mledger.ManagedLedgerException.ManagedLedgerNotFoundException;
 import org.apache.bookkeeper.mledger.ManagedLedgerFactory;
-import org.apache.bookkeeper.mledger.impl.NullLedgerOffloader;
 import org.apache.bookkeeper.mledger.OffloadService;
+import org.apache.bookkeeper.mledger.impl.NullLedgerOffloader;
 import org.apache.bookkeeper.mledger.util.Futures;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -1534,6 +1534,7 @@ public class BrokerService implements Closeable {
                             topicLevelOffloadPolicies,
                             OffloadPoliciesImpl.oldPoliciesCompatible(nsLevelOffloadPolicies, policies.orElse(null)),
                             getPulsar().getConfig().getProperties());
+
                     if (NamespaceService.isSystemServiceNamespace(namespace.toString())) {
                         managedLedgerConfig.setLedgerOffloader(NullLedgerOffloader.INSTANCE);
                     } else  {
@@ -1544,21 +1545,25 @@ public class BrokerService implements Closeable {
                                 managedLedgerConfig.setLedgerOffloader(topicLevelLedgerOffLoader);
                                 OffloadService topicLevelOffloadService =
                                     pulsar().createOffloadService(serviceConfig, offloadPolicies, pulsar.getClient(),
-                                        pulsar.getAdminClient(), pulsar.getBookKeeperClient(), pulsar.getOrderedExecutor(),
+                                        pulsar.getAdminClient(), pulsar.getBookKeeperClient(),
+                                        pulsar.getOrderedExecutor(),
                                         pulsar.getOffloaderScheduler());
                                 managedLedgerConfig.setOffloadService(topicLevelOffloadService);
                             } catch (PulsarServerException e) {
                                 throw new RuntimeException(e);
                             }
                         } else {
+                            log.info("Setting the offloader with offload policies {}", offloadPolicies);
                             //If the topic level policy is null, use the namespace level
                             managedLedgerConfig
                                     .setLedgerOffloader(pulsar.getManagedLedgerOffloader(namespace, offloadPolicies));
                             try {
-                                managedLedgerConfig.setOffloadService(pulsar.getOffloadService(namespace, offloadPolicies,
+                                OffloadService offloadService = pulsar.getOffloadService(namespace, offloadPolicies,
                                     serviceConfig, pulsar.getClient(), pulsar.getAdminClient(),
                                     pulsar.getBookKeeperClient(),
-                                    pulsar.getOrderedExecutor(), pulsar.getOffloaderScheduler()));
+                                    pulsar.getOrderedExecutor(), pulsar.getOffloaderScheduler());
+                                log.info("setting the offload service {}", offloadService.getOffloadDriverName());
+                                managedLedgerConfig.setOffloadService(offloadService);
                             } catch (PulsarServerException e) {
                                 throw new RuntimeException(e);
                             }

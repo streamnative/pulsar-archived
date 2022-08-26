@@ -34,7 +34,7 @@ import org.apache.pulsar.common.policies.data.OffloadPoliciesImpl;
  */
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Evolving
-public interface LedgerOffloader {
+public interface LedgerOffloader extends OffloadService {
 
     @ToString
     class OffloadResult {

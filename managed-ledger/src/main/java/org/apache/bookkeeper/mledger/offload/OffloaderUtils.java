@@ -135,6 +135,8 @@ public class OffloaderUtils {
                         // Validate offloader factory class to be present and of the right type
                         Pair<NarClassLoader,  LedgerOffloaderFactory> offloaderFactoryPair =
                             getOffloaderFactory(archive.toString(), narExtractionDirectory);
+                        log.info("Offload factory found {}", offloaderFactoryPair.getRight()
+                            .getClass().getName());
                         if (null != offloaderFactoryPair) {
                             offloaders.getOffloaders().add(offloaderFactoryPair);
                         }

@@ -1236,18 +1236,18 @@ public class PulsarService implements AutoCloseable, ShutdownService {
             return getDefaultOffloadService();
         }
 
-        return offloadServiceMap.compute(namespaceName, (ns, offloadService) -> {
+        return offloadServiceMap.computeIfAbsent(namespaceName, (ns) -> {
             try {
-                if (offloadService != null && Objects.equals(offloadService.getOffloadPolicies(), offloadPolicies)) {
-                    return offloadService;
-                } else {
-                    if (offloadService != null) {
-                        offloadService.close();
-                    }
+//                if (offloadService != null && Objects.equals(offloadService.getOffloadPolicies(), offloadPolicies)) {
+//                    return offloadService;
+//                } else {
+//                    if (offloadService != null) {
+//                        offloadService.close();
+//                    }
 
                     return createOffloadService(conf, offloadPolicies,
                         pulsarClient, pulsarAdmin, bkc, executor, scheduler);
-                }
+//                }
             } catch (PulsarServerException e) {
                 LOG.error("create offload service failed for namespace {}", namespaceName, e);
                 return new NullOffloadService();
@@ -1302,42 +1302,36 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                                                             OrderedExecutor executor,
                                                             OrderedScheduler scheduler)
         throws PulsarServerException {
-        try {
-            if (StringUtils.isNotBlank(offloadPolicies.getManagedLedgerOffloadDriver())) {
-                checkNotNull(offloadPolicies.getOffloadersDirectory(),
-                    "Offloader driver is configured to be '%s' but no offloaders directory is configured.",
-                    offloadPolicies.getManagedLedgerOffloadDriver());
-                synchronized (this) {
-                    Offloaders offloaders = offloadersCache.getOrLoadOffloaders(
-                        offloadPolicies.getOffloadersDirectory(), config.getNarExtractionDirectory());
+        if (StringUtils.isNotBlank(offloadPolicies.getManagedLedgerOffloadDriver())) {
 
-                    LedgerOffloaderFactory offloaderFactory = offloaders.getOffloaderFactory(
+            checkNotNull(offloadPolicies.getOffloadersDirectory(),
+                "Offloader driver is configured to be '%s' but no offloaders directory is configured.",
+                offloadPolicies.getManagedLedgerOffloadDriver());
+            synchronized (this) {
+                Offloaders offloaders = offloadersCache.getOrLoadOffloaders(
+                    offloadPolicies.getOffloadersDirectory(), config.getNarExtractionDirectory());
+
+                try {
+                    LOG.info("Creating offloaders with policy {}", offloadPolicies.getManagedLedgerOffloadDriver());
+                    LedgerOffloaderFactory<OffloadService> offloaderFactory = offloaders.getOffloaderFactory(
                         offloadPolicies.getManagedLedgerOffloadDriver());
-
-                    try {
-                        Object offloader = offloaderFactory.create(conf,
-                            offloadPolicies,
-                            ImmutableMap.of(
-                                LedgerOffloader.METADATA_SOFTWARE_VERSION_KEY.toLowerCase(), PulsarVersion.getVersion(),
-                                LedgerOffloader.METADATA_SOFTWARE_GITSHA_KEY.toLowerCase(), PulsarVersion.getGitSha()
-                            ),
-                            pulsarClient,
-                            pulsarAdmin,
-                            bkc,
-                            executor,
-                            scheduler);
-                        if (offloader instanceof OffloadService) {
-                            return (OffloadService) offloader;
-                        }
-                    } catch (IOException ioe) {
-                        throw new PulsarServerException(ioe.getMessage(), ioe.getCause());
-                    }
+                    return offloaderFactory.create(conf,
+                        offloadPolicies,
+                        ImmutableMap.of(
+                            LedgerOffloader.METADATA_SOFTWARE_VERSION_KEY.toLowerCase(), PulsarVersion.getVersion(),
+                            LedgerOffloader.METADATA_SOFTWARE_GITSHA_KEY.toLowerCase(), PulsarVersion.getGitSha()
+                        ),
+                        pulsarClient,
+                        pulsarAdmin,
+                        bkc,
+                        executor,
+                        scheduler);
+                } catch (IOException ioe) {
+                    throw new PulsarServerException(ioe.getMessage(), ioe.getCause());
                 }
-            } else {
-                LOG.info("No ledger offloader configured, using NULL instance");
             }
-        } catch (Throwable t) {
-            throw new PulsarServerException(t);
+        } else {
+            LOG.info("No ledger offloader configured, using NULL instance");
         }
 
         return NullOffloadService.INSTANCE;
