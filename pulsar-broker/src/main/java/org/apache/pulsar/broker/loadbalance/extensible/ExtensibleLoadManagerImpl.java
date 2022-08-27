@@ -215,7 +215,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         Optional<LeaderBroker> leader = bundleStateChannelLeaderElectionService.getCurrentLeader();
         if (leader.isPresent()) {
             String broker = leader.get().getServiceUrl();
+            //expecting http://broker-xyz:abcd
             broker = broker.substring(broker.lastIndexOf('/') + 1);
+            brokerRegistry.lookup(broker);
             return CompletableFuture.completedFuture(Optional.of(broker));
         } else {
             throw new IllegalStateException(
@@ -238,17 +240,13 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                             String.format("topic:%s, bundle:%s not owned by broker", topic, bundle)));
         }
         return owner.thenApply(broker -> {
-            if (getBrokerName(broker.get())
-                    .equals(getBrokerName(pulsar.getBrokerServiceUrl()))) {
+            if (broker.get()
+                    .equals(brokerRegistry.getLookupServiceAddress())) {
                 return true;
             } else {
                 return false;
             }
         });
-    }
-
-    public static String getBrokerName(String brokerUrl) {
-        return brokerUrl.substring(brokerUrl.lastIndexOf('/') + 1, brokerUrl.lastIndexOf(':'));
     }
 
     @Override

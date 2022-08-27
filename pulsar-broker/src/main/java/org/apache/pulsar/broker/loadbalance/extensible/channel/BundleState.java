@@ -26,5 +26,5 @@ public enum BundleState {
 
     Splitting,
 
-    Unassigned
+    Unloading
 }

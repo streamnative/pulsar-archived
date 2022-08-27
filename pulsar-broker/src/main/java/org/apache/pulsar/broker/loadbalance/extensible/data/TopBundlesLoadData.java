@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -38,6 +39,7 @@ public class TopBundlesLoadData {
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/top-bundle-load-data";
 
+    @JsonProperty("top_bundles_load_data")
     private final List<Pair<String, NamespaceBundleStats>> topBundlesLoadData;
 
     public TopBundlesLoadData() {

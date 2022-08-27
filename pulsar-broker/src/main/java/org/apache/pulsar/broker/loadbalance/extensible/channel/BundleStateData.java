@@ -30,7 +30,6 @@ public class BundleStateData {
 
     private BundleState state;
     private String broker;
-
     @JsonProperty("src_broker")
     private String sourceBroker;
 

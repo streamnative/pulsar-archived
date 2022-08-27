@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 
+import static org.junit.Assert.assertEquals;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Optional;
@@ -36,7 +37,6 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
-import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
 import org.apache.pulsar.common.policies.data.Policies;
@@ -82,6 +82,8 @@ public class ExtensibleLoadManagerTest {
     private String primaryHost;
 
     private String secondaryHost;
+
+    String namespace;
 
     @BeforeMethod
     void setup() throws Exception {
@@ -131,7 +133,8 @@ public class ExtensibleLoadManagerTest {
         Policies policies = new Policies();
         policies.bundles = BundlesData.builder().numBundles(9).build();
         policies.replication_clusters = Collections.singleton(CLUSTER_NAME);
-        admin1.namespaces().createNamespace("public/default", policies);
+        namespace = "public/default";
+        admin1.namespaces().createNamespace(namespace, policies);
 
         nsFactory = new NamespaceBundleFactory(pulsar1, Hashing.crc32());
 
@@ -151,26 +154,34 @@ public class ExtensibleLoadManagerTest {
     }
 
     @Test
-    public void test() throws PulsarAdminException {
+    public void test() throws PulsarAdminException, InterruptedException {
         String topic = "test";
         admin1.topics().createPartitionedTopic(topic, 1);
-        String broker = admin1.lookups().lookupTopic(topic);
-        log.info("Topic {} broker url: {}", topic, broker);
-
+        String lookupBroker = admin1.lookups().lookupTopic(topic);
+        log.info("Topic {} broker url: {}", topic, lookupBroker);
+        assertEquals(lookupBroker, admin2.lookups().lookupTopic(topic));
+        String broker1LookupServiceAddress = primaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
+        String broker2LookupServiceAddress = secondaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
 
         // basic transfer test
-        // TODO: make it a separate test with client connection closes
-        var bundle =  pulsar1.getNamespaceService()
-                .getBundleAsync(TopicName.get(topic))
-                .orTimeout(5, TimeUnit.SECONDS).join();
+        String bundle = String.format("%s/%s", namespace, admin1.lookups().getBundleRange(topic));
         log.info("bundle: {}", bundle.toString());
         BundleStateChannel channel = primaryLoadManager.getBundleStateChannel();
-        String dstBroker = url1.toString().contains(broker) ? url2.toString() : url1.toString();
-        dstBroker = dstBroker.substring(dstBroker.lastIndexOf('/') + 1);
-        Unload unload = new Unload(broker, bundle.toString(), Optional.of(dstBroker));
+        String dstBroker = broker1LookupServiceAddress;
+        String dstBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
+        String srcBroker = broker2LookupServiceAddress;
+        if(pulsar1.getBrokerServiceUrl().equals(lookupBroker)){
+            dstBroker = broker2LookupServiceAddress;
+            dstBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
+            srcBroker = broker1LookupServiceAddress;
+        }
+        Unload unload = new Unload(srcBroker, bundle, Optional.of(dstBroker));
         channel.unloadBundle(unload);
-        String broker2 = admin1.lookups().lookupTopic(topic);
-        log.info("Topic {} broker2 url: {} after transfer", topic, broker2);
+        Thread.sleep(1000* 5);
+        String lookupBroker2 = admin1.lookups().lookupTopic(topic);
+        log.info("Topic {} broker2 url: {} after transfer", topic, lookupBroker2);
+        assertEquals(dstBrokerLookupAddress, lookupBroker2);
+        assertEquals(lookupBroker2, admin2.lookups().lookupTopic(topic));
     }
 
 
