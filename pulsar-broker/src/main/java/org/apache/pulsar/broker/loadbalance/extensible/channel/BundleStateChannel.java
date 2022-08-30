@@ -26,6 +26,7 @@ import lombok.val;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
 import org.apache.pulsar.client.api.MessageId;
@@ -33,6 +34,7 @@ import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.TableView;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
 import org.apache.pulsar.common.naming.NamespaceBundle;
+import org.apache.pulsar.common.naming.NamespaceBundleSplitAlgorithm;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.common.util.collections.ConcurrentOpenHashMap;
@@ -95,7 +97,8 @@ public class BundleStateChannel {
             case Assigned -> handleAssignedState(bundle, data);
             case Assigning -> handleAssigningState(bundle, data);
             case Unloading -> handleUnloadingState(bundle, data);
-            default -> throw new IllegalStateException("Failed to handle bundle state data:" + data.toString());
+            case Splitting -> handleSplittingState(bundle, data);
+            default -> throw new IllegalStateException("Failed to handle bundle state data:" + data);
         }
     }
 
@@ -114,6 +117,7 @@ public class BundleStateChannel {
         val lookupRequest = lookupRequests.remove(bundle);
         if (lookupRequest != null) {
             lookupRequest.complete(Optional.of(data.getBroker()));
+            // TODO: log the lookup delay time.
             log.info("{} returned deferred lookups:{},{}", lookupServiceAddress, bundle, data);
         }
 
@@ -147,6 +151,14 @@ public class BundleStateChannel {
             closeBundle(bundle)
                     .thenAccept(x -> tombstoneAsync(bundle));
             log.info("{} closed topics and published tombstone:{},{}", lookupServiceAddress, bundle, data);
+        }
+    }
+
+    private void handleSplittingState(String bundle, BundleStateData data) {
+        if (isTargetBroker(data.getBroker())) {
+            splitBundle(bundle)
+                    .thenAccept(x -> tombstoneAsync(bundle));
+            log.info("{} split bundle and published tombstone:{},{}", lookupServiceAddress, bundle, data);
         }
     }
 
@@ -223,6 +235,21 @@ public class BundleStateChannel {
                 });
     }
 
+    private CompletableFuture<Void> splitBundle(String bundleName) {
+        long splitBundleStartTime = System.nanoTime();
+        return pulsar.getNamespaceService()
+                .splitAndOwnBundle(getNamespaceBundle(bundleName),
+                        false,
+                        NamespaceBundleSplitAlgorithm.RANGE_EQUALLY_DIVIDE_ALGO,
+                        null)
+                .whenComplete((__, ex) -> {
+                    double splitBundleTime = TimeUnit.NANOSECONDS
+                            .toMillis((System.nanoTime() - splitBundleStartTime));
+                    log.info("Splitting {} namespace-bundle completed in {} ms",
+                            bundleName, splitBundleTime, ex);
+                });
+    }
+
     public CompletableFuture<Optional<String>> getOwner(String bundle) {
 
         BundleStateData data = tv.get(bundle);
@@ -262,5 +289,12 @@ public class BundleStateChannel {
                 ? new BundleStateData(BundleState.Assigning, unload.getDestBroker().get(), unload.getSourceBroker())
                 : new BundleStateData(BundleState.Unloading, data.getBroker());
         pubAsync(bundle, next);
+    }
+
+    public CompletableFuture<Void> splitBundle(Split split) {
+        String bundle = split.getBundle();
+        BundleStateData data = tv.get(bundle);
+        BundleStateData next = new BundleStateData(BundleState.Splitting, data.getBroker());
+        return pubAsync(bundle, next).thenCompose(__ -> null);
     }
 }

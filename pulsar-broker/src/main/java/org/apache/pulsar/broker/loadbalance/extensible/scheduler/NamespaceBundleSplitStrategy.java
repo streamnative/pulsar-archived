@@ -20,6 +20,7 @@ package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
 import java.util.Set;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.namespace.NamespaceService;
 
 /**
@@ -39,5 +40,5 @@ public interface NamespaceBundleSplitStrategy {
      *            Namespace service to use.
      * @return A set of the bundles that should be split.
      */
-    Set<String> findBundlesToSplit(BaseLoadManagerContext context, NamespaceService namespaceService);
+    Set<Split> findBundlesToSplit(BaseLoadManagerContext context, NamespaceService namespaceService);
 }

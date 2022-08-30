@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
+import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
 import org.apache.pulsar.common.naming.NamespaceName;
@@ -39,16 +41,19 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
 
     private final ServiceConfiguration conf;
 
+    private final BundleStateChannel bundleStateChannel;
+
     private final NamespaceBundleSplitStrategy bundleSplitStrategy;
 
 
     public NamespaceBundleSplitScheduler(PulsarService pulsar,
+                                         BundleStateChannel bundleStateChannel,
                                          BaseLoadManagerContext context) {
         this.pulsar = pulsar;
         this.context = context;
         this.conf = context.brokerConfiguration();
-//        this.bundleSplitStrategy = new DefaultNamespaceBundleSplitStrategyImpl();
-        this.bundleSplitStrategy = null;
+        this.bundleSplitStrategy = new DefaultNamespaceBundleSplitStrategyImpl();
+        this.bundleStateChannel = bundleStateChannel;
     }
 
 
@@ -60,11 +65,12 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
         final boolean unloadSplitBundles =
                 pulsar.getConfiguration().isLoadBalancerAutoUnloadSplitBundlesEnabled();
         synchronized (bundleSplitStrategy) {
-            final Set<String> bundlesToBeSplit =
+            final Set<Split> bundlesToBeSplit =
                     bundleSplitStrategy.findBundlesToSplit(context, pulsar.getNamespaceService());
             NamespaceBundleFactory namespaceBundleFactory =
                     pulsar.getNamespaceService().getNamespaceBundleFactory();
-            for (String bundleName : bundlesToBeSplit) {
+            for (Split split : bundlesToBeSplit) {
+                String bundleName = split.getBundle();
                 try {
                     final String namespaceName = LoadManagerShared.getNamespaceNameFromBundleName(bundleName);
                     final String bundleRange = LoadManagerShared.getBundleRangeFromBundleName(bundleName);
@@ -73,16 +79,13 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
                         continue;
                     }
 
-                    // Make sure the same bundle is not selected again.
-                    context.topBundleLoadDataStore().remove(bundleName);
                     // Clear namespace bundle-cache
                     namespaceBundleFactory
                             .invalidateBundleCache(NamespaceName.get(namespaceName));
 
                     log.info("Load-manager splitting bundle {} and unloading {}", bundleName, unloadSplitBundles);
 
-                    pulsar.getAdminClient().namespaces().splitNamespaceBundle(namespaceName, bundleRange,
-                            unloadSplitBundles, null);
+                    bundleStateChannel.splitBundle(split);
 
                     log.info("Successfully split namespace bundle {}", bundleName);
                 } catch (Exception e) {
