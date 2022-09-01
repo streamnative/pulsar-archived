@@ -49,7 +49,7 @@ public class PrometheusMetricsProvider implements StatsProvider, PrometheusRawMe
 
     private final CollectorRegistry registry;
 
-    /*
+    /**
      * These acts a registry of the metrics defined in this provider
      */
     public final ConcurrentMap<ScopeContext, LongAdderCounter> counters = new ConcurrentHashMap<>();

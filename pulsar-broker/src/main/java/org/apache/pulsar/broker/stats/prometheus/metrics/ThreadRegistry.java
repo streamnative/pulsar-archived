@@ -30,31 +30,36 @@ import java.util.concurrent.ConcurrentMap;
 public class ThreadRegistry {
     private static ConcurrentMap<Long, ThreadPoolThread> threadPoolMap = new ConcurrentHashMap<>();
 
-    /*
-        Threads can register themselves as their first act before carrying out
-        any work.
+    /**
+     * Threads can register themselves as their first act before carrying out any work.
+     * @param threadPool
+     * @param threadPoolThread
      */
     public static void register(String threadPool, int threadPoolThread) {
         register(threadPool, threadPoolThread, Thread.currentThread().getId());
     }
 
-    /*
-        Thread factories can register a thread by its id.
+    /**
+     * Thread factories can register a thread by its id.
+     * @param threadPool
+     * @param threadPoolThread
+     * @param threadId
      */
     public static void register(String threadPool, int threadPoolThread, long threadId) {
         ThreadPoolThread tpt = new ThreadPoolThread(threadPool, threadPoolThread, threadId);
         threadPoolMap.put(threadId, tpt);
     }
 
-    /*
-        Clears all stored thread state.
+    /**
+     *  Clears all stored thread state.
      */
     public static void clear() {
         threadPoolMap.clear();
     }
 
-    /*
-        Retrieves the registered ThreadPoolThread (if registered) for the calling thread.
+    /**
+     * Retrieves the registered ThreadPoolThread (if registered) for the calling thread.
+     * @return
      */
     public static ThreadPoolThread get() {
         return threadPoolMap.get(Thread.currentThread().getId());
