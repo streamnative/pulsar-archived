@@ -25,6 +25,7 @@ import io.prometheus.client.CollectorRegistry;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -46,9 +47,10 @@ public class PrometheusMetricsProvider implements StatsProvider, PrometheusRawMe
     public static final String PROMETHEUS_STATS_LATENCY_ROLLOVER_SECONDS = "prometheusStatsLatencyRolloverSeconds";
     public static final int DEFAULT_PROMETHEUS_STATS_LATENCY_ROLLOVER_SECONDS = 60;
     public static final String CLUSTER_NAME = "cluster";
+    public static final String DEFAULT_CLUSTER_NAME = "pulsar";
 
     private final CollectorRegistry registry;
-
+    private Map<String, String> labels;
     /**
      * These acts a registry of the metrics defined in this provider
      */
@@ -74,6 +76,7 @@ public class PrometheusMetricsProvider implements StatsProvider, PrometheusRawMe
         executor = Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("metrics"));
         int latencyRolloverSeconds = conf.getInt(PROMETHEUS_STATS_LATENCY_ROLLOVER_SECONDS,
                 DEFAULT_PROMETHEUS_STATS_LATENCY_ROLLOVER_SECONDS);
+        labels = Collections.singletonMap(CLUSTER_NAME, conf.getString(CLUSTER_NAME, DEFAULT_CLUSTER_NAME));
 
         executor.scheduleAtFixedRate(() -> {
             rotateLatencyCollection();
@@ -86,7 +89,7 @@ public class PrometheusMetricsProvider implements StatsProvider, PrometheusRawMe
     }
 
     public StatsLogger getStatsLogger(String scope) {
-        return new PrometheusStatsLogger(PrometheusMetricsProvider.this, scope, Collections.emptyMap());
+        return new PrometheusStatsLogger(PrometheusMetricsProvider.this, scope, labels);
     }
 
     @Override
