@@ -46,6 +46,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.filter.LargeTopicCountFil
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.BrokerLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.reporter.TopBundleLoadDataReporter;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.LoadManagerScheduler;
+import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundleSplitScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeight;
@@ -142,7 +143,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
 
 
         this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context, bundleStateChannel);
-        namespaceUnloadScheduler.start();
+        this.namespaceUnloadScheduler.start();
+        this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, bundleStateChannel, context);
+        this.namespaceBundleSplitScheduler.start();
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
     }
