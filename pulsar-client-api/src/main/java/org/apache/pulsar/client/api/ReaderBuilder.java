@@ -367,4 +367,35 @@ public interface ReaderBuilder<T> extends Cloneable {
      */
     ReaderBuilder<T> expireTimeOfIncompleteChunkedMessage(long duration, TimeUnit unit);
 
+    /**
+     * Fine control the Acknowledgement instead of automatically acknowledging the message after read.
+     *
+     * @default false
+     *
+     * @param delayAck
+     * @return
+     */
+    ReaderBuilder<T> delayAcknowledgement(boolean delayAck);
+
+    /**
+     * Sets SubscriptionMode.
+     *
+     * @default NonDurable
+     *
+     * @param subscriptionMode
+     * @return
+     */
+    ReaderBuilder<T> subscriptionMode(SubscriptionMode subscriptionMode);
+
+
+    /**
+     * Sets SubscriptionInitialPosition.
+     *
+     * @default Latest
+     *
+     * @param subscriptionInitialPosition
+     * @return
+     */
+    ReaderBuilder<T> subscriptionInitialPosition(SubscriptionInitialPosition subscriptionInitialPosition);
+
 }

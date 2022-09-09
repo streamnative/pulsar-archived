@@ -18,6 +18,11 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 public enum BundleState {
 
     Assigned,
@@ -26,5 +31,33 @@ public enum BundleState {
 
     Splitting,
 
-    Unloading
+    Unloading;
+    private static Map<BundleState, Set<BundleState>> validTransitions = new HashMap<>() {{
+        put(null, new HashSet<>() {{
+            add(Assigned); // from split
+            add(Assigning); // from assignment
+        }});
+        put(Assigned, new HashSet<>() {{
+            add(Assigning); // from transfer
+            add(Unloading); // from unload
+            add(Splitting); // from split
+        }});
+        put(Assigning, new HashSet<>() {{
+            add(Assigned); // from assignment
+        }});
+
+        put(Splitting, new HashSet<>() {{
+            add(null); // from split
+        }});
+
+        put(Unloading, new HashSet<>() {{
+            add(null); // from unload
+        }});
+
+    }};
+
+    public static boolean isValidTransition(BundleState from, BundleState to) {
+        Set<BundleState> transitions = validTransitions.get(from);
+        return transitions.contains(to);
+    }
 }

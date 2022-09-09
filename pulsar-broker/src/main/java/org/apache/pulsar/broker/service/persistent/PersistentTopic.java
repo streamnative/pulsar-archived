@@ -77,6 +77,7 @@ import org.apache.bookkeeper.net.BookieId;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.broker.PulsarServerException;
+import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
 import org.apache.pulsar.broker.namespace.NamespaceService;
 import org.apache.pulsar.broker.resources.NamespaceResources.PartitionedTopicResources;
 import org.apache.pulsar.broker.service.AbstractReplicator;
@@ -2946,8 +2947,17 @@ public class PersistentTopic extends AbstractTopic implements Topic, AddEntryCal
 
     public synchronized void triggerCompaction()
             throws PulsarServerException, AlreadyRunningException {
+
         if (currentCompaction.isDone()) {
-            currentCompaction = brokerService.pulsar().getCompactor().compact(topic);
+            //get the strategy by the topic name
+            if (BundleStateChannel.TOPIC.equals(topic)) {
+                currentCompaction = brokerService.pulsar().getStrategicCompactor()
+                        .compact(topic, BundleStateChannel.STRATEGY);
+            } else {
+                currentCompaction = brokerService.pulsar().getCompactor()
+                        .compact(topic);
+            }
+
         } else {
             throw new AlreadyRunningException("Compaction already in progress");
         }

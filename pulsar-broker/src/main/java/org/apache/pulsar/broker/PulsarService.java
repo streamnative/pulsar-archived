@@ -158,6 +158,7 @@ import org.apache.pulsar.common.util.Reflections;
 import org.apache.pulsar.common.util.ThreadDumpUtil;
 import org.apache.pulsar.common.util.netty.EventLoopUtil;
 import org.apache.pulsar.compaction.Compactor;
+import org.apache.pulsar.compaction.StrategicTwoPhaseCompactor;
 import org.apache.pulsar.compaction.TwoPhaseCompactor;
 import org.apache.pulsar.functions.worker.ErrorNotifier;
 import org.apache.pulsar.functions.worker.WorkerConfig;
@@ -210,6 +211,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
     private TopicPoliciesService topicPoliciesService = TopicPoliciesService.DISABLED;
     private BookKeeperClientFactory bkClientFactory;
     private Compactor compactor;
+
+    private StrategicTwoPhaseCompactor strategicCompactor;
     private ResourceUsageTransportManager resourceUsageTransportManager;
     private ResourceGroupService resourceGroupServiceManager;
 
@@ -910,6 +913,10 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 configMetadataSynchronizer.start();
             }
 
+            if (this.nsService.isExtensibleLoadManager()) {
+                ((ExtensibleLoadManagerWrapper) this.loadManager.get()).postStart();
+            }
+
             long currentTimestamp = System.currentTimeMillis();
             final long bootstrapTimeSeconds = TimeUnit.MILLISECONDS.toSeconds(currentTimestamp - startTimestamp);
 
@@ -923,6 +930,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                     config.getClusterName(), config);
 
             state = State.Started;
+
         } catch (Exception e) {
             LOG.error("Failed to start Pulsar service: {}", e.getMessage(), e);
             throw new PulsarServerException(e);
@@ -1490,6 +1498,19 @@ public class PulsarService implements AutoCloseable, ShutdownService {
             this.compactor = newCompactor();
         }
         return this.compactor;
+    }
+
+    public StrategicTwoPhaseCompactor newStrategicCompactor() throws PulsarServerException {
+        return new StrategicTwoPhaseCompactor(this.getConfiguration(),
+                getClient(), getBookKeeperClient(),
+                getCompactorExecutor());
+    }
+
+    public synchronized StrategicTwoPhaseCompactor getStrategicCompactor() throws PulsarServerException {
+        if (this.strategicCompactor == null) {
+            this.strategicCompactor = newStrategicCompactor();
+        }
+        return this.strategicCompactor;
     }
 
     // This method is used for metrics, which is allowed to as null

@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
+import com.google.common.collect.ImmutableMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +30,7 @@ import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
+import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.TableView;
@@ -37,6 +39,7 @@ import org.apache.pulsar.common.naming.NamespaceBundle;
 import org.apache.pulsar.common.naming.NamespaceBundleSplitAlgorithm;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
+import org.apache.pulsar.common.topics.TopicCompactionStrategy;
 import org.apache.pulsar.common.util.collections.ConcurrentOpenHashMap;
 
 @Slf4j
@@ -59,7 +62,16 @@ public class BundleStateChannel {
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/bundle-state-channel";
 
+    public static final JSONSchema<BundleStateData> SCHEMA = JSONSchema.of(BundleStateData.class);
+
+    public static final TopicCompactionStrategy STRATEGY =
+            TopicCompactionStrategy.load(BundleStateCompactionStrategy.class.getName());
+
+    public static final long COMPACTION_THRESHOLD = 5 * 1024 * 1024; // 5mb
+
     private String lookupServiceAddress;
+
+
 
     public BundleStateChannel(PulsarService pulsar)
             throws PulsarServerException {
@@ -70,11 +82,12 @@ public class BundleStateChannel {
                 : conf.getWebServicePortTls().get());
 
         try {
-            val schema = JSONSchema.of(BundleStateData.class);
-            tv = pulsar.getClient().newTableViewBuilder(schema)
+            tv = pulsar.getClient().newTableViewBuilder(SCHEMA)
                     .topic(TOPIC)
+                    .loadConf(ImmutableMap.of(
+                            "topicCompactionStrategy", BundleStateCompactionStrategy.class.getName()))
                     .create();
-            producer = pulsar.getClient().newProducer(schema)
+            producer = pulsar.getClient().newProducer(SCHEMA)
                     .topic(TOPIC)
                     .create();
         } catch (Exception e) {
@@ -87,11 +100,28 @@ public class BundleStateChannel {
         tv.forEachAndListen((key, value) -> handle(key, value));
     }
 
+    public void scheduleBundleStateChannelCompaction() throws PulsarServerException {
+        try {
+            Long threshold = pulsar.getAdminClient().topicPolicies()
+                    .getCompactionThreshold(TOPIC);
+            if (threshold == null || threshold == 0) {
+                pulsar.getAdminClient().topicPolicies()
+                        .setCompactionThreshold(TOPIC, COMPACTION_THRESHOLD);
+                log.info("Scheduled compaction on topic:{}, threshold:{} bytes", TOPIC, COMPACTION_THRESHOLD);
+            } else {
+                log.info("Already set compaction on topic:{}, threshold:{} bytes", TOPIC, COMPACTION_THRESHOLD);
+            }
+        } catch (PulsarAdminException e) {
+            throw new PulsarServerException(e);
+        }
+    }
+
     private void handle(String bundle, BundleStateData data) {
         if (data == null) {
             handleTombstone(bundle);
             return;
         }
+
         // TODO : Add state validation
         switch (data.getState()) {
             case Assigned -> handleAssignedState(bundle, data);
@@ -107,12 +137,10 @@ public class BundleStateChannel {
 
             // TODO: think if we need to temporarily disable the state util it finishes topic close.
             // => probably not required.
-            //data.setState(BundleState.Disabled);
             log.info("{} disabled bundle ownership:{},{}", lookupServiceAddress, bundle, data);
             // TODO: when close, pass message to clients to connect to the new broker
             closeBundle(bundle);
             log.info("{} closed bundle topics:{},{}", lookupServiceAddress, bundle, data);
-            //data.setState(BundleState.Assigned);
         }
         val lookupRequest = lookupRequests.remove(bundle);
         if (lookupRequest != null) {
@@ -135,8 +163,8 @@ public class BundleStateChannel {
 
         if (isTargetBroker(data.getBroker())) {
             // preset
-            data.setState(BundleState.Assigned);
-            pubAsync(bundle, data);
+            BundleStateData next = new BundleStateData(BundleState.Assigned, data.getBroker(), data.getSourceBroker());
+            pubAsync(bundle, next);
             //TODO: remove log
             log.info("{} published :{},{}",
                     lookupServiceAddress, pulsar.getBrokerServiceUrl(), bundle, data);
@@ -269,7 +297,7 @@ public class BundleStateChannel {
         }
     }
 
-    public CompletableFuture<Optional<String>> assignBundle(String bundle, String broker) {
+    public CompletableFuture<Optional<String>> publishAssignment(String bundle, String broker) {
         CompletableFuture<Optional<String>> lookupRequest = deferLookUpRequest(bundle);
         return pubAsync(bundle, new BundleStateData(BundleState.Assigning, broker))
                 .thenCompose(x -> lookupRequest)
@@ -282,7 +310,7 @@ public class BundleStateChannel {
 
 
     // TODO make it CompletableFuture
-    public void unloadBundle(Unload unload) {
+    public void publishUnload(Unload unload) {
         String bundle = unload.getBundle();
         BundleStateData data = tv.get(bundle);
         BundleStateData next = unload.getDestBroker().isPresent()

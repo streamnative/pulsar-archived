@@ -40,6 +40,8 @@ import org.apache.pulsar.client.api.ReaderBuilder;
 import org.apache.pulsar.client.api.ReaderInterceptor;
 import org.apache.pulsar.client.api.ReaderListener;
 import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.SubscriptionInitialPosition;
+import org.apache.pulsar.client.api.SubscriptionMode;
 import org.apache.pulsar.client.impl.conf.ConfigurationDataUtils;
 import org.apache.pulsar.client.impl.conf.ReaderConfigurationData;
 import org.apache.pulsar.common.util.FutureUtil;
@@ -268,6 +270,21 @@ public class ReaderBuilderImpl<T> implements ReaderBuilder<T> {
     @Override
     public ReaderBuilder<T> expireTimeOfIncompleteChunkedMessage(long duration, TimeUnit unit) {
         conf.setExpireTimeOfIncompleteChunkedMessageMillis(unit.toMillis(duration));
+        return this;
+    }
+    @Override
+    public ReaderBuilder<T> delayAcknowledgement(boolean delayAck) {
+        conf.setDelayAck(delayAck);
+        return this;
+    }
+    @Override
+    public ReaderBuilder<T> subscriptionMode(SubscriptionMode subscriptionMode) {
+        conf.setSubscriptionMode(subscriptionMode);
+        return this;
+    }
+    @Override
+    public ReaderBuilder<T> subscriptionInitialPosition(SubscriptionInitialPosition subscriptionInitialPosition) {
+        conf.setSubscriptionInitialPosition(subscriptionInitialPosition);
         return this;
     }
 

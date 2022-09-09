@@ -40,6 +40,7 @@ import org.apache.pulsar.client.api.ReaderListener;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TableView;
 import org.apache.pulsar.common.naming.TopicDomain;
+import org.apache.pulsar.common.topics.TopicCompactionStrategy;
 
 @Slf4j
 public class TableViewImpl<T> implements TableView<T> {
@@ -57,6 +58,8 @@ public class TableViewImpl<T> implements TableView<T> {
 
     private final boolean isNonPersistentTopic;
 
+    private TopicCompactionStrategy<T> compactionStrategy;
+
     TableViewImpl(PulsarClientImpl client, Schema<T> schema, TableViewConfigurationData conf) {
         this.conf = conf;
         Caffeine<Object, Object> caffeineBuilder = Caffeine.newBuilder();
@@ -68,6 +71,7 @@ public class TableViewImpl<T> implements TableView<T> {
         this.immutableData = Collections.unmodifiableMap(cache.asMap());
         this.listeners = new ArrayList<>();
         this.listenersMutex = new ReentrantLock();
+        this.compactionStrategy = TopicCompactionStrategy.load(conf.getTopicCompactionStrategy());
         if (isNonPersistentTopic) {
             this.reader = client.newReader(schema)
                     .topic(conf.getTopicName())
@@ -175,17 +179,30 @@ public class TableViewImpl<T> implements TableView<T> {
 
                 try {
                     listenersMutex.lock();
-                    if (null == msg.getValue()){
-                        cache.invalidate(msg.getKey());
-                    } else {
-                        cache.put(msg.getKey(), msg.getValue());
+                    String key = msg.getKey();
+                    T val = msg.getValue();
+
+                    boolean skip = false;
+                    if (compactionStrategy != null) {
+                        T prev = cache.getIfPresent(key);
+                        skip = !compactionStrategy.isValid(prev, val);
+                        if (!skip && compactionStrategy.isMergeEnabled()) {
+                            val = compactionStrategy.merge(prev, val);
+                        }
                     }
 
-                    for (BiConsumer<String, T> listener : listeners) {
-                        try {
-                            listener.accept(msg.getKey(), msg.getValue());
-                        } catch (Throwable t) {
-                            log.error("Table view listener raised an exception", t);
+                    if (!skip) {
+                        if (null == val) {
+                            cache.invalidate(key);
+                        } else {
+                            cache.put(key, val);
+                        }
+                        for (BiConsumer<String, T> listener : listeners) {
+                            try {
+                                listener.accept(key, val);
+                            } catch (Throwable t) {
+                                log.error("Table view listener raised an exception", t);
+                            }
                         }
                     }
                 } finally {

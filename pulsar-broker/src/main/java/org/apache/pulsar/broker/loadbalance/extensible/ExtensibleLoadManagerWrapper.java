@@ -28,6 +28,7 @@ import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.LoadManager;
 import org.apache.pulsar.broker.loadbalance.ResourceUnit;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.broker.loadbalance.impl.PulsarResourceDescription;
 import org.apache.pulsar.broker.loadbalance.impl.SimpleResourceUnit;
 import org.apache.pulsar.broker.lookup.LookupResult;
@@ -145,6 +146,23 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
     }
 
     @Override
+    public void unloadBundle(String bundleName, Optional<String> dstBroker) {
+        CompletableFuture<Optional<String>> owner = loadManager.getBundleStateChannel().getOwner(bundleName);
+        if (!owner.isDone()) {
+            throw new IllegalStateException("ownership has not been assigned yet. Please retry.");
+        }
+        try {
+            if (!owner.get().isPresent()) {
+                throw new IllegalStateException("ownership has not been assigned yet. Please retry.");
+            }
+            loadManager.getBundleStateChannel()
+                    .publishUnload(new Unload(owner.get().toString(), bundleName, dstBroker));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to publish unload. Please retry.", e);
+        }
+    }
+
+    @Override
     public void doNamespaceBundleSplit() {
         // No-op.
     }
@@ -166,4 +184,9 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
     public void writeResourceQuotasToZooKeeper() throws Exception {
         // No-op, this operation is not useful, the load data reporter will automatically write.
     }
+
+    public void postStart() throws Exception {
+        loadManager.getBundleStateChannel().scheduleBundleStateChannelCompaction();
+    }
+
 }

@@ -670,6 +670,10 @@ public class PulsarClientImpl implements PulsarClient {
                 reader = new MultiTopicsReaderImpl<>(PulsarClientImpl.this,
                         conf, externalExecutorProvider, consumerSubscribedFuture, schema);
                 consumer = ((MultiTopicsReaderImpl<T>) reader).getMultiTopicsConsumer();
+            } else if (conf.isDelayAck()) {
+                reader = new DelayedAckReaderImpl<>(PulsarClientImpl.this, conf, externalExecutorProvider,
+                        consumerSubscribedFuture, schema);
+                consumer = ((ReaderImpl<T>) reader).getConsumer();
             } else {
                 reader = new ReaderImpl<>(PulsarClientImpl.this, conf, externalExecutorProvider,
                         consumerSubscribedFuture, schema);

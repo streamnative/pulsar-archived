@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
+import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
@@ -154,7 +155,7 @@ public class ExtensibleLoadManagerTest {
     }
 
     @Test
-    public void test() throws PulsarAdminException, InterruptedException {
+    public void test() throws PulsarAdminException, InterruptedException, PulsarServerException {
         String topic = "test";
         admin1.topics().createPartitionedTopic(topic, 1);
         String lookupBroker = admin1.lookups().lookupTopic(topic);
@@ -163,10 +164,19 @@ public class ExtensibleLoadManagerTest {
         String broker1LookupServiceAddress = primaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
         String broker2LookupServiceAddress = secondaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
 
+
+        // bundle state channel tests
         // basic transfer test
         String bundle = String.format("%s/%s", namespace, admin1.lookups().getBundleRange(topic));
         log.info("bundle: {}", bundle.toString());
         BundleStateChannel channel = primaryLoadManager.getBundleStateChannel();
+
+        channel.publishAssignment(bundle, broker1LookupServiceAddress);
+        channel.publishAssignment(bundle, broker2LookupServiceAddress);
+
+        log.info("Conflict assignments, Topic {} broker url: {}", topic, admin2.lookups().lookupTopic(topic));
+
+
         String dstBroker = broker1LookupServiceAddress;
         String dstBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
         String srcBroker = broker2LookupServiceAddress;
@@ -176,7 +186,7 @@ public class ExtensibleLoadManagerTest {
             srcBroker = broker1LookupServiceAddress;
         }
         Unload unload = new Unload(srcBroker, bundle, Optional.of(dstBroker));
-        channel.unloadBundle(unload);
+        channel.publishUnload(unload);
         Thread.sleep(1000* 5);
         String lookupBroker2 = admin1.lookups().lookupTopic(topic);
         log.info("Topic {} broker2 url: {} after transfer", topic, lookupBroker2);

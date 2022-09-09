@@ -108,6 +108,10 @@ public interface LoadManager {
      */
     void doLoadShedding();
 
+    default void unloadBundle(String bundle, Optional<String> dstBroker) {
+        doLoadShedding();
+    }
+
     /**
      * Namespace bundle split.
      */

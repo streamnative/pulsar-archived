@@ -90,7 +90,7 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
                 log.info("[{}] Unloading bundle: {}",
                         strategy.getClass().getSimpleName(), data);
                 // TODO: wait for the complete
-                bundleStateChannel.unloadBundle(data);
+                bundleStateChannel.publishUnload(data);
                 recentlyUnloadedBundles.put(data.getBundle(), System.currentTimeMillis());
             });
         }

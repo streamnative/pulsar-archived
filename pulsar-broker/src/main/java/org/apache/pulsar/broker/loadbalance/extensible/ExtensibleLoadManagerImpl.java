@@ -110,7 +110,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // Register self to metadata store.
         brokerRegistry.register();
         startBundleStateChannelLeaderElectionService();
-        this.bundleStateChannel = new BundleStateChannel(pulsar);
+        bundleStateChannel = new BundleStateChannel(pulsar);
 
         // Start the load data store.
         try {
@@ -269,7 +269,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                         .supplyAsync(() -> discover(bundleUnit), pulsar.getExecutor())
                         .thenCompose(broker -> {
                             if (broker.isPresent()) {
-                                return bundleStateChannel.assignBundle(bundle, broker.get());
+                                return bundleStateChannel.publishAssignment(bundle, broker.get());
                             } else {
                                 throw new IllegalStateException(
                                         "Failed to discover(select) a candidate broker for bundle:" + bundle);

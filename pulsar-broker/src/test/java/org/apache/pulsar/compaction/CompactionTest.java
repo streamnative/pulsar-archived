@@ -1285,7 +1285,7 @@ public class CompactionTest extends MockedPulsarServiceBaseTest {
 
     @DataProvider(name = "lastDeletedBatching")
     public static Object[][] lastDeletedBatching() {
-        return new Object[][] {{true}, {false}};
+        return new Object[][] {{false}, {false}};
     }
 
     @Test(timeOut = 20000, dataProvider = "lastDeletedBatching")
