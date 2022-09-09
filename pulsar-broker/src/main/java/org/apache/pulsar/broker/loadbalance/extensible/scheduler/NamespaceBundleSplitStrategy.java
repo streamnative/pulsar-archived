@@ -19,9 +19,9 @@
 package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
 import java.util.Set;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
-import org.apache.pulsar.broker.namespace.NamespaceService;
 
 /**
  * Determines which bundles should be split based on various thresholds.
@@ -36,9 +36,10 @@ public interface NamespaceBundleSplitStrategy {
      * @param context
      *            Load data to base decisions on (does not have benefit of preallocated data since this may not be the
      *            leader broker).
-     * @param namespaceService
-     *            Namespace service to use.
+     * @param pulsarService
+     *            Pulasr service to use.
      * @return A set of the bundles that should be split.
      */
-    Set<Split> findBundlesToSplit(BaseLoadManagerContext context, NamespaceService namespaceService);
+    Set<Split> findBundlesToSplit(BaseLoadManagerContext context,
+                                  PulsarService pulsarService);
 }

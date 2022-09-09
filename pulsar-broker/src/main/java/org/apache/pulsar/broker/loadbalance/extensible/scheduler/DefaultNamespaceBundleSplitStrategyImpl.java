@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
@@ -43,41 +44,40 @@ public class DefaultNamespaceBundleSplitStrategyImpl implements NamespaceBundleS
     public DefaultNamespaceBundleSplitStrategyImpl() {}
 
     @Override
-    public Set<Split> findBundlesToSplit(BaseLoadManagerContext context, NamespaceService namespaceService) {
+    public Set<Split> findBundlesToSplit(BaseLoadManagerContext context, PulsarService pulsar) {
+        NamespaceService namespaceService = pulsar.getNamespaceService();
         Set<Split> bundleCache = new HashSet<>();
         final ServiceConfiguration conf = context.brokerConfiguration();
         int maxBundleCount = conf.getLoadBalancerNamespaceMaximumBundles();
         long maxBundleTopics = conf.getLoadBalancerNamespaceBundleMaxTopics();
         long maxBundleSessions = conf.getLoadBalancerNamespaceBundleMaxSessions();
-        LoadDataStore<BrokerLoadData> brokerLoadDataStore = context.brokerLoadDataStore();
-        brokerLoadDataStore.forEach((broker, brokerLoadData) -> {
-            for (final Map.Entry<String, NamespaceBundleStats> entry : brokerLoadData.getLastStats().entrySet()) {
-                final String bundle = entry.getKey();
-                final NamespaceBundleStats stats = entry.getValue();
-                if (stats.topics < 2) {
-                    log.info("The count of topics on the bundle {} is less than 2, skip split!", bundle);
-                    continue;
-                }
-                if (stats.topics > maxBundleTopics
-                        || (maxBundleSessions > 0 && (stats.consumerCount + stats.producerCount > maxBundleSessions))) {
-                    final String namespace = LoadManagerShared.getNamespaceNameFromBundleName(bundle);
-                    try {
-                        final int bundleCount = namespaceService.getBundleCount(NamespaceName.get(namespace));
-                        if (bundleCount < maxBundleCount) {
-                            bundleCache.add(Split.of(bundle, broker));
-                        } else {
-                            if (log.isDebugEnabled()) {
-                                log.debug(
-                                        "Could not split namespace bundle {} because namespace {} has too many bundles:"
-                                                + "{}", bundle, namespace, bundleCount);
-                            }
+        Map<String, NamespaceBundleStats> bundleStatsMap = pulsar.getBrokerService().getBundleStats();
+        for (final Map.Entry<String, NamespaceBundleStats> entry : bundleStatsMap.entrySet()) {
+            final String bundle = entry.getKey();
+            final NamespaceBundleStats stats = entry.getValue();
+            if (stats.topics < 2) {
+                log.info("The count of topics on the bundle {} is less than 2, skip split!", bundle);
+                continue;
+            }
+            if (stats.topics > maxBundleTopics
+                    || (maxBundleSessions > 0 && (stats.consumerCount + stats.producerCount > maxBundleSessions))) {
+                final String namespace = LoadManagerShared.getNamespaceNameFromBundleName(bundle);
+                try {
+                    final int bundleCount = namespaceService.getBundleCount(NamespaceName.get(namespace));
+                    if (bundleCount < maxBundleCount) {
+                        bundleCache.add(Split.of(bundle, context.brokerRegistry().getLookupServiceAddress()));
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug(
+                                    "Could not split namespace bundle {} because namespace {} has too many bundles:"
+                                            + "{}", bundle, namespace, bundleCount);
                         }
-                    } catch (Exception e) {
-                        log.warn("Error while getting bundle count for namespace {}", namespace, e);
                     }
+                } catch (Exception e) {
+                    log.warn("Error while getting bundle count for namespace {}", namespace, e);
                 }
             }
-        });
+        }
         return bundleCache;
     }
 }

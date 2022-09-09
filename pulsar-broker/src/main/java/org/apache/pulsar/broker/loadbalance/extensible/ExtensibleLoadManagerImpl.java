@@ -145,7 +145,10 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.namespaceUnloadScheduler = new NamespaceUnloadScheduler(pulsar, context, bundleStateChannel);
         this.namespaceUnloadScheduler.start();
         this.namespaceBundleSplitScheduler = new NamespaceBundleSplitScheduler(pulsar, bundleStateChannel, context);
-        this.namespaceBundleSplitScheduler.start();
+
+        // Listen the broker up or down, so we can split immediately.
+        // TODO: Report load data when broker up or down.
+        this.brokerRegistry.listen((broker) -> namespaceBundleSplitScheduler.execute());
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.
         started.set(true);
     }

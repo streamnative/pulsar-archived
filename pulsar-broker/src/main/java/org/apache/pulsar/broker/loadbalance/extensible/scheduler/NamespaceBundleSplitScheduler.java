@@ -59,14 +59,14 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
 
     @Override
     public void execute() {
-        if (!this.isLoadBalancerAutoBundleSplitEnabled() || !this.isLeader()) {
+        if (!this.isLoadBalancerAutoBundleSplitEnabled()) {
             return;
         }
         final boolean unloadSplitBundles =
                 pulsar.getConfiguration().isLoadBalancerAutoUnloadSplitBundlesEnabled();
         synchronized (bundleSplitStrategy) {
             final Set<Split> bundlesToBeSplit =
-                    bundleSplitStrategy.findBundlesToSplit(context, pulsar.getNamespaceService());
+                    bundleSplitStrategy.findBundlesToSplit(context, pulsar);
             NamespaceBundleFactory namespaceBundleFactory =
                     pulsar.getNamespaceService().getNamespaceBundleFactory();
             for (Split split : bundlesToBeSplit) {
@@ -97,19 +97,16 @@ public class NamespaceBundleSplitScheduler implements LoadManagerScheduler {
 
     @Override
     public void start() {
-
+        // No-op
     }
 
     @Override
     public void close() {
-
+        // No-op
     }
 
     private boolean isLoadBalancerAutoBundleSplitEnabled() {
         return conf.isLoadBalancerAutoBundleSplitEnabled();
     }
 
-    private boolean isLeader() {
-        return pulsar.getLeaderElectionService() != null && pulsar.getLeaderElectionService().isLeader();
-    }
 }
