@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import org.apache.pulsar.broker.PulsarServerException;
+import org.apache.pulsar.metadata.api.NotificationType;
 
 /**
  * Responsible for registering the current Broker lookup info to the distributed store (Zookeeper) for broker discovery.
@@ -72,7 +72,7 @@ public interface BrokerRegistry {
     /**
      * Listen the broker register change.
      */
-    void listen(Consumer<String> listener);
+    void listen(BiConsumer<String, NotificationType> listener);
 
     /**
      * Close the broker registry.

@@ -85,10 +85,9 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
                 .thenApply(brokerLookupData -> Optional.of(brokerLookupData.get().toLookupResult()))
                 .exceptionally(e -> {
                     LOG.warn("Failed to find the owner broker for topic: {}, bundle: {}, {}",
-                            topic.toString(), bundle.toString(), e.getMessage(), e);
+                            topic, bundle, e.getMessage(), e);
                     return null;
                 });
-
     }
 
     @Override
@@ -189,4 +188,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
         loadManager.getBundleStateChannel().scheduleBundleStateChannelCompaction();
     }
 
+    public ExtensibleLoadManagerImpl get() {
+        return loadManager;
+    }
 }

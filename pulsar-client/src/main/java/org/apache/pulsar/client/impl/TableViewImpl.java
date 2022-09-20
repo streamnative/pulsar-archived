@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.PulsarClientException.AlreadyClosedException;
 import org.apache.pulsar.client.api.Reader;
 import org.apache.pulsar.client.api.ReaderListener;
 import org.apache.pulsar.client.api.Schema;
@@ -154,6 +155,16 @@ public class TableViewImpl<T> implements TableView<T> {
     }
 
     @Override
+    public void listen(BiConsumer<String, T> action) {
+        try {
+            listenersMutex.lock();
+            listeners.add(action);
+        } finally {
+            listenersMutex.unlock();
+        }
+    }
+
+    @Override
     public CompletableFuture<Void> closeAsync() {
         return reader.thenCompose(Reader::closeAsync);
     }
@@ -170,36 +181,38 @@ public class TableViewImpl<T> implements TableView<T> {
     private void handleMessage(Message<T> msg) {
         try {
             if (msg.hasKey()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Applying message from topic {}. key={} value={}",
-                            conf.getTopicName(),
-                            msg.getKey(),
-                            msg.getValue());
-                }
 
                 try {
                     listenersMutex.lock();
                     String key = msg.getKey();
-                    T val = msg.getValue();
+                    T cur = msg.size() > 0 ? msg.getValue() : null;
+                    if (log.isDebugEnabled()) {
+                        log.info("Applying message from topic {}. key={} value={}, messageId:{}",
+                                conf.getTopicName(),
+                                key,
+                                cur,
+                                msg.getMessageId());
+                    }
+                    T prev = cache.getIfPresent(key);
 
                     boolean skip = false;
                     if (compactionStrategy != null) {
-                        T prev = cache.getIfPresent(key);
-                        skip = !compactionStrategy.isValid(prev, val);
+                        skip = !compactionStrategy.isValid(prev, cur);
                         if (!skip && compactionStrategy.isMergeEnabled()) {
-                            val = compactionStrategy.merge(prev, val);
+                            cur = compactionStrategy.merge(prev, cur);
                         }
                     }
 
                     if (!skip) {
-                        if (null == val) {
+                        if (null == cur) {
                             cache.invalidate(key);
                         } else {
-                            cache.put(key, val);
+                            cache.put(key, cur);
                         }
+
                         for (BiConsumer<String, T> listener : listeners) {
                             try {
-                                listener.accept(key, val);
+                                listener.accept(key, cur);
                             } catch (Throwable t) {
                                 log.error("Table view listener raised an exception", t);
                             }
@@ -235,6 +248,7 @@ public class TableViewImpl<T> implements TableView<T> {
                                   readAllExistingMessages(reader, future, startTime, messagesRead);
                                }).exceptionally(ex -> {
                                    future.completeExceptionally(ex);
+                                   logException(ex, reader);
                                    return null;
                                });
                    } else {
@@ -257,8 +271,16 @@ public class TableViewImpl<T> implements TableView<T> {
                     handleMessage(msg);
                     readTailMessages(reader);
                 }).exceptionally(ex -> {
-                    log.info("Reader {} was interrupted", reader.getTopic());
+                    logException(ex, reader);
                     return null;
                 });
+    }
+
+    private void logException(Throwable ex, Reader<T> reader) {
+        if (ex.getCause() instanceof AlreadyClosedException) {
+            log.warn("Reader {} was interrupted. {}", reader.getTopic(), ex.getMessage());
+        } else {
+            log.error("Reader {} was interrupted.", reader.getTopic(), ex);
+        }
     }
 }

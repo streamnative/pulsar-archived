@@ -36,22 +36,25 @@ public enum BundleState {
         put(null, new HashSet<>() {{
             add(Assigned); // from split
             add(Assigning); // from assignment
+            //add(null); // from recovery
         }});
         put(Assigned, new HashSet<>() {{
             add(Assigning); // from transfer
             add(Unloading); // from unload
             add(Splitting); // from split
+            add(null); // from recovery
         }});
         put(Assigning, new HashSet<>() {{
             add(Assigned); // from assignment
+            add(null); // from recovery
         }});
 
         put(Splitting, new HashSet<>() {{
-            add(null); // from split
+            add(null); // from split, from recovery
         }});
 
         put(Unloading, new HashSet<>() {{
-            add(null); // from unload
+            add(null); // from unload, from recovery
         }});
 
     }};
@@ -60,4 +63,10 @@ public enum BundleState {
         Set<BundleState> transitions = validTransitions.get(from);
         return transitions.contains(to);
     }
+
+    public static Set<BundleState> inFlightStates = new HashSet<>(){{
+        add(Assigning);
+        add(Splitting);
+        add(Unloading);
+    }};
 }

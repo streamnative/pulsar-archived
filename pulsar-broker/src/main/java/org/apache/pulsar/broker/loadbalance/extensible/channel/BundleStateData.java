@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -28,15 +29,47 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BundleStateData {
 
+    private String bundle;
     private BundleState state;
     private String broker;
     @JsonProperty("src_broker")
     private String sourceBroker;
+    private long timestamp;
 
+    public BundleStateData(String bundle, BundleState state, String broker) {
+        this(bundle, state, broker, null);
+    }
+
+    public BundleStateData(String bundle, BundleState state, String broker, String srcBroker) {
+        this.bundle = bundle;
+        this.state = state;
+        this.broker = broker;
+        this.sourceBroker = srcBroker;
+        this.timestamp = System.currentTimeMillis();
+    }
+
+
+    // test only
     public BundleStateData(BundleState state, String broker) {
         this.state = state;
         this.broker = broker;
         this.sourceBroker = null;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        BundleStateData that = (BundleStateData) o;
+        return bundle.equals(that.bundle);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(bundle);
+    }
 }

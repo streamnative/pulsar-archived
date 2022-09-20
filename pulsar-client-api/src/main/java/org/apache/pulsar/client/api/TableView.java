@@ -97,6 +97,13 @@ public interface TableView<T> extends Closeable {
     void forEachAndListen(BiConsumer<String, T> action);
 
     /**
+     * Performs the give action for each future entry in this map until the action throws an exception.
+     *
+     * @param action The action to be performed for each entry
+     */
+    void listen(BiConsumer<String, T> action);
+
+    /**
      * Close the table view and releases resources allocated.
      *
      * @return a future that can used to track when the table view has been closed.

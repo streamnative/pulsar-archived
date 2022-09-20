@@ -31,7 +31,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -39,6 +38,7 @@ import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.apache.pulsar.metadata.api.MetadataStoreException;
 import org.apache.pulsar.metadata.api.Notification;
+import org.apache.pulsar.metadata.api.NotificationType;
 import org.apache.pulsar.metadata.api.coordination.LockManager;
 import org.apache.pulsar.metadata.api.coordination.ResourceLock;
 
@@ -66,7 +66,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
 
     private final ScheduledExecutorService scheduler;
 
-    private final List<Consumer<String>> listeners;
+    private final List<BiConsumer<String, NotificationType>> listeners;
 
     private final AtomicBoolean registered;
 
@@ -176,7 +176,7 @@ public class BrokerRegistryImpl implements BrokerRegistry {
         this.brokerLookupDataMap.forEach(action);
     }
 
-    public void listen(Consumer<String> listener) {
+    public void listen(BiConsumer<String, NotificationType> listener) {
         this.listeners.add(listener);
     }
 
@@ -192,8 +192,8 @@ public class BrokerRegistryImpl implements BrokerRegistry {
                 this.scheduler.submit(this::updateAllBrokerLookupData);
                 this.scheduler.submit(() -> {
                     String lookupDataPath = t.getPath().substring(LOOKUP_DATA_PATH.length() + 1);
-                    for (Consumer<String> listener : listeners) {
-                        listener.accept(lookupDataPath);
+                    for (BiConsumer<String, NotificationType> listener : listeners) {
+                        listener.accept(lookupDataPath, t.getType());
                     }
                 });
             } catch (RejectedExecutionException e) {

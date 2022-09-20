@@ -276,14 +276,6 @@ public class TableViewTest extends MockedPulsarServiceBaseTest {
                 .atMost(Duration.ofMillis(5000))
                 .untilAsserted(()
                         -> verify(consumerBase, times(msgCount)).acknowledgeCumulativeAsync(any(MessageId.class)));
-
-        // Try to remove key1 by publishing the tombstones message.
-        producer.newMessage().key("key1").value(null).send();
-        Awaitility.await().untilAsserted(() -> assertEquals(tv.size(), 0));
-
-        producer.newMessage().key("key2").value("value2").send();
-        Awaitility.await().untilAsserted(() -> assertEquals(tv.get("key2"), "value2"));
-        assertEquals(tv.size(), 1);
     }
 
 

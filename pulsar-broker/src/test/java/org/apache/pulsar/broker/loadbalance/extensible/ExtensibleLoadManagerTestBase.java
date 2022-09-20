@@ -29,12 +29,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.data.BrokerLoadData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStoreException;
+import org.apache.pulsar.metadata.api.NotificationType;
 import org.apache.pulsar.policies.data.loadbalancer.ResourceUsage;
 
 public class ExtensibleLoadManagerTestBase {
@@ -115,7 +115,7 @@ public class ExtensibleLoadManagerTestBase {
         }
 
         @Override
-        public void listen(Consumer<String> listener) {
+        public void listen(BiConsumer<String, NotificationType> listener) {
 
         }
 

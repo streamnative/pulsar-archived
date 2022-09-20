@@ -155,7 +155,7 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
         if(from != null
                 && (from.getState() == Assigned && to == Assigning)
                 || (from.getState() == Assigning && to == Assigned)) {
-            return new BundleStateData(to, from.getBroker(), from.getSourceBroker());
+            return new BundleStateData(null, to, from.getBroker(), from.getSourceBroker());
         }
         return new BundleStateData(to, broker);
     }
