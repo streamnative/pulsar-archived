@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -53,18 +53,17 @@
     <cve>CVE-2021-43045</cve>
   </suppress>
   <suppress base="true">
-    <notes><![CDATA[
+    <notes>
         FP per #3889
-        ]]></notes>
+        </notes>
     <packageUrl regex="true">^pkg:maven/io\.netty/netty\-tcnative\-classes@.*$</packageUrl>
     <cpe>cpe:/a:netty:netty</cpe>
   </suppress>
-
   <!-- google-http-client-gson getting confused with gson-->
   <suppress>
-    <notes><![CDATA[
+    <notes>
    file name: google-http-client-gson-1.41.0.jar
-   ]]></notes>
+   </notes>
     <sha1>1a754a5dd672218a2ac667d7ff2b28df7a5a240e</sha1>
     <cve>CVE-2022-25647</cve>
   </suppress>
