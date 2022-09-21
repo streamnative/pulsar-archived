@@ -21,7 +21,6 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.net.URL;
 import java.util.Collections;

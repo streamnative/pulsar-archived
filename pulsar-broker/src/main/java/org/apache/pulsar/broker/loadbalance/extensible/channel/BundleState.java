@@ -31,9 +31,7 @@ public enum BundleState {
 
     Closed,
 
-    Splitting,
-
-    Unloading;
+    Splitting;
     private static Map<BundleState, Set<BundleState>> validTransitions = new HashMap<>() {{
         put(null, new HashSet<>() {{
             add(Assigned); // from split
@@ -42,7 +40,6 @@ public enum BundleState {
         }});
         put(Assigned, new HashSet<>() {{
             add(Assigning); // from transfer
-            add(Unloading); // from unload
             add(Splitting); // from split
             add(null); // from recovery
         }});
@@ -61,11 +58,6 @@ public enum BundleState {
         put(Splitting, new HashSet<>() {{
             add(null); // from split, from recovery
         }});
-
-        put(Unloading, new HashSet<>() {{
-            add(null); // from unload, from recovery
-        }});
-
     }};
 
     public static boolean isValidTransition(BundleState from, BundleState to) {
@@ -76,6 +68,5 @@ public enum BundleState {
     public static Set<BundleState> inFlightStates = new HashSet<>(){{
         add(Assigning);
         add(Splitting);
-        add(Unloading);
     }};
 }

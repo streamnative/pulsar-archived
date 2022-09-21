@@ -20,7 +20,6 @@ package org.apache.pulsar.compaction;
 
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigned;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Unloading;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.isValidTransition;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.spy;
@@ -150,16 +149,6 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
         return new BundleStateData(to, broker);
     }
 
-    private BundleStateData nextValidStateData(BundleStateData from, String broker) {
-        BundleState to = nextValidState(testState4);
-        if(from != null
-                && (from.getState() == Assigned && to == Assigning)
-                || (from.getState() == Assigning && to == Assigned)) {
-            return new BundleStateData(null, to, from.getBroker(), from.getSourceBroker());
-        }
-        return new BundleStateData(to, broker);
-    }
-
     private BundleState nextValidState(BundleState from) {
         var candidates = Arrays.stream(BundleState.values())
                 .filter(to -> isValidTransition(from, to))
@@ -185,9 +174,9 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
             return List.of();
         }
         return switch (from) {
-            case Assigning -> List.of(Assigned, Unloading);
-            case Assigned -> List.of(Unloading);
-            case Splitting, Unloading -> List.of();
+            case Assigning -> List.of(Assigned);
+            case Assigned -> List.of();
+            case Splitting -> List.of();
             default -> List.of();
         };
     }
@@ -1446,9 +1435,7 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
         pulsarClient.newConsumer(schema).topic(topic).subscriptionName("sub1").readCompacted(true).subscribe().close();
 
         producer.newMessage().key("1").value(testVal(Assigned, "1")).send();
-        producer.newMessage().key("1").value(testVal(Unloading, "2")).send();
         producer.newMessage().key("2").value(testVal(Assigned, "3")).send();
-        producer.newMessage().key("2").value(testVal(Unloading, "4")).send();
         producer.newMessage().key("3").value(testVal(Assigned, "5")).send();
         producer.newMessage().key("1").value(null).send();
         producer.newMessage().key("2").value(null).send();
@@ -1476,9 +1463,7 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
         pulsarClient.newConsumer(schema).topic(topic).subscriptionName("sub1").readCompacted(true).subscribe().close();
 
         producer.newMessage().key("1").value(testVal(Assigned, "1")).send();
-        producer.newMessage().key("1").value(testVal(Unloading, "2")).send();
         producer.newMessage().key("2").value(testVal(Assigned, "3")).send();
-        producer.newMessage().key("2").value(testVal(Unloading, "4")).send();
         producer.newMessage().key("1").value(null).send();
         producer.newMessage().key("2").value(null).send();
 
