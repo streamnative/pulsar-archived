@@ -34,15 +34,14 @@ import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
+import org.apache.pulsar.broker.loadbalance.LeaderElectionService;
 import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
 import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
-import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.impl.TableViewImpl;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
 import org.apache.pulsar.common.policies.data.BundlesData;
@@ -164,8 +163,7 @@ public class ExtensibleLoadManagerTest {
     }
 
     @Test
-    public void test() throws PulsarAdminException, InterruptedException, PulsarServerException,
-            IllegalAccessException {
+    public void test() throws Exception {
         String topic = "test";
         admin1.topics().createPartitionedTopic(topic, 1);
         String lookupBroker = admin1.lookups().lookupTopic(topic);
@@ -193,6 +191,7 @@ public class ExtensibleLoadManagerTest {
         PulsarAdmin dstAdmin = admin1;
         String srcBroker = broker2LookupServiceAddress;
         String srcBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
+        PulsarService srcPulsar = pulsar2;
         PulsarAdmin srcAdmin = admin2;
 
         if(pulsar1.getBrokerServiceUrl().equals(lookupBroker)){
@@ -202,11 +201,12 @@ public class ExtensibleLoadManagerTest {
             dstAdmin = admin2;
             srcBroker = broker1LookupServiceAddress;
             srcBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
+            srcPulsar = pulsar1;
             srcAdmin = admin1;
         }
         Unload unload = new Unload(srcBroker, bundle, Optional.of(dstBroker));
         channel.publishUnload(unload);
-        Thread.sleep(1000* 5);
+        waitUntilNewOwner(channel, bundle, dstBroker);
         String lookupBroker2 = dstAdmin.lookups().lookupTopic(topic);
 
         log.info("Topic {} broker2 url: {} after transfer", topic, lookupBroker2);
@@ -215,7 +215,14 @@ public class ExtensibleLoadManagerTest {
         assertEquals(lookupBroker2, srcAdmin.lookups().lookupTopic(topic));
 
         // recovery test
+        BundleStateChannel dstBundleStateChannel =
+                ((ExtensibleLoadManagerWrapper) dstPulsar.getLoadManager().get()).get().getBundleStateChannel();
+        LeaderElectionService leaderElectionService = (LeaderElectionService) FieldUtils.readDeclaredField(
+                dstBundleStateChannel, "leaderElectionService",  true);
         ((ExtensibleLoadManagerWrapper) dstPulsar.getLoadManager().get()).get().getBrokerRegistry().unregister();
+        leaderElectionService.close();;
+
+
         waitUntilNewOwner(channel, bundle, null);
         String lookupBroker3 = srcAdmin.lookups().lookupTopic(topic);
 

@@ -48,7 +48,9 @@ import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceBundle
 import org.apache.pulsar.broker.loadbalance.extensible.scheduler.NamespaceUnloadScheduler;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.BrokerSelectionStrategy;
 import org.apache.pulsar.broker.loadbalance.extensible.strategy.LeastResourceUsageWithWeight;
+import org.apache.pulsar.broker.lookup.LookupResult;
 import org.apache.pulsar.common.naming.ServiceUnitId;
+import org.apache.pulsar.common.util.collections.ConcurrentOpenHashMap;
 import org.apache.pulsar.metadata.api.NotificationType;
 
 /**
@@ -94,6 +96,12 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     private final AtomicBoolean started = new AtomicBoolean(false);
 
     private BundleStateChannel bundleStateChannel;
+
+
+    private final ConcurrentOpenHashMap<String, CompletableFuture<Optional<LookupResult>>>
+            lookupRequests = ConcurrentOpenHashMap.<String,
+                    CompletableFuture<Optional<LookupResult>>>newBuilder()
+            .build();
 
     public ExtensibleLoadManagerImpl() {}
 
@@ -231,41 +239,55 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     }
 
     @Override
-    public CompletableFuture<Optional<BrokerLookupData>> assign(
+    public CompletableFuture<Optional<LookupResult>> assign(
             Optional<ServiceUnitId> topic, ServiceUnitId bundleUnit) {
-        final String bundle = bundleUnit.toString();
-        CompletableFuture<Optional<String>> owner;
-        if (topic.isPresent() && isInternalTopic(topic.get().toString())) {
-            owner = bundleStateChannel.getChannelOwnerBroker(topic.get());
-        } else {
-            owner = bundleStateChannel.getOwner(bundle);
-            if (owner == null) {
-                log.warn("No owner is found. Starting broker assignment for bundle:{}", bundle);
-                owner = CompletableFuture
-                        .supplyAsync(() -> discover(bundleUnit), pulsar.getExecutor())
-                        .thenCompose(broker -> {
-                            if (broker.isPresent()) {
-                                log.info("Selected the new owner broker:{} for bundle:{}", broker.get(), bundle);
-                                return bundleStateChannel.publishAssignment(bundle, broker.get());
-                            } else {
-                                throw new IllegalStateException(
-                                        "Failed to discover(select) the new owner broker for bundle:" + bundle);
-                            }
-                        });
-            }
-        }
 
-        return owner.thenApply(broker -> {
-            if (broker.isEmpty()) {
-                return Optional.empty();
+        final String bundle = bundleUnit.toString();
+        return lookupRequests.computeIfAbsent(bundle, k -> {
+            CompletableFuture<Optional<LookupResult>> future = new CompletableFuture<>();
+            CompletableFuture<Optional<String>> owner;
+            if (topic.isPresent() && isInternalTopic(topic.get().toString())) {
+                owner = bundleStateChannel.getChannelOwnerBroker(topic.get());
             } else {
+                owner = bundleStateChannel.getOwner(bundle);
+                if (owner == null) {
+                    log.warn("No owner is found. Starting broker assignment for bundle:{}", bundle);
+                    owner = CompletableFuture
+                            .supplyAsync(() -> discover(bundleUnit), pulsar.getExecutor())
+                            .thenCompose(broker -> {
+                                if (broker.isPresent()) {
+                                    log.info("Selected the new owner broker:{} for bundle:{}", broker.get(), bundle);
+                                    return bundleStateChannel.publishAssignment(bundle, broker.get());
+                                } else {
+                                    throw new IllegalStateException(
+                                            "Failed to discover(select) the new owner broker for bundle:" + bundle);
+                                }
+                            });
+                }
+            }
+
+            owner.thenAccept(broker -> {
                 Optional<BrokerLookupData> lookup = getBrokerRegistry().lookup(broker.get());
                 if (lookup.isEmpty()) {
-                    log.error("Failed to look up a broker registry:{} for bundle:{}, activeBrokers:{}",
+                    String errorMsg = String.format(
+                            "Failed to look up a broker registry:%s for bundle:%s, activeBrokers:%s",
                             broker, bundle, getBrokerRegistry().getAvailableBrokers());
+                    log.error(errorMsg);
+                    future.completeExceptionally(new IllegalStateException(errorMsg));
+                } else {
+                    future.complete(Optional.of(lookup.get().toLookupResult()));
                 }
-                return lookup;
-            }
+            }).exceptionally(exception -> {
+                log.warn("Failed to check owner for bundle {}: {}", bundle, exception.getMessage(), exception);
+                future.completeExceptionally(exception);
+                return null;
+            });
+
+            future.whenComplete((r, t) -> pulsar.getExecutor().execute(
+                    () -> lookupRequests.remove(bundle)
+            ));
+
+            return future;
         });
     }
 

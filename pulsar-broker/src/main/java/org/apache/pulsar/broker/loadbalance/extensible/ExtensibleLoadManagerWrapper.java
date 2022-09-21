@@ -80,14 +80,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
     @Override
     public CompletableFuture<Optional<LookupResult>> findBrokerServiceUrl(
             Optional<ServiceUnitId> topic, ServiceUnitId bundle) {
-
-        return loadManager.assign(topic, bundle)
-                .thenApply(brokerLookupData -> Optional.of(brokerLookupData.get().toLookupResult()))
-                .exceptionally(e -> {
-                    LOG.warn("Failed to find the owner broker for topic: {}, bundle: {}, {}",
-                            topic, bundle, e.getMessage(), e);
-                    return null;
-                });
+        return loadManager.assign(topic, bundle);
     }
 
     @Override

@@ -29,6 +29,8 @@ public enum BundleState {
 
     Assigning,
 
+    Closed,
+
     Splitting,
 
     Unloading;
@@ -46,6 +48,13 @@ public enum BundleState {
         }});
         put(Assigning, new HashSet<>() {{
             add(Assigned); // from assignment
+            add(Closed); // from transfer
+            add(null); // from recovery
+
+        }});
+
+        put(Closed, new HashSet<>() {{
+            add(Assigned); // from transfer
             add(null); // from recovery
         }});
 

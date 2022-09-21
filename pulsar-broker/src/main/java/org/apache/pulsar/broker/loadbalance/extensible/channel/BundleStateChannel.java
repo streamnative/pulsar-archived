@@ -19,6 +19,7 @@
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Unloading;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.inFlightStates;
 import java.util.HashSet;
 import java.util.List;
@@ -27,9 +28,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -64,7 +65,7 @@ public class BundleStateChannel {
     private final PulsarService pulsar;
 
     private final ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>>
-            lookupRequests = ConcurrentOpenHashMap.<String,
+            getOwnerRequests = ConcurrentOpenHashMap.<String,
                     CompletableFuture<Optional<String>>>newBuilder()
             .build();
 
@@ -206,52 +207,58 @@ public class BundleStateChannel {
         switch (data.getState()) {
             case Assigned -> handleAssignedState(bundle, data);
             case Assigning -> handleAssigningState(bundle, data);
+            case Closed -> handleClosedState(bundle, data);
             case Unloading -> handleUnloadingState(bundle, data);
             case Splitting -> handleSplittingState(bundle, data);
             default -> throw new IllegalStateException("Failed to handle bundle state data:" + data);
         }
     }
 
-    private void handleAssignedState(String bundle, BundleStateData data) {
-        if (isTargetBroker(data.getSourceBroker())) {
 
-            // TODO: think if we need to temporarily disable the state util it finishes topic close.
-            // => probably not required.
-            log.info("{} disabled bundle ownership:{},{}", lookupServiceAddress, bundle, data);
-            // TODO: when close, pass message to clients to connect to the new broker
-            closeBundle(bundle);
-            log.info("{} closed bundle topics:{},{}", lookupServiceAddress, bundle, data);
-        }
-        val lookupRequest = lookupRequests.remove(bundle);
-        if (lookupRequest != null) {
-            lookupRequest.complete(Optional.of(data.getBroker()));
-            // TODO: log the lookup delay time.
-            log.info("{} returned deferred lookups:{},{}", lookupServiceAddress, bundle, data);
-        }
-
-
+    private static boolean isTransferCommand(BundleStateData data) {
+        return StringUtils.isNotEmpty(data.getSourceBroker());
     }
 
+    private void handleAssignedState(String bundle, BundleStateData data) {
+        val getOwnerRequest = getOwnerRequests.remove(bundle);
+        if (getOwnerRequest != null) {
+            getOwnerRequest.complete(Optional.of(data.getBroker()));
+            // TODO: log the lookup delay time.
+            log.info("{} returned deferred getOwnerRequest:{},{}", lookupServiceAddress, bundle, data);
+        }
+    }
 
     private void handleAssigningState(String bundle, BundleStateData data) {
 
-
-        if (isTargetBroker(data.getSourceBroker())) {
-            log.info("{} updated bundle state:{},{}", lookupServiceAddress, bundle, data);
-            return;
-        }
-
         if (isTargetBroker(data.getBroker())) {
-            // preset
             BundleStateData next =
-                    new BundleStateData(bundle, BundleState.Assigned, data.getBroker(), data.getSourceBroker());
+                    new BundleStateData(bundle,
+                            isTransferCommand(data) ? BundleState.Closed : BundleState.Assigned,
+                            data.getBroker(),
+                            data.getSourceBroker());
             pubAsync(bundle, next);
-            //TODO: remove log
             log.info("{} published :{},{},{}",
                     lookupServiceAddress, pulsar.getBrokerServiceUrl(), bundle, data);
-
         }
 
+    }
+
+    private void handleClosedState(String bundle, BundleStateData data) {
+
+        if (isTargetBroker(data.getSourceBroker())) {
+            // TODO: when close, pass message to clients to connect to the new broker
+            closeBundle(bundle).thenAccept(x -> {
+                log.info("{} closed bundle topics:{},{}", lookupServiceAddress, bundle, data);
+                BundleStateData next =
+                        new BundleStateData(bundle,
+                                BundleState.Assigned,
+                                data.getBroker(),
+                                data.getSourceBroker());
+                pubAsync(bundle, next);
+                log.info("{} published :{},{},{}",
+                        lookupServiceAddress, pulsar.getBrokerServiceUrl(), bundle, data);
+            });
+        }
     }
 
 
@@ -272,11 +279,15 @@ public class BundleStateChannel {
     }
 
     private void handleTombstone(String bundle) {
-        var request = lookupRequests.remove(bundle);
-        if (request != null) {
-            request.complete(Optional.empty());
-            log.info("{} returned deferred lookups:{}", lookupServiceAddress, bundle);
-        }
+        closeBundle(bundle).thenAccept(
+                x -> {
+                    var request = getOwnerRequests.remove(bundle);
+                    if (request != null) {
+                        request.complete(Optional.empty());
+                        log.info("{} returned deferred lookups:{}", lookupServiceAddress, bundle);
+                    }
+                }
+        );
 
     }
 
@@ -286,7 +297,8 @@ public class BundleStateChannel {
                 .key(bundle)
                 .value(data)
                 .sendAsync()
-                /*.thenApply(messageId -> {
+                /*
+                .thenApply(messageId -> {
                             log.info("Published message for bundle:{}, messageId:{}, data:{}",
                                     bundle, messageId, data);
                             return messageId;
@@ -294,7 +306,7 @@ public class BundleStateChannel {
 
                  )*/
                 .exceptionally(e -> {
-                    log.error("Failed to publish message for bundle:{}, data:{}", bundle, data);
+                    log.error("Failed to publish message for bundle:{}, data:{}", bundle, data, e);
                     return null;
                 });
     }
@@ -331,13 +343,14 @@ public class BundleStateChannel {
     }
 
 
-    private CompletableFuture<Optional<String>> deferLookUpRequest(String bundle) {
-        CompletableFuture future = new CompletableFuture<>();
-
-        future.orTimeout(MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS, TimeUnit.MILLISECONDS);
-
-        return lookupRequests
-                .computeIfAbsent(bundle, k -> future);
+    private CompletableFuture<Optional<String>> deferGetOwnerRequest(String bundle) {
+        return getOwnerRequests
+                .computeIfAbsent(bundle, k -> {
+                    CompletableFuture future = new CompletableFuture<>();
+                    future.orTimeout(MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS, TimeUnit.MILLISECONDS)
+                            .whenComplete((v, e) -> getOwnerRequests.remove(bundle));
+                    return future;
+                });
     }
 
     private CompletableFuture<Integer> closeBundle(String bundleName) {
@@ -393,8 +406,8 @@ public class BundleStateChannel {
             case Assigned, Splitting -> {
                 return CompletableFuture.completedFuture(Optional.of(data.getBroker()));
             }
-            case Assigning, Unloading -> {
-                return deferLookUpRequest(bundle);
+            case Assigning, Unloading, Closed -> {
+                return deferGetOwnerRequest(bundle);
             }
             default -> {
                 return null;
@@ -403,13 +416,13 @@ public class BundleStateChannel {
     }
 
     public CompletableFuture<Optional<String>> publishAssignment(String bundle, String broker) {
-        CompletableFuture<Optional<String>> lookupRequest = deferLookUpRequest(bundle);
+        CompletableFuture<Optional<String>> getOwnerRequest = deferGetOwnerRequest(bundle);
         return pubAsync(bundle, new BundleStateData(bundle, Assigning, broker))
-                .thenCompose(x -> lookupRequest)
+                .thenCompose(x -> getOwnerRequest)
                 .exceptionally(e -> {
-                    lookupRequests.remove(bundle);
-                    lookupRequest.complete(Optional.empty());
-                    return Optional.empty();
+                    getOwnerRequests.remove(bundle);
+                    getOwnerRequest.completeExceptionally(e);
+                    return null;
                 });
     }
 
@@ -417,11 +430,10 @@ public class BundleStateChannel {
     // TODO make it CompletableFuture
     public void publishUnload(Unload unload) {
         String bundle = unload.getBundle();
-        BundleStateData data = tv.get(bundle);
         BundleStateData next = unload.getDestBroker().isPresent()
                 ? new BundleStateData(bundle, Assigning,
                 unload.getDestBroker().get(), unload.getSourceBroker())
-                : new BundleStateData(bundle, BundleState.Unloading, data.getBroker());
+                : new BundleStateData(bundle, Unloading, unload.getSourceBroker());
         pubAsync(bundle, next);
     }
 
@@ -432,40 +444,23 @@ public class BundleStateChannel {
         return pubAsync(bundle, next).thenAccept(__ -> {});
     }
 
-    private Set<BundleStateData> getBunldes(String broker){
-        return tv.values().stream()
-                .filter(bundle -> broker.equals(bundle.getBroker()))
-                .collect(Collectors.toSet());
-    }
-
-    private Set<BundleStateData> getBunldes(BundleState state){
-        return tv.values().stream()
-                .filter(bundle -> state.equals(bundle.getState()))
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> getBrokers(){
-        return tv.values().stream()
-                .map(bundle -> bundle.getBroker())
-                .collect(Collectors.toSet());
-    }
-
     public void cleanBundleOwnerships(String broker) {
         if (!leaderElectionService.isLeader()) {
             return;
         }
 
-        Set<BundleStateData> values = getBunldes(broker);
-        if (values != null) {
-            log.info("Cleaning bundle ownerships for dead broker:{}. "
-                            + "Attempting to release bundle bundle count:{}",
-                    broker, values == null ? 0 : values.size());
-            for (BundleStateData data : values) {
-                log.info("Cleaning bundle ownerships for dead broker:{}, bundle:{}",
-                        broker, data == null ? "" : data.getBundle());
-                tombstoneAsync(data.getBundle());
+        log.info("Started bundle ownership cleanup for the dead broker:{}", broker);
+        int releasedBundleCnt = 0;
+        for (BundleStateData bundleStateData : tv.values()) {
+            if (broker.equals(bundleStateData.getBroker())) {
+                log.info("Unloading bundle ownership :{}", bundleStateData.getBundle());
+                tombstoneAsync(bundleStateData.getBundle());
+                releasedBundleCnt++;
             }
         }
+        log.info("Completed bundle ownership cleanup. Released bundle count:{}",
+                releasedBundleCnt);
+
     }
 
     public void cleanBundleOwnerships(List<String> brokers) {
@@ -485,6 +480,7 @@ public class BundleStateChannel {
         for (BundleStateData bundleStateData : tv.values()) {
             String broker = bundleStateData.getBroker();
             if (!activeBrokers.contains(broker)) {
+                log.info("Unloading bundle ownership :{}", bundleStateData.getBundle());
                 tombstoneAsync(bundleStateData.getBundle());
                 releasedBundleCnt++;
                 if (deadBrokers.add(bundleStateData.getBroker())) {
@@ -507,6 +503,7 @@ public class BundleStateChannel {
         for (BundleStateData bundleStateData : tv.values()) {
             if (inFlightStates.contains(bundleStateData.getState())
                     && now - bundleStateData.getTimestamp() > MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS) {
+                log.info("Unloading bundle ownership :{}", bundleStateData.getBundle());
                 tombstoneAsync(bundleStateData.getBundle());
                 releasedBundleCnt++;
             }

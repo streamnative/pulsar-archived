@@ -32,5 +32,6 @@ public class Unload {
     public Unload(String sourceBroker, String bundle) {
         this.sourceBroker = sourceBroker;
         this.bundle = bundle;
+        this.destBroker = Optional.empty();
     }
 }
