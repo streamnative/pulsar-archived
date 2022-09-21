@@ -390,7 +390,7 @@ public class BundleStateChannel {
             return null;
         }
         switch (data.getState()) {
-            case Assigned -> {
+            case Assigned, Splitting -> {
                 return CompletableFuture.completedFuture(Optional.of(data.getBroker()));
             }
             case Assigning, Unloading -> {
@@ -429,7 +429,7 @@ public class BundleStateChannel {
         String bundle = split.getBundle();
         BundleStateData data = tv.get(bundle);
         BundleStateData next = new BundleStateData(bundle, BundleState.Splitting, data.getBroker());
-        return pubAsync(bundle, next).thenCompose(__ -> null);
+        return pubAsync(bundle, next).thenAccept(__ -> {});
     }
 
     private Set<BundleStateData> getBunldes(String broker){

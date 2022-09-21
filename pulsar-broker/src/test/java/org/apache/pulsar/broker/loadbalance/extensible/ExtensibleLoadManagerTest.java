@@ -20,6 +20,9 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.net.URL;
 import java.util.Collections;
 import java.util.Optional;
@@ -36,6 +39,7 @@ import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
 import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel;
 import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateData;
+import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
@@ -219,6 +223,44 @@ public class ExtensibleLoadManagerTest {
 
         assertEquals(srcBrokerLookupAddress, lookupBroker3);
     }
+
+    @Test
+    public void testSplitBundle() throws Exception {
+        String topic = "test-split-bundle-topic";
+        admin1.topics().createPartitionedTopic(topic, 1);
+        String lookupBroker = admin1.lookups().lookupTopic(topic);
+        log.info("Topic {} broker url: {}", topic, lookupBroker);
+        assertEquals(lookupBroker, admin2.lookups().lookupTopic(topic));
+        String broker1LookupServiceAddress = primaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
+        String broker2LookupServiceAddress = secondaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
+
+        String bundleRange = admin1.lookups().getBundleRange(topic);
+        String bundle = String.format("%s/%s", namespace, bundleRange);
+
+        log.info("The bundle: {}", bundle);
+        assertEquals(9, admin1.namespaces().getBundles(namespace).getNumBundles());
+        BundleStateChannel channel = secondaryLoadManager.getBundleStateChannel();
+        String sourceBroker = broker2LookupServiceAddress;
+        Optional<BrokerLookupData> lookup = primaryLoadManager.getBrokerRegistry().lookup(broker1LookupServiceAddress);
+        if (lookup.get().getPulsarServiceUrl().equals(lookupBroker)) {
+            channel = primaryLoadManager.getBundleStateChannel();
+            sourceBroker = broker1LookupServiceAddress;
+        }
+
+        channel.splitBundle(new Split(sourceBroker, bundle, Optional.empty())).get();
+
+        Awaitility.await().untilAsserted(() -> {
+            String newBundleRange = admin1.lookups().getBundleRange(topic);
+            log.info("The new bundle range is {}", newBundleRange);
+            assertNotEquals(bundleRange, newBundleRange);
+        });
+        String bundleRange1 = admin1.lookups().getBundleRange(topic);
+        assertNotEquals(bundleRange1, bundleRange);
+
+        assertEquals(admin2.lookups().getBundleRange(topic), bundleRange1);
+        assertEquals(10, admin1.namespaces().getBundles(namespace).getNumBundles());
+    }
+
 
     private void waitUntilNewOwner(BundleStateChannel channel, String key, String target)
             throws IllegalAccessException {
