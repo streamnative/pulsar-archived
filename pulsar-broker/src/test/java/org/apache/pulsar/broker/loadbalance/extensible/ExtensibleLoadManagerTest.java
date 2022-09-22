@@ -21,14 +21,23 @@ package org.apache.pulsar.broker.loadbalance.extensible;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import com.google.common.collect.BoundType;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
@@ -42,8 +51,17 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.api.ClientBuilder;
+import org.apache.pulsar.client.api.Consumer;
+import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.MessageRoutingMode;
+import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.impl.TableViewImpl;
+import org.apache.pulsar.common.naming.NamespaceBundle;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
+import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
 import org.apache.pulsar.common.policies.data.Policies;
@@ -54,6 +72,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.awaitility.Awaitility;
+import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -89,6 +108,8 @@ public class ExtensibleLoadManagerTest {
     private String primaryHost;
 
     private String secondaryHost;
+
+    private PulsarClient pulsarClient;
 
     String namespace;
 
@@ -149,6 +170,10 @@ public class ExtensibleLoadManagerTest {
                 FieldUtils.readField(pulsar1.getLoadManager().get(), "loadManager", true);
         secondaryLoadManager = (ExtensibleLoadManagerImpl)
                 FieldUtils.readField(pulsar2.getLoadManager().get(), "loadManager", true);
+
+        pulsarClient = PulsarClient.builder()
+                .serviceUrl(pulsar1.getBrokerServiceUrl())
+                .statsInterval(0, TimeUnit.SECONDS).build();
     }
 
     @AfterMethod(alwaysRun = true)
@@ -269,6 +294,46 @@ public class ExtensibleLoadManagerTest {
 
         assertEquals(dstBrokerLookupAddress, lookupBroker2);
         assertEquals(lookupBroker2, srcAdmin.lookups().lookupTopic(topic));
+
+    }
+
+    @Test
+    public void testNamespaceUnloadBundle() throws Exception {
+
+        String topic = "testNamespaceUnloadBundle";
+        String fullTopicName = "persistent://" + namespace + "/"+ topic;
+        admin1.topics().createPartitionedTopic(topic, 1);
+
+        String bundleRange = admin1.lookups().getBundleRange(fullTopicName);
+        String brokerUrl = admin1.lookups().lookupTopic(topic);
+
+        log.info("The bundle range is {} brokerUrl {}", bundleRange, brokerUrl);
+
+        NamespaceBundleFactory bundleFactory = new NamespaceBundleFactory(pulsar1, Hashing.crc32());
+        NamespaceBundle bundle = bundleFactory.getBundle(namespace, bundleRange);
+        assertTrue(pulsar1.getNamespaceService().isServiceUnitOwned(bundle)
+                || pulsar2.getNamespaceService().isServiceUnitOwned(bundle));
+
+        try {
+            admin1.namespaces().unloadNamespaceBundle(namespace, bundleRange);
+        } catch (Exception e) {
+            log.error("Unload throw exception", e);
+            fail("Unload shouldn't have throw exception");
+        }
+
+        // check that no one owns the namespace
+        Awaitility.await().untilAsserted(() -> {
+            assertFalse(pulsar1.getNamespaceService().isServiceUnitOwned(bundle));
+            assertFalse(pulsar2.getNamespaceService().isServiceUnitOwned(bundle));
+        });
+
+        Awaitility.await().untilAsserted(() -> {
+            String newBundleRange = admin1.lookups().getBundleRange(topic);
+            String url = admin1.lookups().lookupTopic(topic);
+            log.info("The new bundle range is {} brokerUrl {}", newBundleRange, url);
+            assertTrue(pulsar1.getNamespaceService().isServiceUnitOwned(bundle)
+                    || pulsar2.getNamespaceService().isServiceUnitOwned(bundle));
+        });
 
     }
 

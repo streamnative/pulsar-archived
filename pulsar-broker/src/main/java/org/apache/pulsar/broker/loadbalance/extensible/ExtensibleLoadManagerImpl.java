@@ -229,9 +229,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         }
 
         if (owner == null) {
-            return CompletableFuture.failedFuture(
-                    new IllegalStateException(
-                            String.format("topic:%s, bundle:%s not owned by broker", topic, bundle)));
+            log.error("topic: {}, bundle: {} not owned by broker", topic, bundle);
+            return CompletableFuture.completedFuture(false);
         }
         return owner.thenApply(broker -> broker.get()
                 .equals(brokerRegistry.getLookupServiceAddress()));

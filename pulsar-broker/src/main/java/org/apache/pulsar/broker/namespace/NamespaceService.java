@@ -732,12 +732,19 @@ public class NamespaceService implements AutoCloseable {
     }
 
     public CompletableFuture<Void> unloadNamespaceBundle(NamespaceBundle bundle) {
+        if (isExtensibleLoadManager()) {
+            return this.pulsar.getLoadManager().get().unloadBundle(bundle.toString(), Optional.empty());
+        }
         // unload namespace bundle
         return unloadNamespaceBundle(bundle, config.getNamespaceBundleUnloadingTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
     public CompletableFuture<Void> unloadNamespaceBundle(NamespaceBundle bundle, String destBroker) {
-        return this.pulsar.getLoadManager().get().unloadBundle(bundle.toString(), Optional.of(destBroker));
+        if (isExtensibleLoadManager()) {
+            return this.pulsar.getLoadManager().get().unloadBundle(bundle.toString(), Optional.of(destBroker));
+        }
+        // unload namespace bundle
+        return unloadNamespaceBundle(bundle, config.getNamespaceBundleUnloadingTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
     public CompletableFuture<Void> unloadNamespaceBundle(NamespaceBundle bundle, long timeout, TimeUnit timeoutUnit) {
@@ -1045,7 +1052,7 @@ public class NamespaceService implements AutoCloseable {
         }
 
         if (suName instanceof NamespaceBundle) {
-            return ownershipCache.isNamespaceBundleOwned((NamespaceBundle) suName);
+            return isNamespaceBundleOwnedAsync((NamespaceBundle) suName).get();
         }
 
         throw new IllegalArgumentException("Invalid class of NamespaceBundle: " + suName.getClass().getName());
@@ -1092,7 +1099,7 @@ public class NamespaceService implements AutoCloseable {
 
     private boolean isNamespaceOwned(NamespaceName fqnn) throws Exception {
 
-        return ownershipCache.getOwnedBundle(getFullBundle(fqnn)) != null;
+        return isNamespaceOwnedAsync(fqnn).get();
     }
 
     private CompletableFuture<Boolean> isNamespaceOwnedAsync(NamespaceName fqnn) {
