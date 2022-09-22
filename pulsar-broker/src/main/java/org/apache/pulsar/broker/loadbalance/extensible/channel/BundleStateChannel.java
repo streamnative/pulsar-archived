@@ -23,6 +23,8 @@ import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStat
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Jittery;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Stable;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Unstable;
+import static org.apache.pulsar.metadata.api.extended.SessionEvent.SessionLost;
+import static org.apache.pulsar.metadata.api.extended.SessionEvent.SessionReestablished;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -560,7 +562,7 @@ public class BundleStateChannel {
 
     private MetadataState getMetadataState() {
         long now = System.currentTimeMillis();
-        if (lastMetadataSessionEvent.isConnected()) {
+        if (lastMetadataSessionEvent == SessionReestablished) {
             if (now - lastMetadataSessionEventTimestamp > 1000 * MAX_CLEAN_UP_DELAY_TIME_IN_SECS) {
                 return Stable;
             }
@@ -570,10 +572,12 @@ public class BundleStateChannel {
     }
 
     public void handleMetadataSessionEvent(SessionEvent e) {
-        lastMetadataSessionEvent = e;
-        lastMetadataSessionEventTimestamp = System.currentTimeMillis();
-        log.info("Received metadata session event:{} at timestamp:{}",
-                lastMetadataSessionEvent, lastMetadataSessionEventTimestamp);
+        if(e == SessionReestablished || e == SessionLost){
+            lastMetadataSessionEvent = e;
+            lastMetadataSessionEventTimestamp = System.currentTimeMillis();
+            log.info("Received metadata session event:{} at timestamp:{}",
+                    lastMetadataSessionEvent, lastMetadataSessionEventTimestamp);
+        }
     }
 
     public void handleBrokerCreationEvent(String broker) {
