@@ -156,10 +156,13 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         // TODO: Report load data when broker up or down.
         this.brokerRegistry.listen((broker, __) -> namespaceBundleSplitScheduler.execute());
         this.brokerRegistry.listen((broker, type) -> {
-                if (type == NotificationType.Deleted) {
-                    log.info("BrokerRegistry detected the broker {} is deleted. Cleaning bundle ownerships", broker);
-                    bundleStateChannel.cleanBundleOwnerships(broker);
-                }
+            if (type == NotificationType.Deleted) {
+                log.info("BrokerRegistry detected the broker:{} registry has been deleted.", broker);
+                bundleStateChannel.handleDeadBroker(broker);
+            } else if (type == NotificationType.Created) {
+                log.info("BrokerRegistry detected the broker:{} registry has been created.", broker);
+                bundleStateChannel.handleBrokerCreationEvent(broker);
+            }
         });
 
         // Mark the load manager stated, now we can use load data to select best broker for namespace bundle.

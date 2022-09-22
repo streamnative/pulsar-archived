@@ -20,12 +20,16 @@ package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.inFlightStates;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Jittery;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Stable;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Unstable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -84,6 +88,10 @@ public class BundleStateChannel {
 
     public static final long MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS = 30 * 1000; // 30sec
 
+    public static final long MAX_CLEAN_UP_DELAY_TIME_IN_SECS = 3 * 60; // 3 mins
+
+    public static final long MIN_CLEAN_UP_DELAY_TIME_IN_SECS = 5; // 5 secs
+
     private String lookupServiceAddress;
 
     private LeaderElectionService leaderElectionService;
@@ -94,6 +102,17 @@ public class BundleStateChannel {
 
     private SessionEvent lastMetadataSessionEvent = SessionEvent.Reconnected;
     private long lastMetadataSessionEventTimestamp = 0;
+
+    enum MetadataState {
+        Stable,
+        Jittery,
+        Unstable
+    }
+
+
+    ConcurrentOpenHashMap<String, CompletableFuture<Void>> cleanupJobs =
+            ConcurrentOpenHashMap.<String, CompletableFuture<Void>>newBuilder()
+                    .build();
 
     public BundleStateChannel(PulsarService pulsar)
             throws PulsarServerException {
@@ -170,6 +189,8 @@ public class BundleStateChannel {
             log.info("Successfully started the bundle state recovery executor.");
 
             tv.listen((key, value) -> handle(key, value));
+
+            pulsar.getLocalMetadataStore().registerSessionListener(this::handleMetadataSessionEvent);
 
             log.info("Successfully started the bundle state channel.");
 
@@ -462,9 +483,14 @@ public class BundleStateChannel {
         log.info("Completed bundle ownership cleanup. Released bundle count:{}",
                 releasedBundleCnt);
 
+        cleanupJobs.remove(broker);
+
+        log.info("Active clean-up jobs count :{} after published tombstone", cleanupJobs.size());
     }
 
     public void cleanBundleOwnerships(List<String> brokers) {
+
+
         if (!leaderElectionService.isLeader()) {
             return;
         }
@@ -474,26 +500,23 @@ public class BundleStateChannel {
         }
 
         log.info("Started bundle ownership cleanup for active broker count:{}", brokers.size());
-        int deadBrokerCnt = 0;
         int releasedBundleCnt = 0;
         Set<String> deadBrokers = new HashSet<>();
         Set<String> activeBrokers = new HashSet<>(brokers);
-        for (Map.Entry<String, BundleStateData> etr : tv.entrySet()) {
-            BundleStateData bundleStateData = etr.getValue();
-            String bundle = etr.getKey();
+        for (BundleStateData bundleStateData: tv.values()) {
             String broker = bundleStateData.getBroker();
             if (!activeBrokers.contains(broker)) {
-                log.info("Unloading bundle ownership :{}", bundle);
-                tombstoneAsync(bundle);
                 releasedBundleCnt++;
-                if (deadBrokers.add(bundleStateData.getBroker())) {
-                    deadBrokerCnt++;
-                }
+                deadBrokers.add(bundleStateData.getBroker());
             }
         }
 
-        log.info("Completed bundle ownership cleanup. Dead broker count:{}, Released bundle count:{}",
-                deadBrokerCnt, releasedBundleCnt);
+        for (String deadBroker : deadBrokers) {
+            handleDeadBroker(deadBroker);
+        }
+
+        log.info("Completed bundle ownership cleanup. Found Dead broker count:{}, Dead bundle count:{}",
+                deadBrokers.size(), releasedBundleCnt);
     }
 
     public void cleanOldInFlightBundles() {
@@ -503,17 +526,23 @@ public class BundleStateChannel {
         log.info("Started old in-flight bundle cleanup");
         int releasedBundleCnt = 0;
         long now = System.currentTimeMillis();
-        for (Map.Entry<String, BundleStateData> etr : tv.entrySet()) {
-            BundleStateData bundleStateData = etr.getValue();
-            String bundle = etr.getKey();
+        Set<String> deadBrokers = new HashSet<>();
+        for (BundleStateData bundleStateData: tv.values()) {
             if (inFlightStates.contains(bundleStateData.getState())
                     && now - bundleStateData.getTimestamp() > MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS) {
-                log.info("Unloading bundle ownership :{}", bundle);
-                tombstoneAsync(bundle);
+                deadBrokers.add(bundleStateData.getBroker());
                 releasedBundleCnt++;
             }
         }
-        log.info("Completed old in-flight bundle cleanup. Released bundle count:{}", releasedBundleCnt);
+
+        for (String deadBroker : deadBrokers) {
+            handleDeadBroker(deadBroker);
+        }
+
+        log.info("Completed old in-flight bundle ownership cleanup. "
+                        + "Found Dead broker count:{}, Dead bundle count:{}",
+                deadBrokers.size(), releasedBundleCnt);
+
     }
 
     public CompletableFuture<Optional<String>> getChannelOwnerBroker(ServiceUnitId topic) {
@@ -530,5 +559,58 @@ public class BundleStateChannel {
             throw new IllegalStateException(
                     "No leader elected from bundleStateChannelLeaderElectionService for topic:" + topic);
         }
+    }
+
+    private MetadataState getMetadataState() {
+        long now = System.currentTimeMillis();
+        if (lastMetadataSessionEvent.isConnected()) {
+            if (now - lastMetadataSessionEventTimestamp > 1000 * MAX_CLEAN_UP_DELAY_TIME_IN_SECS) {
+                return Stable;
+            }
+            return Jittery;
+        }
+        return Unstable;
+    }
+
+    public void handleMetadataSessionEvent(SessionEvent e) {
+        lastMetadataSessionEvent = e;
+        lastMetadataSessionEventTimestamp = System.currentTimeMillis();
+        log.info("Received metadata session event:{} at timestamp:{}",
+                lastMetadataSessionEvent, lastMetadataSessionEventTimestamp);
+    }
+
+    public void handleBrokerCreationEvent(String broker) {
+        CompletableFuture<Void> future = cleanupJobs.remove(broker);
+        if (future != null) {
+            future.cancel(false);
+            log.info("Successfully cancelled the bundle ownership clean-up for broker:{}", broker);
+        } else {
+            log.info("Failed to cancel the bundle ownership clean-up for broker:{}. "
+                    + "There was no clean-up job.", broker);
+        }
+
+        log.info("Active clean-up job count :{} after trying the cancel", cleanupJobs.size());
+    }
+
+
+    public void handleDeadBroker(String broker) {
+        MetadataState state = getMetadataState();
+        switch (state) {
+            case Stable -> scheduleBundleOwnershipCleanUp(broker, MIN_CLEAN_UP_DELAY_TIME_IN_SECS);
+            case Jittery -> scheduleBundleOwnershipCleanUp(broker, MAX_CLEAN_UP_DELAY_TIME_IN_SECS);
+            case Unstable -> {
+                log.error("MetadataState state is unstable. "
+                        + "Ignoring the bundle ownership clean request for the reported broker :{} ", broker);
+            }
+        }
+    }
+    private void scheduleBundleOwnershipCleanUp(String broker, long delayInSecs) {
+        cleanupJobs.computeIfAbsent(broker, k -> {
+            Executor delayed = CompletableFuture
+                    .delayedExecutor(delayInSecs, TimeUnit.SECONDS, pulsar.getExecutor());
+            return CompletableFuture
+                    .runAsync(() -> cleanBundleOwnerships(broker), delayed);
+
+        });
     }
 }
