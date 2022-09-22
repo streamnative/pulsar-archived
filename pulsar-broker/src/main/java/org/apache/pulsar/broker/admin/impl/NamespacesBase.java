@@ -852,10 +852,17 @@ public abstract class NamespacesBase extends AdminResource {
         }
     }
 
-    public CompletableFuture<Void> internalUnloadNamespaceBundleAsync(String bundleRange, boolean authoritative) {
+    public CompletableFuture<Void> internalUnloadNamespaceBundleAsync(String bundleRange,
+                                                                      String destBroker,
+                                                                      boolean authoritative) {
         return validateSuperUserAccessAsync()
                 .thenAccept(__ -> {
                     checkNotNull(bundleRange, "BundleRange should not be null");
+                    if (destBroker != null && !destBroker.isEmpty()) {
+                        log.info("[{}] Unloading namespace bundle {}/{} to {}",
+                                clientAppId(), namespaceName, bundleRange, destBroker);
+                        return;
+                    }
                     log.info("[{}] Unloading namespace bundle {}/{}", clientAppId(), namespaceName, bundleRange);
                 })
                 .thenApply(__ ->
@@ -898,8 +905,14 @@ public abstract class NamespacesBase extends AdminResource {
                             }
                             return validateNamespaceBundleOwnershipAsync(namespaceName, policies.bundles, bundleRange,
                                     authoritative, true)
-                                    .thenCompose(nsBundle ->
-                                            pulsar().getNamespaceService().unloadNamespaceBundle(nsBundle));
+                                    .thenCompose(nsBundle -> {
+                                        if (destBroker != null && !destBroker.isEmpty()) {
+                                            return pulsar().getNamespaceService()
+                                                    .unloadNamespaceBundle(nsBundle, destBroker);
+                                        }
+                                        return pulsar().getNamespaceService().unloadNamespaceBundle(nsBundle);
+                                    });
+
                         }));
     }
 

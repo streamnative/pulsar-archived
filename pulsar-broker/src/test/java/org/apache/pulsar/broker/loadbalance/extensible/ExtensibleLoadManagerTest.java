@@ -41,6 +41,7 @@ import org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateData;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.impl.TableViewImpl;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
 import org.apache.pulsar.common.policies.data.BundlesData;
@@ -231,6 +232,47 @@ public class ExtensibleLoadManagerTest {
     }
 
     @Test
+    public void testUnloadBundleWithAdminApi() throws PulsarAdminException, IllegalAccessException {
+        String topic = "test";
+        admin1.topics().createPartitionedTopic(topic, 1);
+        String lookupBroker = admin1.lookups().lookupTopic(topic);
+        log.info("Topic {} broker url: {}", topic, lookupBroker);
+        assertEquals(lookupBroker, admin2.lookups().lookupTopic(topic));
+
+        String broker1LookupServiceAddress = primaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
+        String broker2LookupServiceAddress = secondaryLoadManager.getBrokerRegistry().getLookupServiceAddress();
+
+
+        // bundle state channel tests
+        // basic transfer test
+        String bundleRange = admin1.lookups().getBundleRange(topic);
+        String bundle = String.format("%s/%s", namespace, bundleRange);
+        log.info("bundle: {}", bundle);
+        BundleStateChannel channel = primaryLoadManager.getBundleStateChannel();
+
+        String dstBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
+        String dstBroker = broker1LookupServiceAddress;
+        PulsarAdmin dstAdmin = admin1;
+        PulsarAdmin srcAdmin = admin2;
+
+        if(pulsar1.getBrokerServiceUrl().equals(lookupBroker)){
+            dstBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
+            dstBroker = broker2LookupServiceAddress;
+            dstAdmin = admin2;
+            srcAdmin = admin1;
+        }
+        admin2.namespaces().unloadNamespaceBundle(namespace, bundleRange, dstBroker);
+        waitUntilNewOwner(channel, bundle, dstBroker);
+        String lookupBroker2 = dstAdmin.lookups().lookupTopic(topic);
+
+        log.info("Topic {} broker2 url: {} after transfer", topic, lookupBroker2);
+
+        assertEquals(dstBrokerLookupAddress, lookupBroker2);
+        assertEquals(lookupBroker2, srcAdmin.lookups().lookupTopic(topic));
+
+    }
+
+    @Test
     public void testSplitBundle() throws Exception {
         String topic = "test-split-bundle-topic";
         admin1.topics().createPartitionedTopic(topic, 1);
@@ -278,6 +320,7 @@ public class ExtensibleLoadManagerTest {
                 .atMost(max, TimeUnit.SECONDS)
                 .until(() -> { // wait until true
                     BundleStateData actual = tv.get(key);
+                    log.info("WaitUntilNewOwner BundleStateData: {} : {}", key, actual);
                     if (actual == null) {
                         return target == null;
                     } else {

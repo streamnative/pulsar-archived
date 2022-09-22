@@ -88,6 +88,11 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
         return loadManager.checkOwnershipAsync(topic, bundle);
     }
 
+    @Override
+    public CompletableFuture<Boolean> checkOwnership(ServiceUnitId bundle) {
+        return loadManager.checkOwnershipAsync(bundle);
+    }
+
     private String getBrokerWebServiceUrl(String broker) {
         Optional<BrokerLookupData> localDataOpt = this.loadManager.getBrokerRegistry().lookup(broker);
         return localDataOpt
@@ -138,19 +143,23 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
     }
 
     @Override
-    public void unloadBundle(String bundleName, Optional<String> dstBroker) {
+    public CompletableFuture<Void> unloadBundle(String bundleName, Optional<String> dstBroker) {
         CompletableFuture<Optional<String>> owner = loadManager.getBundleStateChannel().getOwner(bundleName);
-        if (!owner.isDone()) {
-            throw new IllegalStateException("ownership has not been assigned yet. Please retry.");
+        if (owner == null || !owner.isDone()) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("ownership has not been assigned yet. Please retry."));
         }
         try {
-            if (!owner.get().isPresent()) {
-                throw new IllegalStateException("ownership has not been assigned yet. Please retry.");
+            if (owner.get().isEmpty()) {
+                return CompletableFuture.failedFuture(
+                       new IllegalStateException("ownership has not been assigned yet. Please retry."));
             }
-            loadManager.getBundleStateChannel()
-                    .publishUnload(new Unload(owner.get().toString(), bundleName, dstBroker));
+            Optional<String> broker = owner.get();
+            return loadManager.getBundleStateChannel()
+                    .publishUnload(new Unload(broker.get(), bundleName, dstBroker));
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to publish unload. Please retry.", e);
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("Failed to publish unload. Please retry.", e));
         }
     }
 

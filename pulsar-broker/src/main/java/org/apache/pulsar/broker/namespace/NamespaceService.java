@@ -736,6 +736,10 @@ public class NamespaceService implements AutoCloseable {
         return unloadNamespaceBundle(bundle, config.getNamespaceBundleUnloadingTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
+    public CompletableFuture<Void> unloadNamespaceBundle(NamespaceBundle bundle, String destBroker) {
+        return this.pulsar.getLoadManager().get().unloadBundle(bundle.toString(), Optional.of(destBroker));
+    }
+
     public CompletableFuture<Void> unloadNamespaceBundle(NamespaceBundle bundle, long timeout, TimeUnit timeoutUnit) {
         return unloadNamespaceBundle(bundle, timeout, timeoutUnit, true);
     }
@@ -753,6 +757,9 @@ public class NamespaceService implements AutoCloseable {
     }
 
     public CompletableFuture<Boolean> isNamespaceBundleOwned(NamespaceBundle bundle) {
+        if (isExtensibleLoadManager()) {
+            return loadManager.get().checkOwnership(bundle);
+        }
         return pulsar.getLocalMetadataStore().exists(ServiceUnitUtils.path(bundle));
     }
 
@@ -1054,8 +1061,7 @@ public class NamespaceService implements AutoCloseable {
         }
 
         if (suName instanceof NamespaceBundle) {
-            return CompletableFuture.completedFuture(
-                    ownershipCache.isNamespaceBundleOwned((NamespaceBundle) suName));
+            return isNamespaceBundleOwnedAsync((NamespaceBundle) suName);
         }
 
         return FutureUtil.failedFuture(
@@ -1081,21 +1087,27 @@ public class NamespaceService implements AutoCloseable {
             return getBundleAsync(topicName)
                     .thenCompose(bundle -> loadManager.get().checkOwnership(topicName, bundle));
         }
-        Optional<CompletableFuture<OwnedBundle>> res = ownershipCache.getOwnedBundleAsync(getBundle(topicName));
-        if (!res.isPresent()) {
-            return CompletableFuture.completedFuture(false);
-        }
-
-        return res.get().thenApply(ob -> ob != null && ob.isActive());
+        return CompletableFuture.completedFuture(ownershipCache.isNamespaceBundleOwned(getBundle(topicName)));
     }
 
     private boolean isNamespaceOwned(NamespaceName fqnn) throws Exception {
+
         return ownershipCache.getOwnedBundle(getFullBundle(fqnn)) != null;
     }
 
     private CompletableFuture<Boolean> isNamespaceOwnedAsync(NamespaceName fqnn) {
+        if (isExtensibleLoadManager()) {
+            return getFullBundleAsync(fqnn).thenCompose(bundle -> loadManager.get().checkOwnership(bundle));
+        }
         return getFullBundleAsync(fqnn)
-                .thenApply(bundle -> ownershipCache.getOwnedBundle(bundle) != null);
+                .thenApply(ownershipCache::isNamespaceBundleOwned);
+    }
+
+    private CompletableFuture<Boolean> isNamespaceBundleOwnedAsync(NamespaceBundle namespaceBundle) {
+        if (isExtensibleLoadManager()) {
+            return loadManager.get().checkOwnership(namespaceBundle);
+        }
+        return CompletableFuture.completedFuture(ownershipCache.isNamespaceBundleOwned(namespaceBundle));
     }
 
     private CompletableFuture<Boolean> isTopicOwnedAsync(TopicName topic) {

@@ -215,12 +215,14 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         return brokerSelectionStrategy.select(availableBrokers, bundle, context);
     }
 
-
+    public CompletableFuture<Boolean> checkOwnershipAsync(ServiceUnitId bundleUnit) {
+        return checkOwnershipAsync(null, bundleUnit);
+    }
 
     public CompletableFuture<Boolean> checkOwnershipAsync(ServiceUnitId topic, ServiceUnitId bundleUnit) {
         final String bundle = bundleUnit.toString();
         CompletableFuture<Optional<String>> owner;
-        if (isInternalTopic(topic.toString())) {
+        if (topic != null && isInternalTopic(topic.toString())) {
             owner = bundleStateChannel.getChannelOwnerBroker(topic);
         } else {
             owner = bundleStateChannel.getOwner(bundle);
@@ -231,14 +233,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                     new IllegalStateException(
                             String.format("topic:%s, bundle:%s not owned by broker", topic, bundle)));
         }
-        return owner.thenApply(broker -> {
-            if (broker.get()
-                    .equals(brokerRegistry.getLookupServiceAddress())) {
-                return true;
-            } else {
-                return false;
-            }
-        });
+        return owner.thenApply(broker -> broker.get()
+                .equals(brokerRegistry.getLookupServiceAddress()));
     }
 
     @Override

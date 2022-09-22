@@ -446,15 +446,14 @@ public class BundleStateChannel {
 
 
     // TODO make it CompletableFuture
-    public void publishUnload(Unload unload) {
+    public CompletableFuture<Void> publishUnload(Unload unload) {
         String bundle = unload.getBundle();
         if (isTransferCommand(unload)) {
             BundleStateData next = new BundleStateData(Assigning,
                     unload.getDestBroker().get(), unload.getSourceBroker());
-            pubAsync(bundle, next);
-        } else {
-            tombstoneAsync(bundle);
+            return pubAsync(bundle, next).thenAccept(__ -> {});
         }
+        return tombstoneAsync(bundle).thenAccept(__ -> {});
     }
 
     public CompletableFuture<Void> splitBundle(Split split) {

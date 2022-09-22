@@ -70,6 +70,10 @@ public interface LoadManager {
         return null;
     }
 
+    default CompletableFuture<Boolean> checkOwnership(ServiceUnitId bundle) {
+        return CompletableFuture.completedFuture(false);
+    }
+
     /**
      * Generate the load report.
      */
@@ -108,8 +112,8 @@ public interface LoadManager {
      */
     void doLoadShedding();
 
-    default void unloadBundle(String bundle, Optional<String> dstBroker) {
-        doLoadShedding();
+    default CompletableFuture<Void> unloadBundle(String bundle, Optional<String> dstBroker) {
+        return CompletableFuture.completedFuture(null);
     }
 
     /**

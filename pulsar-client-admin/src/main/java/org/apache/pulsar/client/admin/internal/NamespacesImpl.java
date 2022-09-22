@@ -822,6 +822,19 @@ public class NamespacesImpl extends BaseResource implements Namespaces {
     }
 
     @Override
+    public void unloadNamespaceBundle(String namespace, String bundle, String dest)
+            throws PulsarAdminException {
+        sync(() -> unloadNamespaceBundleAsync(namespace, bundle, dest));
+    }
+
+    @Override
+    public CompletableFuture<Void> unloadNamespaceBundleAsync(String namespace, String bundle, String dest) {
+        NamespaceName ns = NamespaceName.get(namespace);
+        WebTarget path = namespacePath(ns, bundle, "unload");
+        return asyncPutRequest(path, Entity.entity(dest, MediaType.APPLICATION_JSON_TYPE));
+    }
+
+    @Override
     public void splitNamespaceBundle(String namespace, String bundle, boolean unloadSplitBundles,
                                      String splitAlgorithmName) throws PulsarAdminException {
         splitNamespaceBundle(namespace, bundle, unloadSplitBundles, splitAlgorithmName, null);

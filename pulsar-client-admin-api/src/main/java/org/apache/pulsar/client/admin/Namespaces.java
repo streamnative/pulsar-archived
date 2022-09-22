@@ -2102,6 +2102,32 @@ public interface Namespaces {
     CompletableFuture<Void> unloadNamespaceBundleAsync(String namespace, String bundle);
 
     /**
+     * Unload namespace bundle.
+     *
+     * @param namespace
+     * @param bundle
+     *           range of bundle to unload
+     * @param dest
+     *           dest broker
+     * @throws PulsarAdminException
+     *             Unexpected error
+     */
+    void unloadNamespaceBundle(String namespace, String bundle, String dest) throws PulsarAdminException;
+
+    /**
+     * Unload namespace bundle asynchronously.
+     *
+     * @param namespace
+     * @param bundle
+     *           range of bundle to unload
+     * @param dest
+     *           dest broker
+     *
+     * @return a future that can be used to track when the bundle is unloaded
+     */
+    CompletableFuture<Void> unloadNamespaceBundleAsync(String namespace, String bundle, String dest);
+
+    /**
      * Split namespace bundle.
      *
      * @param namespace
