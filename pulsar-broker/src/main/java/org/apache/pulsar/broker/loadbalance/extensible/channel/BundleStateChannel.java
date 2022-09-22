@@ -465,10 +465,11 @@ public class BundleStateChannel {
     }
 
     public void cleanBundleOwnerships(String broker) {
+        cleanupJobs.remove(broker);
+
         if (!leaderElectionService.isLeader()) {
             return;
         }
-
         log.info("Started bundle ownership cleanup for the dead broker:{}", broker);
         int releasedBundleCnt = 0;
         for (Map.Entry<String, BundleStateData> etr : tv.entrySet()) {
@@ -483,13 +484,10 @@ public class BundleStateChannel {
         log.info("Completed bundle ownership cleanup. Released bundle count:{}",
                 releasedBundleCnt);
 
-        cleanupJobs.remove(broker);
-
         log.info("Active clean-up jobs count :{} after published tombstone", cleanupJobs.size());
     }
 
     public void cleanBundleOwnerships(List<String> brokers) {
-
 
         if (!leaderElectionService.isLeader()) {
             return;
@@ -580,6 +578,9 @@ public class BundleStateChannel {
     }
 
     public void handleBrokerCreationEvent(String broker) {
+        if (!leaderElectionService.isLeader()) {
+            return;
+        }
         CompletableFuture<Void> future = cleanupJobs.remove(broker);
         if (future != null) {
             future.cancel(false);
@@ -594,6 +595,9 @@ public class BundleStateChannel {
 
 
     public void handleDeadBroker(String broker) {
+        if (!leaderElectionService.isLeader()) {
+            return;
+        }
         MetadataState state = getMetadataState();
         switch (state) {
             case Stable -> scheduleBundleOwnershipCleanUp(broker, MIN_CLEAN_UP_DELAY_TIME_IN_SECS);
@@ -605,6 +609,9 @@ public class BundleStateChannel {
         }
     }
     private void scheduleBundleOwnershipCleanUp(String broker, long delayInSecs) {
+        if (!leaderElectionService.isLeader()) {
+            return;
+        }
         cleanupJobs.computeIfAbsent(broker, k -> {
             Executor delayed = CompletableFuture
                     .delayedExecutor(delayInSecs, TimeUnit.SECONDS, pulsar.getExecutor());
