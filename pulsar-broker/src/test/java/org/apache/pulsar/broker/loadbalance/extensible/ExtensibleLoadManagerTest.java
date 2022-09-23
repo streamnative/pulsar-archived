@@ -19,6 +19,9 @@
 package org.apache.pulsar.broker.loadbalance.extensible;
 
 
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MAX_CLEAN_UP_DELAY_TIME_IN_SECS;
+import static org.apache.pulsar.metadata.api.extended.SessionEvent.SessionLost;
+import static org.apache.pulsar.metadata.api.extended.SessionEvent.SessionReestablished;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.testng.Assert.assertFalse;
@@ -26,18 +29,14 @@ import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.collect.BoundType;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Range;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
@@ -51,28 +50,21 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
-import org.apache.pulsar.client.api.ClientBuilder;
-import org.apache.pulsar.client.api.Consumer;
-import org.apache.pulsar.client.api.MessageId;
-import org.apache.pulsar.client.api.MessageRoutingMode;
-import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
-import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.impl.TableViewImpl;
 import org.apache.pulsar.common.naming.NamespaceBundle;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
-import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
 import org.apache.pulsar.common.policies.data.Policies;
 import org.apache.pulsar.common.policies.data.TenantInfo;
 import org.apache.pulsar.common.util.ObjectMapperFactory;
+import org.apache.pulsar.common.util.collections.ConcurrentOpenHashMap;
 import org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.awaitility.Awaitility;
-import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -212,21 +204,15 @@ public class ExtensibleLoadManagerTest {
 
         String dstBroker = broker1LookupServiceAddress;
         String dstBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
-        PulsarService dstPulsar = pulsar1;
         PulsarAdmin dstAdmin = admin1;
         String srcBroker = broker2LookupServiceAddress;
-        String srcBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
-        PulsarService srcPulsar = pulsar2;
         PulsarAdmin srcAdmin = admin2;
 
         if(pulsar1.getBrokerServiceUrl().equals(lookupBroker)){
             dstBroker = broker2LookupServiceAddress;
             dstBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
-            dstPulsar = pulsar2;
             dstAdmin = admin2;
             srcBroker = broker1LookupServiceAddress;
-            srcBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
-            srcPulsar = pulsar1;
             srcAdmin = admin1;
         }
         Unload unload = new Unload(srcBroker, bundle, Optional.of(dstBroker));
@@ -239,21 +225,122 @@ public class ExtensibleLoadManagerTest {
         assertEquals(dstBrokerLookupAddress, lookupBroker2);
         assertEquals(lookupBroker2, srcAdmin.lookups().lookupTopic(topic));
 
-        // recovery test
-        BundleStateChannel dstBundleStateChannel =
-                ((ExtensibleLoadManagerWrapper) dstPulsar.getLoadManager().get()).get().getBundleStateChannel();
-        LeaderElectionService leaderElectionService = (LeaderElectionService) FieldUtils.readDeclaredField(
-                dstBundleStateChannel, "leaderElectionService",  true);
-        ((ExtensibleLoadManagerWrapper) dstPulsar.getLoadManager().get()).get().getBrokerRegistry().unregister();
-        leaderElectionService.close();;
+    }
+
+    @Test
+    public void testBundleStateChannelRecovery()
+            throws Exception {
+        String topic = "test-recovery-stable";
+        admin1.topics().createPartitionedTopic(topic, 1);
+        String lookupBroker = admin1.lookups().lookupTopic(topic);
+        BrokerRegistry srcBrokerRegistry = primaryLoadManager.getBrokerRegistry();
+        LeaderElectionService srcLeaderElectionService = (LeaderElectionService) FieldUtils.readDeclaredField(
+                primaryLoadManager.getBundleStateChannel(), "leaderElectionService",  true);
+        BundleStateChannel srcBundleStateChannel = primaryLoadManager.getBundleStateChannel();
+        String dstBrokerLookupAddress = pulsar2.getBrokerServiceUrl();
+        BundleStateChannel dstBundleStateChannel = secondaryLoadManager.getBundleStateChannel();
+        PulsarAdmin dstAdmin = admin2;
+
+        if (pulsar2.getBrokerServiceUrl().equals(lookupBroker)) {
+            srcBrokerRegistry = secondaryLoadManager.getBrokerRegistry();
+            srcBundleStateChannel = secondaryLoadManager.getBundleStateChannel();
+            srcLeaderElectionService = (LeaderElectionService) FieldUtils.readDeclaredField(
+                    srcBundleStateChannel, "leaderElectionService", true);
+            dstBrokerLookupAddress = pulsar1.getBrokerServiceUrl();
+            dstBundleStateChannel = primaryLoadManager.getBundleStateChannel();
+
+            dstAdmin = admin1;
+        }
+
+        String bundle = String.format("%s/%s", namespace, admin1.lookups().getBundleRange(topic));
+        log.info("bundle: {}", bundle);
+
+        final BundleStateChannel leaderChannel = srcLeaderElectionService.isLeader() ?
+                srcBundleStateChannel : dstBundleStateChannel;
+        ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>> cleanupJobs =
+                (ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>>)
+                        FieldUtils.readDeclaredField(leaderChannel, "cleanupJobs",  true);
 
 
-        waitUntilNewOwner(channel, bundle, null);
-        String lookupBroker3 = srcAdmin.lookups().lookupTopic(topic);
+        // When the metadata session is unstable, and when a broker unregisters and then soon registers again,
+        // the bundle state channel does not trigger a clean-up job.
+        leaderChannel.handleMetadataSessionEvent(SessionLost);
+        srcBrokerRegistry.unregister();
 
-        log.info("Topic {} broker3 url: {} after dstPulsar unregistered from zk", topic, lookupBroker3);
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(10, TimeUnit.SECONDS)
+                .until(() -> getCleanUpStat(leaderChannel, "totalIgnoredCleanUpCnt") == 1);
 
-        assertEquals(srcBrokerLookupAddress, lookupBroker3);
+        assertEquals(0, cleanupJobs.size());
+        assertEquals(0, getCleanUpStat(leaderChannel, "totalCleanedBundleCnt"));
+        assertEquals(0, getCleanUpStat(leaderChannel, "totalCleanedBrokerCnt"));
+        assertEquals(1, getCleanUpStat(leaderChannel, "totalIgnoredCleanUpCnt"));
+
+        srcBrokerRegistry.register();
+
+        // When the metadata session is jittery, and when a broker unregisters and then soon registers again,
+        // the bundle state channel cancels the scheduled the clean-up job.
+        leaderChannel.handleMetadataSessionEvent(SessionReestablished);
+        srcBrokerRegistry.unregister();
+
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(10, TimeUnit.SECONDS)
+                .until(() -> cleanupJobs.size() > 0);
+
+        srcBrokerRegistry.register();
+
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(10, TimeUnit.SECONDS)
+                .until(() -> cleanupJobs.size() == 0);
+
+        assertEquals(0, cleanupJobs.size());
+        assertEquals(0, getCleanUpStat(leaderChannel, "totalCleanedBundleCnt"));
+        assertEquals(0, getCleanUpStat(leaderChannel, "totalCleanedBrokerCnt"));
+        assertEquals(1, getCleanUpStat(leaderChannel, "totalIgnoredCleanUpCnt"));
+
+
+        // When the metadata session is stable, and when a broker unregisters,
+        // the bundle state channel runs a clean-up job.
+        FieldUtils.writeDeclaredField(
+                srcBundleStateChannel, "lastMetadataSessionEvent",  SessionReestablished, true);
+        FieldUtils.writeDeclaredField(srcBundleStateChannel, "lastMetadataSessionEventTimestamp",
+                System.currentTimeMillis() - (MAX_CLEAN_UP_DELAY_TIME_IN_SECS * 1000 + 10), true);
+        FieldUtils.writeDeclaredField(
+                dstBundleStateChannel, "lastMetadataSessionEvent",  SessionReestablished, true);
+        FieldUtils.writeDeclaredField(dstBundleStateChannel, "lastMetadataSessionEventTimestamp",
+                System.currentTimeMillis() - (MAX_CLEAN_UP_DELAY_TIME_IN_SECS * 1000 + 10), true);
+
+        srcLeaderElectionService.close();
+        srcBrokerRegistry.unregister();
+
+
+        waitUntilNewOwner(dstBundleStateChannel, bundle, null);
+
+        String lookupBroker2 = dstAdmin.lookups().lookupTopic(topic);
+        long srcTotalCleanedBundleCnt = getCleanUpStat(srcBundleStateChannel, "totalCleanedBundleCnt");
+        long dstTotalCleanedBundleCnt = getCleanUpStat(dstBundleStateChannel, "totalCleanedBundleCnt");
+        long srcTotalCleanedBrokerCnt = getCleanUpStat(srcBundleStateChannel, "totalCleanedBrokerCnt");
+        long dstTotalCleanedBrokerCnt = getCleanUpStat(dstBundleStateChannel, "totalCleanedBrokerCnt");
+        long srcTotalIgnoredCleanUpCnt = getCleanUpStat(srcBundleStateChannel, "totalIgnoredCleanUpCnt");
+        long dstTotalIgnoredCleanUpCnt = getCleanUpStat(dstBundleStateChannel, "totalIgnoredCleanUpCnt");
+        ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>> srcCleanupJobs =
+                (ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>>)
+                        FieldUtils.readDeclaredField(srcBundleStateChannel, "cleanupJobs",  true);
+        ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>> dstCleanupJobs =
+                (ConcurrentOpenHashMap<String, CompletableFuture<Optional<String>>>)
+                        FieldUtils.readDeclaredField(dstBundleStateChannel, "cleanupJobs",  true);
+
+        assertEquals(dstBrokerLookupAddress, lookupBroker2);
+        assertTrue(srcCleanupJobs.size() == 0 && dstCleanupJobs.size() == 0);
+        assertTrue((srcTotalCleanedBundleCnt > 0 || dstTotalCleanedBundleCnt > 0)
+                && !(srcTotalCleanedBundleCnt > 0 && dstTotalCleanedBundleCnt > 0));
+        assertTrue((srcTotalCleanedBrokerCnt == 1 || dstTotalCleanedBrokerCnt == 1)
+                && !(srcTotalCleanedBrokerCnt == 1 && dstTotalCleanedBrokerCnt == 1));
+        assertTrue((srcTotalIgnoredCleanUpCnt == 1 || dstTotalIgnoredCleanUpCnt == 1)
+                && !(srcTotalIgnoredCleanUpCnt == 1 && dstTotalIgnoredCleanUpCnt == 1));
     }
 
     @Test
@@ -403,5 +490,10 @@ public class ExtensibleLoadManagerTest {
                                         .get())
                                 .build()),
                 ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    }
+
+    private static long getCleanUpStat(BundleStateChannel channel, String metric)
+            throws IllegalAccessException {
+        return (long) FieldUtils.readDeclaredField(channel, metric, true);
     }
 }

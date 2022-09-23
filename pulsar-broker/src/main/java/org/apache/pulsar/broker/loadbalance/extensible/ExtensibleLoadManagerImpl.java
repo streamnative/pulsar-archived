@@ -158,7 +158,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
         this.brokerRegistry.listen((broker, type) -> {
             if (type == NotificationType.Deleted) {
                 log.info("BrokerRegistry detected the broker:{} registry has been deleted.", broker);
-                bundleStateChannel.handleDeadBroker(broker);
+                bundleStateChannel.handleBrokerDeletionEvent(broker);
             } else if (type == NotificationType.Created) {
                 log.info("BrokerRegistry detected the broker:{} registry has been created.", broker);
                 bundleStateChannel.handleBrokerCreationEvent(broker);
