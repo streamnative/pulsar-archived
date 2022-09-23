@@ -18,7 +18,6 @@
  */
 package org.apache.pulsar.compaction;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import io.netty.buffer.ByteBuf;
 import java.time.Duration;
 import java.util.Iterator;
@@ -33,8 +32,8 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.mledger.impl.LedgerMetadataUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.pulsar.broker.ServiceConfiguration;
-import org.apache.pulsar.client.api.CompressionType;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -44,10 +43,10 @@ import org.apache.pulsar.client.api.SubscriptionMode;
 import org.apache.pulsar.client.impl.DelayedAckReaderImpl;
 import org.apache.pulsar.client.impl.MessageIdImpl;
 import org.apache.pulsar.client.impl.MessageImpl;
+import org.apache.pulsar.client.impl.RawBatchMessageContainerImpl;
 import org.apache.pulsar.client.impl.RawMessageImpl;
 import org.apache.pulsar.common.api.proto.MessageIdData;
 import org.apache.pulsar.common.api.proto.MessageMetadata;
-import org.apache.pulsar.common.compression.CompressionCodecProvider;
 import org.apache.pulsar.common.protocol.Commands;
 import org.apache.pulsar.common.topics.TopicCompactionStrategy;
 import org.apache.pulsar.common.util.FutureUtil;
@@ -67,7 +66,7 @@ public class StrategicTwoPhaseCompactor extends TwoPhaseCompactor {
     private static final Logger log = LoggerFactory.getLogger(StrategicTwoPhaseCompactor.class);
     private static final int MAX_OUTSTANDING = 500;
     private final Duration phaseOneLoopReadTimeout;
-
+    private final RawBatchMessageContainerImpl batchMessageContainer = new RawBatchMessageContainerImpl();
     public StrategicTwoPhaseCompactor(ServiceConfiguration conf,
                                       PulsarClient pulsar,
                                       BookKeeper bk,
@@ -301,7 +300,20 @@ public class StrategicTwoPhaseCompactor extends TwoPhaseCompactor {
         Semaphore outstanding = new Semaphore(MAX_OUTSTANDING);
         phaseTwoLoop(phaseOneResult.topic, phaseOneResult.cache.values().iterator(), ledger,
                 outstanding, loopPromise);
-        loopPromise.thenCompose((v) -> {
+        loopPromise
+                .thenCompose((v) -> {
+                            log.info("flushing batch container numMessagesInBatch:{}",
+                                    batchMessageContainer.getNumMessagesInBatch());
+                            return addToCompactedLedger(ledger, null, reader.getTopic())
+                                    .whenComplete((res, exception2) -> {
+                                        if (exception2 != null) {
+                                            promise.completeExceptionally(exception2);
+                                            return;
+                                        }
+                                    });
+                        }
+                )
+                .thenCompose((v) -> {
                             log.info("acked ledger id {}", phaseOneResult.lastId);
                             return ((DelayedAckReaderImpl<T>) reader).acknowledgeCumulativeAsync(
                                     phaseOneResult.lastId, Map.of(COMPACTED_TOPIC_LEDGER_PROPERTY, ledger.getId()));
@@ -328,9 +340,9 @@ public class StrategicTwoPhaseCompactor extends TwoPhaseCompactor {
         return promise;
     }
 
-    private  <T>  void phaseTwoLoop(String topic, Iterator<Message<T>> reader,
-                              LedgerHandle lh, Semaphore outstanding,
-                              CompletableFuture<Void> promise) {
+    private <T> void phaseTwoLoop(String topic, Iterator<Message<T>> reader,
+                                  LedgerHandle lh, Semaphore outstanding,
+                                  CompletableFuture<Void> promise) {
         if (promise.isDone()) {
             return;
         }
@@ -347,7 +359,6 @@ public class StrategicTwoPhaseCompactor extends TwoPhaseCompactor {
                         addToCompactedLedger(lh, message, topic)
                                 .whenComplete((res, exception2) -> {
                                     outstanding.release();
-                                    message.release();
                                     if (exception2 != null) {
                                         promise.completeExceptionally(exception2);
                                         return;
@@ -372,60 +383,55 @@ public class StrategicTwoPhaseCompactor extends TwoPhaseCompactor {
                 });
     }
 
-    <T> CompletableFuture<Void> addToCompactedLedger(LedgerHandle lh, Message<T> m, String topic) {
-        CompletableFuture<Void> bkf = new CompletableFuture<>();
-        // TODO: consider BatchMessageContainer.getCompressedBatchMetadataAndPayload
-        ByteBuf serialized = messageToByteBuf(m);
-        try {
-            mxBean.addCompactionWriteOp(topic, m.size());
-            long start = System.nanoTime();
-            lh.asyncAddEntry(serialized,
-                    (rc, ledger, eid, ctx) -> {
-                        mxBean.addCompactionLatencyOp(topic, System.nanoTime() - start, TimeUnit.NANOSECONDS);
-                        if (rc != BKException.Code.OK) {
-                            bkf.completeExceptionally(BKException.create(rc));
-                        } else {
-                            bkf.complete(null);
-                        }
-                    }, null);
-        } catch (Throwable t) {
-            return FutureUtil.failedFuture(t);
+    <T> CompletableFuture<Boolean> addToCompactedLedger(LedgerHandle lh, Message<T> m, String topic) {
+        CompletableFuture<Boolean> bkf = new CompletableFuture<>();
+        if (m == null || batchMessageContainer.add((MessageImpl<?>) m, null)) {
+            if (batchMessageContainer.getNumMessagesInBatch() > 0) {
+                // TODO: consider BatchMessageContainer.getCompressedBatchMetadataAndPayload
+
+                ByteBuf serialized = messageToByteBuf(batchMessageContainer);
+
+                try {
+                    mxBean.addCompactionWriteOp(topic, serialized.readableBytes());
+                    long start = System.nanoTime();
+                    lh.asyncAddEntry(serialized,
+                            (rc, ledger, eid, ctx) -> {
+                                mxBean.addCompactionLatencyOp(topic, System.nanoTime() - start, TimeUnit.NANOSECONDS);
+                                batchMessageContainer.clear();
+                                if (rc != BKException.Code.OK) {
+                                    bkf.completeExceptionally(BKException.create(rc));
+                                } else {
+                                    bkf.complete(true);
+                                }
+                            }, null);
+
+                } catch (Throwable t) {
+                    return FutureUtil.failedFuture(t);
+                }
+            } else {
+                bkf.complete(false);
+            }
+        } else {
+            bkf.complete(false);
         }
         return bkf;
     }
 
-    public <T> ByteBuf messageToByteBuf(Message<T> message) {
+    private static ByteBuf messageToByteBuf(RawBatchMessageContainerImpl batchMessageContainer) {
 
-        checkArgument(message instanceof MessageImpl, "Message must be type of MessageImpl.");
-        MessageImpl msg = (MessageImpl) message;
-        MessageMetadata metadata = msg.getMessageBuilder();
-        ByteBuf payload = msg.getDataBuffer();
-        metadata.setCompression(CompressionCodecProvider.convertToWireProtocol(CompressionType.NONE));
-        metadata.setUncompressedSize(payload.readableBytes());
+        Triple<ByteBuf, MessageIdData, MessageMetadata> triple = batchMessageContainer
+                .getPayloadAndMessageIdDataAndMetadata();
+        ByteBuf payload = triple.getLeft();
+        MessageIdData idData = triple.getMiddle();
+        MessageMetadata metadata = triple.getRight();
 
         ByteBuf metadataAndPayload = Commands.serializeMetadataAndPayload(Commands.ChecksumType.Crc32c,
                 metadata, payload);
 
-        MessageIdData idData = new MessageIdData();
-        MessageIdImpl id = (MessageIdImpl) msg.getMessageId();
-        idData.setEntryId(id.getEntryId());
-        idData.setLedgerId(id.getLedgerId());
-        idData.setPartition(id.getPartitionIndex());
 
         RawMessageImpl rawMessage = new RawMessageImpl(idData, metadataAndPayload);
 
-
-
         return rawMessage.serialize();
-        /*
-        MessageMetadata messageMetadata = msg.getMessageBuilder();
-        ByteBuf payload = msg.getDataBuffer();
-        messageMetadata.setCompression(CompressionCodecProvider.convertToWireProtocol(CompressionType.NONE));
-        messageMetadata.setUncompressedSize(payload.readableBytes());
-
-        return Commands.serializeMetadataAndPayload(Commands.ChecksumType.Crc32c, messageMetadata, payload);
-        */
     }
-
 
 }

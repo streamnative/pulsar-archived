@@ -49,21 +49,21 @@ import org.slf4j.LoggerFactory;
  */
 class BatchMessageContainerImpl extends AbstractBatchMessageContainer {
 
-    private MessageMetadata messageMetadata = new MessageMetadata();
+    protected MessageMetadata messageMetadata = new MessageMetadata();
     // sequence id for this batch which will be persisted as a single entry by broker
     @Getter
     @Setter
-    private long lowestSequenceId = -1L;
+    protected long lowestSequenceId = -1L;
     @Getter
     @Setter
-    private long highestSequenceId = -1L;
-    private ByteBuf batchedMessageMetadataAndPayload;
-    private List<MessageImpl<?>> messages = new ArrayList<>(maxMessagesNum);
+    protected long highestSequenceId = -1L;
+    protected ByteBuf batchedMessageMetadataAndPayload;
+    protected List<MessageImpl<?>> messages = new ArrayList<>(maxMessagesNum);
     protected SendCallback previousCallback = null;
     // keep track of callbacks for individual messages being published in a batch
     protected SendCallback firstCallback;
 
-    private final ByteBufAllocator allocator;
+    protected final ByteBufAllocator allocator;
     private static final int SHRINK_COOLING_OFF_PERIOD = 10;
     private int consecutiveShrinkTime = 0;
 
@@ -135,7 +135,7 @@ class BatchMessageContainerImpl extends AbstractBatchMessageContainer {
         return isBatchFull();
     }
 
-    private ByteBuf getCompressedBatchMetadataAndPayload() {
+    protected ByteBuf getCompressedBatchMetadataAndPayload() {
         int batchWriteIndex = batchedMessageMetadataAndPayload.writerIndex();
         int batchReadIndex = batchedMessageMetadataAndPayload.readerIndex();
 
