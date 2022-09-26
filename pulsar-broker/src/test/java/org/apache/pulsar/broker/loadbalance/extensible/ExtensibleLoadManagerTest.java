@@ -335,12 +335,25 @@ public class ExtensibleLoadManagerTest {
 
         assertEquals(dstBrokerLookupAddress, lookupBroker2);
         assertTrue(srcCleanupJobs.size() == 0 && dstCleanupJobs.size() == 0);
-        assertTrue((srcTotalCleanedBundleCnt > 0 || dstTotalCleanedBundleCnt > 0)
-                && !(srcTotalCleanedBundleCnt > 0 && dstTotalCleanedBundleCnt > 0));
-        assertTrue((srcTotalCleanedBrokerCnt == 1 || dstTotalCleanedBrokerCnt == 1)
-                && !(srcTotalCleanedBrokerCnt == 1 && dstTotalCleanedBrokerCnt == 1));
-        assertTrue((srcTotalIgnoredCleanUpCnt == 1 || dstTotalIgnoredCleanUpCnt == 1)
-                && !(srcTotalIgnoredCleanUpCnt == 1 && dstTotalIgnoredCleanUpCnt == 1));
+
+        if (srcTotalCleanedBrokerCnt == 1) {
+            assertTrue(srcTotalCleanedBrokerCnt == 1);
+            assertTrue(srcTotalCleanedBundleCnt > 0);
+            assertTrue(dstTotalCleanedBrokerCnt == 0);
+            assertTrue(dstTotalCleanedBundleCnt == 0);
+
+        } else {
+            assertTrue(srcTotalCleanedBrokerCnt == 0);
+            assertTrue(srcTotalCleanedBundleCnt == 0);
+            assertTrue(dstTotalCleanedBrokerCnt == 1);
+            assertTrue(dstTotalCleanedBundleCnt > 0);
+        }
+
+        if (srcTotalIgnoredCleanUpCnt == 1) {
+            assertTrue(dstTotalIgnoredCleanUpCnt == 0);
+        } else {
+            assertTrue(dstTotalIgnoredCleanUpCnt == 1);
+        }
     }
 
     @Test
