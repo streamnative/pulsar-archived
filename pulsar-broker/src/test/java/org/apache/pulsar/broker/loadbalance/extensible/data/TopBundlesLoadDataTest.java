@@ -32,7 +32,7 @@ public class TopBundlesLoadDataTest {
     public void testTopBundlesLoadData() {
         Map<String, NamespaceBundleStats> bundleStats = new HashMap<>();
         NamespaceBundleStats stats1 = new NamespaceBundleStats();
-        stats1.msgRateIn = 1000000;
+        stats1.msgRateIn = 100;
         bundleStats.put("bundle-1", stats1);
 
         NamespaceBundleStats stats2 = new NamespaceBundleStats();
@@ -40,7 +40,7 @@ public class TopBundlesLoadDataTest {
         bundleStats.put("bundle-2", stats2);
 
         NamespaceBundleStats stats3 = new NamespaceBundleStats();
-        stats3.msgRateIn = 1000;
+        stats3.msgRateIn = 100000;
         bundleStats.put("bundle-3", stats3);
 
         NamespaceBundleStats stats4 = new NamespaceBundleStats();
@@ -48,12 +48,12 @@ public class TopBundlesLoadDataTest {
         bundleStats.put("bundle-4", stats4);
 
         TopBundlesLoadData topBundlesLoadData = TopBundlesLoadData.of(bundleStats, 3);
-        Map.Entry<String, NamespaceBundleStats> top0 = topBundlesLoadData.getTopBundlesLoadData().get(0);
-        Map.Entry<String, NamespaceBundleStats> top1 = topBundlesLoadData.getTopBundlesLoadData().get(1);
-        Map.Entry<String, NamespaceBundleStats> top2 = topBundlesLoadData.getTopBundlesLoadData().get(2);
+        var top0 = topBundlesLoadData.getTopBundlesLoadData().get(0);
+        var top1 = topBundlesLoadData.getTopBundlesLoadData().get(1);
+        var top2 = topBundlesLoadData.getTopBundlesLoadData().get(2);
 
-        assertEquals(top0.getKey(), "bundle-1");
-        assertEquals(top1.getKey(), "bundle-2");
-        assertEquals(top2.getKey(), "bundle-3");
+        assertEquals(top0.getBundleName(), "bundle-3");
+        assertEquals(top1.getBundleName(), "bundle-2");
+        assertEquals(top2.getBundleName(), "bundle-1");
     }
 }

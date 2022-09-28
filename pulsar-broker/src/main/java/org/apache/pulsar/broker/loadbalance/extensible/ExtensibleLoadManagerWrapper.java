@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -128,7 +129,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
 
     @Override
     public List<Metrics> getLoadBalancingMetrics() {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override

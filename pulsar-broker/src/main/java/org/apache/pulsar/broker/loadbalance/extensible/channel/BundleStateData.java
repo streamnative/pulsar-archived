@@ -31,6 +31,8 @@ import lombok.ToString;
 public class BundleStateData {
     private BundleState state;
     private String broker;
+
+    // TODO: fix json mapping
     @JsonProperty("src_broker")
     private String sourceBroker;
     private long timestamp;

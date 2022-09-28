@@ -152,7 +152,7 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
     }
 
     private static Optional<String> selectRandomBroker(List<String> candidates) {
-        return Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())));
+        return Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size() - 1)));
     }
 
     @Override

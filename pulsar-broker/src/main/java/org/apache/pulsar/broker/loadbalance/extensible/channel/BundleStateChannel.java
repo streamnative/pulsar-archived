@@ -32,10 +32,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -92,7 +94,10 @@ public class BundleStateChannel {
 
     public static final long MAX_CLEAN_UP_DELAY_TIME_IN_SECS = 3 * 60; // 3 mins
 
-    public static final long MIN_CLEAN_UP_DELAY_TIME_IN_SECS = 5; // 5 secs
+    // 0 secs to clean immediately(minimize unavailability)
+    public static final long MIN_CLEAN_UP_DELAY_TIME_IN_SECS = 0;
+
+    private static final int MAX_OUTSTANDING_CLEAN_UP_PUB_MESSAGES = 500;
 
     private String lookupServiceAddress;
 
@@ -100,12 +105,18 @@ public class BundleStateChannel {
 
     private BrokerRegistry brokerRegistry;
 
+    // consider init as null, detect if the leasder is just came up (not established)
+    // but receieved the znode deltion, this should be considered as stable/deletion case
+    // if znode deltion comes to the leader node, then it is considered stable state
+    // add comments how lastMetadataSessionEventTimestamp can be played.
     private SessionEvent lastMetadataSessionEvent = SessionReestablished;
     private long lastMetadataSessionEventTimestamp = 0;
 
     private long totalCleanedBrokerCnt = 0;
     private long totalCleanedBundleCnt = 0;
     private long totalIgnoredCleanUpCnt = 0;
+
+    Semaphore outstandingCleanUpTombstoneMessages = new Semaphore(MAX_OUTSTANDING_CLEAN_UP_PUB_MESSAGES);
 
     enum MetadataState {
         Stable,
@@ -137,7 +148,9 @@ public class BundleStateChannel {
                     pulsar.getCoordinationService(), pulsar.getSafeWebServiceAddress(),
                     state -> {
                         if (state == LeaderElectionState.Leading) {
-                            log.info("This broker was elected as bundleStateChanel leader");
+                            log.info("This broker was elected as bundleStateChanel leader."
+                                            + "Current bundleStateChanel leader is {}",
+                                    leaderElectionService.getCurrentLeader());
                         } else {
                             if (leaderElectionService != null) {
                                 log.info("This broker is a bundleStateChanel follower. "
@@ -163,6 +176,7 @@ public class BundleStateChannel {
                 producer.close();
             }
             producer = pulsar.getClient().newProducer(SCHEMA)
+                    .enableBatching(true)
                     .topic(TOPIC)
                     .create();
 
@@ -310,30 +324,27 @@ public class BundleStateChannel {
                 .sendAsync()
                 /*
                 .thenApply(messageId -> {
-                            log.info("Published message for bundle:{}, messageId:{}, data:{}",
-                                    bundle, messageId, data);
-                            return messageId;
-                        }
-
-                 )*/
+                    log.info("Published message for bundle:{}, messageId:{}",
+                            bundle, messageId);
+                    return messageId;
+                })*/
                 .exceptionally(e -> {
-                    log.error("Failed to publish message for bundle:{}, data:{}", bundle, data, e);
+                    log.error("Failed to publish message for bundle:{}", bundle, e);
                     return null;
                 });
     }
-    private CompletableFuture<MessageId> tombstoneAsync(String bundle) {
 
+    private CompletableFuture<MessageId> tombstoneAsync(String bundle) {
         return producer.newMessage()
                 .key(bundle)
                 .sendAsync()
                 /*
                 .thenApply(messageId -> {
-                            log.info("Published tombstone for bundle:{}, messageId:{}", bundle, messageId);
-                            return messageId;
-                        }
-                )*/
-                .exceptionally(e -> {
-                    log.error("Failed to publish tombstone for bundle:{}", bundle);
+                    log.info("Published tombstone message for bundle:{}, messageId:{}",
+                            bundle, messageId);
+                    return messageId;
+                })*/.exceptionally(e -> {
+                    log.error("Failed to publish tombstone message for bundle:{}", bundle, e);
                     return null;
                 });
     }
@@ -460,12 +471,31 @@ public class BundleStateChannel {
 
         log.info("Started bundle ownership cleanup for the dead broker:{}", broker);
         int cleanedBundleCnt = 0;
+        MutableBoolean failed = new MutableBoolean(false);
         for (Map.Entry<String, BundleStateData> etr : tv.entrySet()) {
+            if (failed.getValue()) {
+                break;
+            }
             BundleStateData bundleStateData = etr.getValue();
             String bundle = etr.getKey();
             if (broker.equals(bundleStateData.getBroker())) {
-                log.info("Unloading bundle ownership :{}", bundle);
-                tombstoneAsync(bundle);
+                log.info("Unloading bundle ownership :{}, cleanedBundleCnt:{}", bundle, cleanedBundleCnt);
+                try {
+                    outstandingCleanUpTombstoneMessages.acquire();
+                } catch (InterruptedException e) {
+                    log.error("Failed to acquire semaphore to tombstone bundle:{}", bundle);
+                    failed.setValue(true);
+                    break;
+                }
+                tombstoneAsync(bundle)
+                        .whenComplete((messageId, e) -> {
+                            outstandingCleanUpTombstoneMessages.release();
+                            if (e != null) {
+                                log.error("Failed to publish tombstone for bundle:{}", bundle);
+                                failed.setValue(true);
+                            }
+                        }
+                );
                 cleanedBundleCnt++;
             }
         }
@@ -598,5 +628,9 @@ public class BundleStateChannel {
 
         log.info("Scheduled bundle ownership clean for broker:{} with delay:{} secs. Pending clean jobs:{}",
                 broker, delayInSecs, cleanupJobs.size());
+    }
+
+    public LeaderElectionService getLeaderElectionService() {
+        return leaderElectionService;
     }
 }

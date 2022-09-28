@@ -114,6 +114,7 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
     }
 
     private boolean isLeader() {
-        return pulsar.getLeaderElectionService() != null && pulsar.getLeaderElectionService().isLeader();
+        return bundleStateChannel.getLeaderElectionService() != null
+                && bundleStateChannel.getLeaderElectionService().isLeader();
     }
 }

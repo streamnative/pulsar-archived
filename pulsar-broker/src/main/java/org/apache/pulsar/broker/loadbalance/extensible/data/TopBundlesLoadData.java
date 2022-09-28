@@ -20,12 +20,14 @@ package org.apache.pulsar.broker.loadbalance.extensible.data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
-import org.apache.commons.lang3.tuple.Pair;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.common.naming.TopicDomain;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
@@ -40,7 +42,16 @@ public class TopBundlesLoadData {
                     + "/top-bundle-load-data";
 
     @JsonProperty("top_bundles_load_data")
-    private final List<Pair<String, NamespaceBundleStats>> topBundlesLoadData;
+    private final List<BundleLoadData> topBundlesLoadData;
+
+    @Data
+    @ToString
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BundleLoadData {
+        String bundleName;
+        NamespaceBundleStats stats;
+    }
 
     public TopBundlesLoadData() {
         topBundlesLoadData = new ArrayList<>();
@@ -48,8 +59,8 @@ public class TopBundlesLoadData {
     private TopBundlesLoadData(Map<String, NamespaceBundleStats> bundleStats, int topK) {
         topBundlesLoadData = bundleStats.entrySet()
                 .stream()
-                .map(entry -> Pair.of(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.naturalOrder())
+                .map(e -> new BundleLoadData(e.getKey(), e.getValue()))
+                .sorted((o1, o2) -> o2.getStats().compareTo(o1.getStats()))
                 .limit(topK)
                 .collect(Collectors.toList());
     }

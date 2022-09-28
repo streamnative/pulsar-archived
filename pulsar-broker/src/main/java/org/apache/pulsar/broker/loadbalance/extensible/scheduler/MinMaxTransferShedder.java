@@ -145,8 +145,8 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
         if (brokerLoadData.getNumBundles() > 1) {
             topBundlesLoadData.stream()
                     .map((e) -> {
-                        String bundle = e.getKey();
-                        var bundleData = e.getValue();
+                        String bundle = e.getBundleName();
+                        var bundleData = e.getStats();
                         double throughput = bundleData.msgThroughputIn + bundleData.msgThroughputOut;
                         return Pair.of(bundle, throughput);
                     }).filter(e ->

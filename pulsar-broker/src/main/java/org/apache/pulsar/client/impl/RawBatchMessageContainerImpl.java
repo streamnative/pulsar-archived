@@ -29,6 +29,8 @@ import org.apache.pulsar.common.compression.CompressionCodecProvider;
 import org.apache.pulsar.common.protocol.Commands;
 
 @Slf4j
+
+// try to modify the original class (without producer)
 public class RawBatchMessageContainerImpl extends BatchMessageContainerImpl {
     private MessageIdData lastMessageId;
 

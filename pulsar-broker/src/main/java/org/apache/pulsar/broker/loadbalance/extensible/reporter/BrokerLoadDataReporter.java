@@ -79,16 +79,26 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
 
     @Override
     public CompletableFuture<Void> reportAsync(boolean force) {
-        if (needBrokerDataUpdate() || force) {
-            CompletableFuture<Void> future =
-                    this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, this.generateLoadData());
-            future.exceptionally(ex -> {
-                log.error("Flush the broker load data failed.", ex);
-                return null;
-            });
-            return future;
+        try {
+            BrokerLoadData newLoadData = this.generateLoadData();
+            if (needBrokerDataUpdate() || force) {
+                log.info("publishing load report:{}", localData.printResourceUsage());
+                CompletableFuture<Void> future =
+                        this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, newLoadData);
+                future.exceptionally(ex -> {
+                    log.error("Flush the broker load data failed.", ex);
+                    return null;
+                });
+                return future;
+            } else {
+                log.info("skipping load report:{}", localData.printResourceUsage());
+            }
+
+            return CompletableFuture.completedFuture(null);
+        } catch (Throwable e) {
+            return CompletableFuture.failedFuture(e);
         }
-        return CompletableFuture.completedFuture(null);
+
     }
 
     private boolean needBrokerDataUpdate() {
