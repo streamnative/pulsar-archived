@@ -102,7 +102,7 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
     }
 
     @Override
-    public Optional<String> doSelect(List<String> candidates, ServiceUnitId bundleId, BaseLoadManagerContext context) {
+    public synchronized Optional<String> doSelect(List<String> candidates, ServiceUnitId bundleId, BaseLoadManagerContext context) {
         String bundle = bundleId.toString();
         if (candidates.isEmpty()) {
             log.info("There are no available brokers as candidates at this point for bundle: {}", bundle);
@@ -152,7 +152,7 @@ public class LeastResourceUsageWithWeight extends AbstractBrokerSelectionStrateg
     }
 
     private static Optional<String> selectRandomBroker(List<String> candidates) {
-        return Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size() - 1)));
+        return Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())));
     }
 
     @Override
