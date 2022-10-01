@@ -223,7 +223,7 @@ public class BundleStateChannel {
                 log.info("Already set compaction on topic:{}, threshold:{} bytes", TOPIC, COMPACTION_THRESHOLD);
             }
         } catch (PulsarAdminException e) {
-            throw new PulsarServerException(e);
+            log.error("Schedule compaction has exception: ", e);
         }
     }
 
