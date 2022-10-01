@@ -131,7 +131,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
                         + "usage {}%, stats:{}, std_threshold:{},"
                         + " -- Offloading {}%, at least {} KByte/s of traffic, left throughput {} KByte/s",
                 stats.maxBroker, 100 * stats.max, stats, threshold,
-                offload, offloadThroughput / KB, (brokerThroughput - offloadThroughput) / KB);
+                offload * 100, offloadThroughput / KB, (brokerThroughput - offloadThroughput) / KB);
 
         MutableDouble trafficMarkedToOffload = new MutableDouble(0);
         MutableBoolean atLeastOneBundleSelected = new MutableBoolean(false);
@@ -192,7 +192,6 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
         double max = 0.0;
         String maxBroker = null;
 
-
         for (Map.Entry<String, BrokerLoadData> entry : loadData.entrySet()) {
             BrokerLoadData localBrokerData = entry.getValue();
             String broker = entry.getKey();
@@ -206,7 +205,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
                 max = load;
             }
             sum += load;
-            sqSum += load;
+            sqSum += load * load;
             totalBrokers++;
         }
 
@@ -225,7 +224,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
                                           boolean sampleLog) {
         Double historyUsage =
                 brokerAvgResourceUsage.get(broker);
-        double resourceUsage = brokerLoadData.getMaxResourceUsage(conf);
+        double resourceUsage = brokerLoadData.getMaxResourceUsageWithExtendedNetworkSignal(conf);
 
         if (sampleLog) {
             log.info("{} broker load: historyUsage={}%, resourceUsage={}%",
@@ -245,7 +244,7 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
                             + "CPUResourceWeight:{}, MemoryResourceWeight:{}, DirectMemoryResourceWeight:{}, "
                             + "BandwithInResourceWeight:{}, BandwithOutResourceWeight:{}",
                     broker,
-                    brokerLoadData.printResourceUsage(),
+                    brokerLoadData.printResourceUsage(conf),
                     conf.getLoadBalancerCPUResourceWeight(),
                     conf.getLoadBalancerMemoryResourceWeight(),
                     conf.getLoadBalancerDirectMemoryResourceWeight(),

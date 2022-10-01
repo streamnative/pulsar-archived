@@ -199,7 +199,7 @@ public class ThresholdShedder implements NamespaceUnloadStrategy {
                             + "CPUResourceWeight:{}, MemoryResourceWeight:{}, DirectMemoryResourceWeight:{}, "
                             + "BandwithInResourceWeight:{}, BandwithOutResourceWeight:{}",
                     broker,
-                    brokerLoadData.printResourceUsage(),
+                    brokerLoadData.printResourceUsage(conf),
                     conf.getLoadBalancerCPUResourceWeight(),
                     conf.getLoadBalancerMemoryResourceWeight(),
                     conf.getLoadBalancerDirectMemoryResourceWeight(),

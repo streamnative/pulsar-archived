@@ -159,6 +159,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
             if (type == NotificationType.Deleted) {
                 log.info("BrokerRegistry detected the broker:{} registry has been deleted.", broker);
                 bundleStateChannel.handleBrokerDeletionEvent(broker);
+                brokerLoadDataStore.pushAsync(broker, null);
+                topBundleLoadDataStore.pushAsync(broker, null);
             } else if (type == NotificationType.Created) {
                 log.info("BrokerRegistry detected the broker:{} registry has been created.", broker);
                 bundleStateChannel.handleBrokerCreationEvent(broker);

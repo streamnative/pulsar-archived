@@ -82,7 +82,7 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
         try {
             BrokerLoadData newLoadData = this.generateLoadData();
             if (needBrokerDataUpdate() || force) {
-                log.info("publishing load report:{}", localData.printResourceUsage());
+                log.info("publishing load report:{}", localData.printResourceUsage(conf));
                 CompletableFuture<Void> future =
                         this.brokerLoadDataStore.pushAsync(this.lookupServiceAddress, newLoadData);
                 future.exceptionally(ex -> {
@@ -91,11 +91,12 @@ public class BrokerLoadDataReporter extends AbstractLoadDataReporter<BrokerLoadD
                 });
                 return future;
             } else {
-                log.info("skipping load report:{}", localData.printResourceUsage());
+                log.info("skipping load report:{}", localData.printResourceUsage(conf));
             }
 
             return CompletableFuture.completedFuture(null);
         } catch (Throwable e) {
+            log.error("Failed to report top broker load data", e);
             return CompletableFuture.failedFuture(e);
         }
 

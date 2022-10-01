@@ -35,7 +35,7 @@ import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 public class TopBundlesLoadData {
 
     public static final String TOPIC =
-            TopicDomain.persistent
+            TopicDomain.non_persistent
                     + "://"
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/top-bundle-load-data";

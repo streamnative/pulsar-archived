@@ -40,10 +40,12 @@ import org.apache.pulsar.policies.data.loadbalancer.SystemResourceUsage;
 public class BrokerLoadData {
 
     public static final String TOPIC =
-            TopicDomain.persistent
+            TopicDomain.non_persistent
                     + "://"
                     + NamespaceName.SYSTEM_NAMESPACE
                     + "/broker-load-data";
+
+    private static final double gigaBitToByte = 128 * 1024 * 1024.0;
 
     // Most recently available system resource usage.
     private ResourceUsage cpu;
@@ -55,7 +57,9 @@ public class BrokerLoadData {
 
     // Message data from the most recent namespace bundle stats.
     private double msgThroughputIn;
+    private ResourceUsage msgThroughputInUsage;
     private double msgThroughputOut;
+    private ResourceUsage msgThroughputOutUsage;
     private double msgRateIn;
     private double msgRateOut;
 
@@ -87,6 +91,8 @@ public class BrokerLoadData {
         directMemory = new ResourceUsage();
         bandwidthIn = new ResourceUsage();
         bandwidthOut = new ResourceUsage();
+        msgThroughputInUsage = new ResourceUsage();
+        msgThroughputOutUsage = new ResourceUsage();
         bundles = new HashSet<>();
         lastBundleGains = new HashSet<>();
         lastBundleLosses = new HashSet<>();
@@ -207,6 +213,41 @@ public class BrokerLoadData {
                 / 100;
     }
 
+    private static double getNicSpeedBytesInSec(ServiceConfiguration conf) {
+        return conf.getLoadBalancerOverrideBrokerNicSpeedGbps().isPresent()
+                ? conf.getLoadBalancerOverrideBrokerNicSpeedGbps().get() * gigaBitToByte : -1.0;
+    }
+
+    synchronized ResourceUsage getMsgThroughputInUsage(double nicSpeedBytesInSec) {
+        if (msgThroughputInUsage.usage != msgThroughputIn) {
+            msgThroughputInUsage = new ResourceUsage(msgThroughputIn, nicSpeedBytesInSec);
+        }
+        return msgThroughputInUsage;
+    }
+
+    synchronized ResourceUsage getMsgThroughputOutUsage(double nicSpeedBytesInSec) {
+        if (msgThroughputOutUsage.usage != msgThroughputOut) {
+            msgThroughputOutUsage = new ResourceUsage(msgThroughputOut, nicSpeedBytesInSec);
+        }
+        return msgThroughputOutUsage;
+    }
+
+    public double getMaxResourceUsageWithExtendedNetworkSignal(ServiceConfiguration conf) {
+
+        double nicSpeedBytesInSec = getNicSpeedBytesInSec(conf);
+        return maxWithinLimit(100.0d,
+                cpu.percentUsage() * conf.getLoadBalancerCPUResourceWeight(),
+                memory.percentUsage() * conf.getLoadBalancerMemoryResourceWeight(),
+                directMemory.percentUsage() * conf.getLoadBalancerDirectMemoryResourceWeight(),
+                bandwidthIn.percentUsage() * conf.getLoadBalancerBandwithInResourceWeight(),
+                bandwidthOut.percentUsage() * conf.getLoadBalancerBandwithOutResourceWeight(),
+                getMsgThroughputInUsage(nicSpeedBytesInSec).percentUsage()
+                        * conf.getLoadBalancerBandwithInResourceWeight(),
+                getMsgThroughputOutUsage(nicSpeedBytesInSec).percentUsage()
+                        * conf.getLoadBalancerBandwithOutResourceWeight())
+                / 100;
+    }
+
     public double getMaxResourceUsage(ServiceConfiguration conf) {
         return max(
                 cpu.percentUsage() * conf.getLoadBalancerCPUResourceWeight(),
@@ -227,12 +268,18 @@ public class BrokerLoadData {
         return max;
     }
 
-    public String printResourceUsage() {
+    public String printResourceUsage(ServiceConfiguration conf) {
+        double nicSpeedBytesInSec = getNicSpeedBytesInSec(conf);
         return String.format(
                 Locale.ENGLISH,
-                "cpu: %.2f%%, memory: %.2f%%, directMemory: %.2f%%, bandwidthIn: %.2f%%, bandwidthOut: %.2f%%",
-                cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(), bandwidthIn.percentUsage(),
-                bandwidthOut.percentUsage());
+                "cpu: %.2f%%, memory: %.2f%%, directMemory: %.2f%%,"
+                        + " bandwidthIn: %.2f%%, bandwidthOut: %.2f%%,"
+                        + " MsgThroughputIn: %.2f%%, MsgThroughputOut: %.2f%%",
+                cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(),
+                bandwidthIn.percentUsage(),
+                bandwidthOut.percentUsage(),
+                getMsgThroughputInUsage(nicSpeedBytesInSec).percentUsage(),
+                getMsgThroughputOutUsage(nicSpeedBytesInSec).percentUsage());
     }
 
     private static double max(double...args) {

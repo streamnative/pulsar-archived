@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
@@ -97,7 +96,7 @@ public class BundleStateChannel {
     // 0 secs to clean immediately(minimize unavailability)
     public static final long MIN_CLEAN_UP_DELAY_TIME_IN_SECS = 0;
 
-    private static final int MAX_OUTSTANDING_CLEAN_UP_PUB_MESSAGES = 500;
+    private static final int MAX_OUTSTANDING_PUB_MESSAGES = 500;
 
     private String lookupServiceAddress;
 
@@ -116,7 +115,7 @@ public class BundleStateChannel {
     private long totalCleanedBundleCnt = 0;
     private long totalIgnoredCleanUpCnt = 0;
 
-    Semaphore outstandingCleanUpTombstoneMessages = new Semaphore(MAX_OUTSTANDING_CLEAN_UP_PUB_MESSAGES);
+    Semaphore outstandingPubMessages = new Semaphore(MAX_OUTSTANDING_PUB_MESSAGES);
 
     enum MetadataState {
         Stable,
@@ -318,35 +317,30 @@ public class BundleStateChannel {
 
 
     private CompletableFuture<MessageId> pubAsync(String bundle, BundleStateData data) {
-        return producer.newMessage()
+        try {
+            outstandingPubMessages.acquire();
+        } catch (InterruptedException e) {
+            log.warn("Interrupted to acquire semaphore to publish a message for bundle:{}, data:{}", bundle, data);
+        }
+        CompletableFuture<MessageId> future = new CompletableFuture<>();
+        producer.newMessage()
                 .key(bundle)
                 .value(data)
                 .sendAsync()
-                /*
-                .thenApply(messageId -> {
-                    log.info("Published message for bundle:{}, messageId:{}",
-                            bundle, messageId);
-                    return messageId;
-                })*/
-                .exceptionally(e -> {
-                    log.error("Failed to publish message for bundle:{}", bundle, e);
-                    return null;
+                .whenComplete((messageId, e) -> {
+                    outstandingPubMessages.release();
+                    if (e != null) {
+                        log.error("Failed to publish message for bundle:{}, data:{} ", bundle, data, e);
+                        future.completeExceptionally(e);
+                    } else {
+                        future.complete(messageId);
+                    }
                 });
+        return future;
     }
 
     private CompletableFuture<MessageId> tombstoneAsync(String bundle) {
-        return producer.newMessage()
-                .key(bundle)
-                .sendAsync()
-                /*
-                .thenApply(messageId -> {
-                    log.info("Published tombstone message for bundle:{}, messageId:{}",
-                            bundle, messageId);
-                    return messageId;
-                })*/.exceptionally(e -> {
-                    log.error("Failed to publish tombstone message for bundle:{}", bundle, e);
-                    return null;
-                });
+        return pubAsync(bundle, null);
     }
 
     private boolean isTargetBroker(String broker) {
@@ -471,34 +465,16 @@ public class BundleStateChannel {
 
         log.info("Started bundle ownership cleanup for the dead broker:{}", broker);
         int cleanedBundleCnt = 0;
-        MutableBoolean failed = new MutableBoolean(false);
         for (Map.Entry<String, BundleStateData> etr : tv.entrySet()) {
-            if (failed.getValue()) {
-                break;
-            }
             BundleStateData bundleStateData = etr.getValue();
             String bundle = etr.getKey();
             if (broker.equals(bundleStateData.getBroker())) {
                 log.info("Unloading bundle ownership :{}, cleanedBundleCnt:{}", bundle, cleanedBundleCnt);
-                try {
-                    outstandingCleanUpTombstoneMessages.acquire();
-                } catch (InterruptedException e) {
-                    log.error("Failed to acquire semaphore to tombstone bundle:{}", bundle);
-                    failed.setValue(true);
-                    break;
-                }
-                tombstoneAsync(bundle)
-                        .whenComplete((messageId, e) -> {
-                            outstandingCleanUpTombstoneMessages.release();
-                            if (e != null) {
-                                log.error("Failed to publish tombstone for bundle:{}", bundle);
-                                failed.setValue(true);
-                            }
-                        }
-                );
+                tombstoneAsync(bundle);
                 cleanedBundleCnt++;
             }
         }
+
         this.totalCleanedBundleCnt += cleanedBundleCnt;
         this.totalCleanedBrokerCnt++;
         log.info("Completed bundle ownership cleanup. Released bundle count:{}, "

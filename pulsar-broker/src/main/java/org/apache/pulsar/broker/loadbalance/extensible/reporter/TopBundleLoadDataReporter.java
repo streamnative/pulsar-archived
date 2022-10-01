@@ -48,8 +48,8 @@ public class TopBundleLoadDataReporter extends AbstractLoadDataReporter<TopBundl
     public TopBundlesLoadData generateLoadData() {
 
         String pulsarFunctionsNamespace = pulsar.getWorkerServiceOpt().isEmpty()
-                ? pulsar.getWorkerServiceOpt().get().getWorkerConfig().getPulsarFunctionsNamespace()
-                : "public/functions";
+                ? "public/functions"
+                : pulsar.getWorkerServiceOpt().get().getWorkerConfig().getPulsarFunctionsNamespace();
         var bundleStats = this.getBundleStats(pulsar);
         List<TopBundlesLoadData.BundleLoadData> filteredBundleStats = null;
         synchronized (bundleStats) {
@@ -66,6 +66,13 @@ public class TopBundleLoadDataReporter extends AbstractLoadDataReporter<TopBundl
 
     @Override
     public CompletableFuture<Void> reportAsync(boolean force) {
-        return this.bundleLoadDataStore.pushAsync(lookupServiceAddress, this.generateLoadData());
+
+        try {
+            var topBundlesLoadData = this.generateLoadData();
+            return this.bundleLoadDataStore.pushAsync(lookupServiceAddress, topBundlesLoadData);
+        } catch (Throwable e) {
+            log.error("Failed to report top bundles load data", e);
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }

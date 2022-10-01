@@ -2223,7 +2223,7 @@ public class ServiceConfiguration implements PulsarConfiguration {
             category = CATEGORY_LOAD_BALANCER,
             doc = "Usage threshold to determine a broker whether to start min-max-transfer shedder"
     )
-    private int loadBalancerBrokerMinMaxTransferShedderThreshold = 10;
+    private double loadBalancerBrokerMinMaxTransferShedderThreshold = 0.1;
 
     @FieldContext(
             dynamic = true,
