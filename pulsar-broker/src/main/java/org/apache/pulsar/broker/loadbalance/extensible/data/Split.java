@@ -18,6 +18,7 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.data;
 
+import java.util.Map;
 import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,14 +28,12 @@ import lombok.Data;
 public class Split {
     String sourceBroker;
     String bundle;
-    Optional<String> destBroker;
 
-    private Split(String bundle, String sourceBroker) {
-        this.bundle = bundle;
-        this.sourceBroker = sourceBroker;
-    }
+    // TODO: Support transfer bundle to specific broker.
+    // bundle -> destBroker
+    Map<String, Optional<String>> splitBundleToDestBroker;
 
-    public static Split of(String bundle, String sourceBroker) {
-        return new Split(bundle, sourceBroker);
+    public static Split of(String bundle, String sourceBroker, Map<String, Optional<String>> splitBundleToDestBroker) {
+        return new Split(bundle, sourceBroker, splitBundleToDestBroker);
     }
 }

@@ -30,6 +30,7 @@ import static org.testng.Assert.fail;
 
 import java.net.URL;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -460,7 +461,7 @@ public class ExtensibleLoadManagerTest {
             sourceBroker = broker1LookupServiceAddress;
         }
 
-        channel.splitBundle(new Split(sourceBroker, bundle, Optional.empty())).get();
+        channel.splitBundle(new Split(sourceBroker, bundle, new HashMap<>())).get();
 
         Awaitility.await().untilAsserted(() -> {
             String newBundleRange = admin1.lookups().getBundleRange(topic);
