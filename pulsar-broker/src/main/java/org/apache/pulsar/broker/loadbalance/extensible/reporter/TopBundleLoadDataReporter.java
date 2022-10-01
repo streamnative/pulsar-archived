@@ -18,11 +18,14 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.reporter;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.extensible.data.LoadDataStore;
 import org.apache.pulsar.broker.loadbalance.extensible.data.TopBundlesLoadData;
+import org.apache.pulsar.common.naming.NamespaceName;
 
 @Slf4j
 public class TopBundleLoadDataReporter extends AbstractLoadDataReporter<TopBundlesLoadData> {
@@ -43,8 +46,22 @@ public class TopBundleLoadDataReporter extends AbstractLoadDataReporter<TopBundl
 
     @Override
     public TopBundlesLoadData generateLoadData() {
-        // TODO: Make it configurable.
-        return TopBundlesLoadData.of(this.getBundleStats(pulsar), 5);
+
+        String pulsarFunctionsNamespace = pulsar.getWorkerServiceOpt().isEmpty()
+                ? pulsar.getWorkerServiceOpt().get().getWorkerConfig().getPulsarFunctionsNamespace()
+                : "public/functions";
+        var bundleStats = this.getBundleStats(pulsar);
+        List<TopBundlesLoadData.BundleLoadData> filteredBundleStats = null;
+        synchronized (bundleStats) {
+            filteredBundleStats = bundleStats.entrySet().stream()
+                    //skip system namespace
+                    .filter(e -> !e.getKey().startsWith(NamespaceName.SYSTEM_NAMESPACE.toString()))
+                    .filter(e -> !e.getKey().startsWith(pulsarFunctionsNamespace))
+                    .map(e -> new TopBundlesLoadData.BundleLoadData(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+            // TODO: Make it configurable.
+        }
+        return TopBundlesLoadData.of(filteredBundleStats, 5);
     }
 
     @Override

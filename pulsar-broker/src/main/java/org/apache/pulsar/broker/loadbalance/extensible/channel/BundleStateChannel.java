@@ -536,7 +536,8 @@ public class BundleStateChannel {
                         ? bundleStateData.getBroker() : bundleStateData.getSourceBroker();
                 log.warn("Found long-running in-flight bundle:{}, bundleStateData:{}, deadBroker:{}",
                         bundle, bundleStateData, deadBroker);
-                deadBrokers.add(deadBroker);
+                // waited too long. tombstone immediately.
+                tombstoneAsync(bundle);
                 releasedBundleCnt++;
             }
         }

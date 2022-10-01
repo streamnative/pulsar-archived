@@ -136,8 +136,8 @@ public class BrokerRegistryImpl implements BrokerRegistry {
     @Override
     public List<String> getAvailableBrokers() {
         try {
-            return this.brokerLookupDataLockManager.listLocks(LOOKUP_DATA_PATH)
-                    .get(conf.getMetadataStoreOperationTimeoutSeconds(), TimeUnit.SECONDS);
+            return Lists.newArrayList(this.brokerLookupDataLockManager.listLocks(LOOKUP_DATA_PATH)
+                    .get(conf.getMetadataStoreOperationTimeoutSeconds(), TimeUnit.SECONDS));
         } catch (Exception e) {
             log.warn("Error when trying to get active brokers", e);
             return Lists.newArrayList(this.brokerLookupDataMap.keySet());

@@ -21,7 +21,6 @@ package org.apache.pulsar.broker.loadbalance.extensible.data;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -56,16 +55,15 @@ public class TopBundlesLoadData {
     public TopBundlesLoadData() {
         topBundlesLoadData = new ArrayList<>();
     }
-    private TopBundlesLoadData(Map<String, NamespaceBundleStats> bundleStats, int topK) {
-        topBundlesLoadData = bundleStats.entrySet()
+    private TopBundlesLoadData(List<BundleLoadData> bundleStats, int topK) {
+        topBundlesLoadData = bundleStats
                 .stream()
-                .map(e -> new BundleLoadData(e.getKey(), e.getValue()))
                 .sorted((o1, o2) -> o2.getStats().compareTo(o1.getStats()))
                 .limit(topK)
                 .collect(Collectors.toList());
     }
 
-    public static TopBundlesLoadData of(Map<String, NamespaceBundleStats> bundleStats, int topK) {
+    public static TopBundlesLoadData of(List<BundleLoadData> bundleStats, int topK) {
         return new TopBundlesLoadData(bundleStats, topK);
     }
 }

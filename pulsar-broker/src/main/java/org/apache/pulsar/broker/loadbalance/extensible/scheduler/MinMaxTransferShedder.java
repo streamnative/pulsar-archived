@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
     private static final Logger log = LoggerFactory.getLogger(MinMaxTransferShedder.class);
     private final List<Unload> selectedBundlesCache = new ArrayList<>();
-    private static final double MB = 1024 * 1024;
+    private static final double KB = 1024;
 
     private static final long LOAD_LOG_SAMPLE_DELAY_IN_SEC = 5 * 60; // 5 mins
     private final Map<String, Double> brokerAvgResourceUsage = new HashMap<>();
@@ -127,16 +127,17 @@ public class MinMaxTransferShedder implements NamespaceUnloadStrategy {
         double offloadThroughput = brokerThroughput * offload;
 
         log.info(
-                "Attempting to shed load on {}, which has max resource usage {}%, stats:{}, std_threshold:{},"
-                        + " -- Offloading {}%, at least {} MByte/s of traffic, left throughput {} MByte/s",
+                "Attempting to shed load from broker {}, which has the max resource "
+                        + "usage {}%, stats:{}, std_threshold:{},"
+                        + " -- Offloading {}%, at least {} KByte/s of traffic, left throughput {} KByte/s",
                 stats.maxBroker, 100 * stats.max, stats, threshold,
-                offload, offloadThroughput / MB, (brokerThroughput - offloadThroughput) / MB);
+                offload, offloadThroughput / KB, (brokerThroughput - offloadThroughput) / KB);
 
         MutableDouble trafficMarkedToOffload = new MutableDouble(0);
         MutableBoolean atLeastOneBundleSelected = new MutableBoolean(false);
 
         Optional<TopBundlesLoadData> bundlesLoadData = context.topBundleLoadDataStore().get(stats.maxBroker);
-        if (bundlesLoadData.isEmpty()) {
+        if (bundlesLoadData.isEmpty() || bundlesLoadData.get().getTopBundlesLoadData().isEmpty()) {
             log.error("topBundlesLoadData is empty. skip unloading.");
             return selectedBundlesCache;
         }
