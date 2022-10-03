@@ -157,7 +157,7 @@ public class ExtensibleLoadManagerWrapper implements LoadManager {
             }
             Optional<String> broker = owner.get();
             return loadManager.getBundleStateChannel()
-                    .publishUnload(new Unload(broker.get(), bundleName, dstBroker));
+                    .publishUnloadEvent(new Unload(broker.get(), bundleName, dstBroker));
         } catch (Exception e) {
             return CompletableFuture.failedFuture(
                     new IllegalStateException("Failed to publish unload. Please retry.", e));

@@ -18,8 +18,8 @@
  */
 package org.apache.pulsar.compaction;
 
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Owned;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigned;
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.isValidTransition;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.spy;
@@ -174,8 +174,8 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
             return List.of();
         }
         return switch (from) {
-            case Assigning -> List.of(Assigned);
-            case Assigned -> List.of();
+            case Assigned -> List.of(Owned);
+            case Owned -> List.of();
             case Splitting -> List.of();
             default -> List.of();
         };
@@ -238,7 +238,7 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
             int keyIndex = r.nextInt(maxKeys);
             String key = "key" + keyIndex;
             BundleStateData expectedData = expected.get(key);
-            BundleState state = expectedData == null ? nextValidState(Assigning) :
+            BundleState state = expectedData == null ? nextValidState(Assigned) :
                     r.nextInt(2) == 0 ? nextInvalidState(expectedData.getState()) :
                             nextValidState(expectedData.getState());
             BundleStateData value = new BundleStateData(state, key + ":" + j);
@@ -312,7 +312,7 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
             int keyIndex = r.nextInt(maxKeys);
             String key = "key" + keyIndex;
             BundleStateData expectedData = expected.get(key);
-            BundleState state = expectedData == null ? nextValidState(Assigning) :
+            BundleState state = expectedData == null ? nextValidState(Assigned) :
                     r.nextInt(2) == 0 ? nextInvalidState(expectedData.getState()) :
                             nextValidState(expectedData.getState());
             BundleStateData value = new BundleStateData(state, key + ":" + j);
@@ -1434,9 +1434,9 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
 
         pulsarClient.newConsumer(schema).topic(topic).subscriptionName("sub1").readCompacted(true).subscribe().close();
 
-        producer.newMessage().key("1").value(testVal(Assigned, "1")).send();
-        producer.newMessage().key("2").value(testVal(Assigned, "3")).send();
-        producer.newMessage().key("3").value(testVal(Assigned, "5")).send();
+        producer.newMessage().key("1").value(testVal(Owned, "1")).send();
+        producer.newMessage().key("2").value(testVal(Owned, "3")).send();
+        producer.newMessage().key("3").value(testVal(Owned, "5")).send();
         producer.newMessage().key("1").value(null).send();
         producer.newMessage().key("2").value(null).send();
 
@@ -1462,8 +1462,8 @@ public class BundleStateCompactionTest extends MockedPulsarServiceBaseTest {
 
         pulsarClient.newConsumer(schema).topic(topic).subscriptionName("sub1").readCompacted(true).subscribe().close();
 
-        producer.newMessage().key("1").value(testVal(Assigned, "1")).send();
-        producer.newMessage().key("2").value(testVal(Assigned, "3")).send();
+        producer.newMessage().key("1").value(testVal(Owned, "1")).send();
+        producer.newMessage().key("2").value(testVal(Owned, "3")).send();
         producer.newMessage().key("1").value(null).send();
         producer.newMessage().key("2").value(null).send();
 

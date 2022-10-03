@@ -18,8 +18,8 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Owned;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigned;
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
 import org.apache.commons.lang.StringUtils;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.impl.schema.JSONSchema;
@@ -52,11 +52,11 @@ public class BundleStateCompactionStrategy implements TopicCompactionStrategy<Bu
         }
 
         if (checkBrokers) {
-            if (prevState == Assigned && state == Assigning) { // transfer source => dst check
+            if (prevState == Owned && state == Assigned) { // transfer source => dst check
                 return StringUtils.equals(from.getBroker(), to.getSourceBroker());
             }
 
-            if (prevState == Assigning && state == Assigned) {
+            if (prevState == Assigned && state == Owned) {
                 return StringUtils.equals(from.getBroker(), to.getBroker())
                         && StringUtils.equals(from.getSourceBroker(), to.getSourceBroker());
             }

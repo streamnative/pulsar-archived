@@ -274,7 +274,7 @@ public class BrokerLoadData {
                 Locale.ENGLISH,
                 "cpu: %.2f%%, memory: %.2f%%, directMemory: %.2f%%,"
                         + " bandwidthIn: %.2f%%, bandwidthOut: %.2f%%,"
-                        + " MsgThroughputIn: %.2f%%, MsgThroughputOut: %.2f%%",
+                        + " msgThroughputIn: %.2f%%, msgThroughputOut: %.2f%%",
                 cpu.percentUsage(), memory.percentUsage(), directMemory.percentUsage(),
                 bandwidthIn.percentUsage(),
                 bandwidthOut.percentUsage(),

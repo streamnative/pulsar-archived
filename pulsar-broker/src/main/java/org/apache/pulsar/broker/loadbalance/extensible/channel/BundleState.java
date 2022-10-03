@@ -25,33 +25,33 @@ import java.util.Set;
 
 public enum BundleState {
 
+    Owned,
+
     Assigned,
 
-    Assigning,
-
-    Closed,
+    Released, // source released
 
     Splitting;
     private static Map<BundleState, Set<BundleState>> validTransitions = new HashMap<>() {{
         put(null, new HashSet<>() {{
-            add(Assigned); // from split
-            add(Assigning); // from assignment
+            add(Owned); // from split
+            add(Assigned); // from assignment
             //add(null); // from recovery
         }});
-        put(Assigned, new HashSet<>() {{
-            add(Assigning); // from transfer
+        put(Owned, new HashSet<>() {{
+            add(Assigned); // from transfer
             add(Splitting); // from split
             add(null); // from recovery
         }});
-        put(Assigning, new HashSet<>() {{
-            add(Assigned); // from assignment
-            add(Closed); // from transfer
+        put(Assigned, new HashSet<>() {{
+            add(Owned); // from assignment
+            add(Released); // from transfer
             add(null); // from recovery
 
         }});
 
-        put(Closed, new HashSet<>() {{
-            add(Assigned); // from transfer
+        put(Released, new HashSet<>() {{
+            add(Owned); // from transfer
             add(null); // from recovery
         }});
 
@@ -65,8 +65,4 @@ public enum BundleState {
         return transitions.contains(to);
     }
 
-    public static Set<BundleState> inFlightStates = new HashSet<>(){{
-        add(Assigning);
-        add(Splitting);
-    }};
 }

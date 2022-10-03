@@ -257,7 +257,7 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                             .thenCompose(broker -> {
                                 if (broker.isPresent()) {
                                     log.info("Selected the new owner broker:{} for bundle:{}", broker.get(), bundle);
-                                    return bundleStateChannel.publishAssignment(bundle, broker.get());
+                                    return bundleStateChannel.publishAssignEvent(bundle, broker.get());
                                 } else {
                                     throw new IllegalStateException(
                                             "Failed to discover(select) the new owner broker for bundle:" + bundle);

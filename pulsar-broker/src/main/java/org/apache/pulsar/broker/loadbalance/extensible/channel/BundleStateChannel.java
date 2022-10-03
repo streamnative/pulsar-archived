@@ -18,8 +18,10 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigning;
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.inFlightStates;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigned;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Owned;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Released;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Splitting;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Jittery;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Stable;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleStateChannel.MetadataState.Unstable;
@@ -229,16 +231,16 @@ public class BundleStateChannel {
     private void handle(String bundle, BundleStateData data) {
         log.info("{} received a handle request for bundle:{}, data:{}", lookupServiceAddress, bundle, data);
         if (data == null) {
-            handleTombstone(bundle);
+            handleTombstoneEvent(bundle);
             return;
         }
 
         // TODO : Add state validation
         switch (data.getState()) {
-            case Assigned -> handleAssignedState(bundle, data);
-            case Assigning -> handleAssigningState(bundle, data);
-            case Closed -> handleClosedState(bundle, data);
-            case Splitting -> handleSplittingState(bundle, data);
+            case Owned -> handleOwnEvent(bundle, data);
+            case Assigned -> handleAssignEvent(bundle, data);
+            case Released -> handleReleaseEvent(bundle, data);
+            case Splitting -> handleSplitEvent(bundle, data);
             default -> throw new IllegalStateException("Failed to handle bundle state data:" + data);
         }
     }
@@ -252,7 +254,7 @@ public class BundleStateChannel {
         return data.getDestBroker().isPresent();
     }
 
-    private void handleAssignedState(String bundle, BundleStateData data) {
+    private void handleOwnEvent(String bundle, BundleStateData data) {
         val getOwnerRequest = getOwnerRequests.remove(bundle);
         if (getOwnerRequest != null) {
             getOwnerRequest.complete(Optional.of(data.getBroker()));
@@ -261,12 +263,12 @@ public class BundleStateChannel {
         }
     }
 
-    private void handleAssigningState(String bundle, BundleStateData data) {
+    private void handleAssignEvent(String bundle, BundleStateData data) {
 
         if (isTargetBroker(data.getBroker())) {
             BundleStateData next =
                     new BundleStateData(
-                            isTransferCommand(data) ? BundleState.Closed : BundleState.Assigned,
+                            isTransferCommand(data) ? Released : Owned,
                             data.getBroker(),
                             data.getSourceBroker());
             pubAsync(bundle, next);
@@ -276,7 +278,7 @@ public class BundleStateChannel {
 
     }
 
-    private void handleClosedState(String bundle, BundleStateData data) {
+    private void handleReleaseEvent(String bundle, BundleStateData data) {
 
         if (isTargetBroker(data.getSourceBroker())) {
             // TODO: when close, pass message to clients to connect to the new broker
@@ -284,7 +286,7 @@ public class BundleStateChannel {
                 log.info("{} closed bundle topics:{},{}", lookupServiceAddress, bundle, data);
                 BundleStateData next =
                         new BundleStateData(
-                                BundleState.Assigned,
+                                Owned,
                                 data.getBroker(),
                                 data.getSourceBroker());
                 pubAsync(bundle, next);
@@ -294,7 +296,7 @@ public class BundleStateChannel {
         }
     }
 
-    private void handleSplittingState(String bundle, BundleStateData data) {
+    private void handleSplitEvent(String bundle, BundleStateData data) {
         if (isTargetBroker(data.getBroker())) {
             splitBundle(bundle)
                     .thenAccept(x -> tombstoneAsync(bundle));
@@ -302,7 +304,7 @@ public class BundleStateChannel {
         }
     }
 
-    private void handleTombstone(String bundle) {
+    private void handleTombstoneEvent(String bundle) {
         closeBundle(bundle).thenAccept(
                 x -> {
                     var request = getOwnerRequests.remove(bundle);
@@ -320,7 +322,7 @@ public class BundleStateChannel {
         try {
             outstandingPubMessages.acquire();
         } catch (InterruptedException e) {
-            log.warn("Interrupted to acquire semaphore to publish a message for bundle:{}, data:{}", bundle, data);
+            log.warn("Interrupted while acquiring semaphore to publish a message for bundle:{}, data:{}", bundle, data);
         }
         CompletableFuture<MessageId> future = new CompletableFuture<>();
         producer.newMessage()
@@ -418,10 +420,10 @@ public class BundleStateChannel {
             return null;
         }
         switch (data.getState()) {
-            case Assigned, Splitting -> {
+            case Owned, Splitting -> {
                 return CompletableFuture.completedFuture(Optional.of(data.getBroker()));
             }
-            case Assigning, Closed -> {
+            case Assigned, Released -> {
                 return deferGetOwnerRequest(bundle);
             }
             default -> {
@@ -430,9 +432,9 @@ public class BundleStateChannel {
         }
     }
 
-    public CompletableFuture<Optional<String>> publishAssignment(String bundle, String broker) {
+    public CompletableFuture<Optional<String>> publishAssignEvent(String bundle, String broker) {
         CompletableFuture<Optional<String>> getOwnerRequest = deferGetOwnerRequest(bundle);
-        return pubAsync(bundle, new BundleStateData(Assigning, broker))
+        return pubAsync(bundle, new BundleStateData(Assigned, broker))
                 .thenCompose(x -> getOwnerRequest)
                 .exceptionally(e -> {
                     getOwnerRequests.remove(bundle);
@@ -443,10 +445,10 @@ public class BundleStateChannel {
 
 
     // TODO make it CompletableFuture
-    public CompletableFuture<Void> publishUnload(Unload unload) {
+    public CompletableFuture<Void> publishUnloadEvent(Unload unload) {
         String bundle = unload.getBundle();
         if (isTransferCommand(unload)) {
-            BundleStateData next = new BundleStateData(Assigning,
+            BundleStateData next = new BundleStateData(Assigned,
                     unload.getDestBroker().get(), unload.getSourceBroker());
             return pubAsync(bundle, next).thenAccept(__ -> {});
         }
@@ -456,7 +458,7 @@ public class BundleStateChannel {
     public CompletableFuture<Void> splitBundle(Split split) {
         String bundle = split.getBundle();
         BundleStateData data = tv.get(bundle);
-        BundleStateData next = new BundleStateData(BundleState.Splitting, data.getBroker());
+        BundleStateData next = new BundleStateData(Splitting, data.getBroker());
         return pubAsync(bundle, next).thenAccept(__ -> {});
     }
 
@@ -506,7 +508,7 @@ public class BundleStateChannel {
             if (!activeBrokers.contains(broker)) {
                 releasedBundleCnt++;
                 deadBrokers.add(bundleStateData.getBroker());
-            } else if (inFlightStates.contains(bundleStateData.getState())
+            } else if (bundleStateData.getState() != Owned
                     && now - bundleStateData.getTimestamp() > MAX_IN_FLIGHT_STATE_WAITING_TIME_IN_MILLIS) {
                 String deadBroker = StringUtils.isEmpty(bundleStateData.getSourceBroker())
                         ? bundleStateData.getBroker() : bundleStateData.getSourceBroker();

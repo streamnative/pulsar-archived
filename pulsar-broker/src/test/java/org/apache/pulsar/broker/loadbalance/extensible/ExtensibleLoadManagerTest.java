@@ -197,8 +197,8 @@ public class ExtensibleLoadManagerTest {
         log.info("bundle: {}", bundle);
         BundleStateChannel channel = primaryLoadManager.getBundleStateChannel();
 
-        channel.publishAssignment(bundle, broker1LookupServiceAddress);
-        channel.publishAssignment(bundle, broker2LookupServiceAddress);
+        channel.publishAssignEvent(bundle, broker1LookupServiceAddress);
+        channel.publishAssignEvent(bundle, broker2LookupServiceAddress);
 
         log.info("Conflict assignments, Topic {} broker url: {}", topic, admin2.lookups().lookupTopic(topic));
 
@@ -217,7 +217,7 @@ public class ExtensibleLoadManagerTest {
             srcAdmin = admin1;
         }
         Unload unload = new Unload(srcBroker, bundle, Optional.of(dstBroker));
-        channel.publishUnload(unload);
+        channel.publishUnloadEvent(unload);
         waitUntilNewOwner(channel, bundle, dstBroker);
         String lookupBroker2 = dstAdmin.lookups().lookupTopic(topic);
 
