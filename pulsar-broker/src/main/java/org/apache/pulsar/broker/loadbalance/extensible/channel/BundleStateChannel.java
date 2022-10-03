@@ -44,7 +44,9 @@ import org.apache.pulsar.broker.PulsarServerException;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.loadbalance.LeaderBroker;
 import org.apache.pulsar.broker.loadbalance.LeaderElectionService;
+import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.BrokerRegistry;
+import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerImpl;
 import org.apache.pulsar.broker.loadbalance.extensible.ExtensibleLoadManagerWrapper;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
@@ -187,7 +189,7 @@ public class BundleStateChannel {
             this.pulsar.getLoadManagerExecutor()
                     .scheduleWithFixedDelay(() -> {
                                 try {
-                                    cleanBundleOwnerships(brokerRegistry.getAvailableBrokers());
+                                    cleanBundleOwnershipAndLoadData(brokerRegistry.getAvailableBrokers());
                                     log.info("Successfully recovered load manager");
                                 } catch (Exception e) {
                                     log.info("Failed to run bundle ownership clean. will retry..", e);
@@ -224,7 +226,7 @@ public class BundleStateChannel {
                 log.info("Already set compaction on topic:{}, threshold:{} bytes", TOPIC, COMPACTION_THRESHOLD);
             }
         } catch (PulsarAdminException e) {
-            log.error("Schedule compaction has exception: ", e);
+            throw new PulsarServerException("Schedule compaction has exception: ", e);
         }
     }
 
@@ -462,7 +464,7 @@ public class BundleStateChannel {
         return pubAsync(bundle, next).thenAccept(__ -> {});
     }
 
-    private void cleanBundleOwnerships(String broker) {
+    private void cleanBundleOwnershipAndLoadData(String broker) {
         cleanupJobs.remove(broker);
 
         log.info("Started bundle ownership cleanup for the dead broker:{}", broker);
@@ -483,10 +485,32 @@ public class BundleStateChannel {
                         + "totalCleanedBundleCnt:{}, totalCleanedBrokerCnt:{}",
                 cleanedBundleCnt, totalCleanedBundleCnt, totalCleanedBrokerCnt);
 
-        log.info("Active clean-up jobs count :{} after published tombstone", cleanupJobs.size());
+
+        BaseLoadManagerContext context = ((ExtensibleLoadManagerImpl) pulsar.getLoadManager().get()).getContext();
+        context.brokerLoadDataStore().pushAsync(broker, null)
+                .whenComplete((v, e) -> {
+                    if (e == null) {
+                        log.info("Completed broker load data clean-up for the dead broker:{}", broker);
+                    } else {
+                        log.error("Failed to clean the dead broker:{} in brokerLoadDataStore. "
+                                + "Failed to publish tombstone message.", broker, e);
+                    }
+                });
+        context.topBundleLoadDataStore().pushAsync(broker, null)
+                .whenComplete((v, e) -> {
+                    if (e == null) {
+                        log.info("Completed broker top bundle load data clean-up for the dead broker:{}",
+                                broker);
+                    } else {
+                        log.error("Failed to clean the dead broker:{} in topBundleLoadDataStore. "
+                                + "Failed to publish tombstone message.", broker, e);
+                    }
+                });
+
+        log.info("Active clean-up jobs count :{} after clean-up", cleanupJobs.size());
     }
 
-    private void cleanBundleOwnerships(List<String> brokers) {
+    private void cleanBundleOwnershipAndLoadData(List<String> brokers) {
 
         if (!leaderElectionService.isLeader()) {
             return;
@@ -587,8 +611,8 @@ public class BundleStateChannel {
         log.info("Handling broker:{} deletion based on metadata connection state:{}, event:{}, event_ts:{}:",
                 broker, state, lastMetadataSessionEvent, lastMetadataSessionEventTimestamp);
         switch (state) {
-            case Stable -> scheduleBundleOwnershipCleanUp(broker, MIN_CLEAN_UP_DELAY_TIME_IN_SECS);
-            case Jittery -> scheduleBundleOwnershipCleanUp(broker, MAX_CLEAN_UP_DELAY_TIME_IN_SECS);
+            case Stable -> scheduleCleanUp(broker, MIN_CLEAN_UP_DELAY_TIME_IN_SECS);
+            case Jittery -> scheduleCleanUp(broker, MAX_CLEAN_UP_DELAY_TIME_IN_SECS);
             case Unstable -> {
                 totalIgnoredCleanUpCnt++;
                 log.error("MetadataState state is unstable. "
@@ -596,12 +620,12 @@ public class BundleStateChannel {
             }
         }
     }
-    private void scheduleBundleOwnershipCleanUp(String broker, long delayInSecs) {
+    private void scheduleCleanUp(String broker, long delayInSecs) {
         cleanupJobs.computeIfAbsent(broker, k -> {
             Executor delayed = CompletableFuture
                     .delayedExecutor(delayInSecs, TimeUnit.SECONDS, pulsar.getExecutor());
             return CompletableFuture
-                    .runAsync(() -> cleanBundleOwnerships(broker), delayed);
+                    .runAsync(() -> cleanBundleOwnershipAndLoadData(broker), delayed);
 
         });
 

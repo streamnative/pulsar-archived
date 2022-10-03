@@ -18,8 +18,8 @@
  */
 package org.apache.pulsar.broker.loadbalance.extensible.channel;
 
-import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Owned;
 import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Assigned;
+import static org.apache.pulsar.broker.loadbalance.extensible.channel.BundleState.Owned;
 import org.apache.commons.lang.StringUtils;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.impl.schema.JSONSchema;

@@ -2177,6 +2177,14 @@ public class ServiceConfiguration implements PulsarConfiguration {
     private int loadBalancerSheddingIntervalMinutes = 1;
 
     @FieldContext(
+            category = CATEGORY_LOAD_BALANCER,
+            dynamic = true,
+            doc = "Extensible Load shedding interval. \n\nBroker periodically checks whether some traffic"
+                    + " should be offload from some over-loaded broker to other under-loaded brokers"
+    )
+    private int loadBalancerExtensibleSheddingIntervalSeconds = 10;
+
+    @FieldContext(
             dynamic = true,
             category = CATEGORY_LOAD_BALANCER,
             doc = "enable/disable distribute bundles evenly"
