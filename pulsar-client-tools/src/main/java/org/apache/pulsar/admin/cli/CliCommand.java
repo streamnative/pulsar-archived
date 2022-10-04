@@ -127,9 +127,9 @@ public abstract class CliCommand {
     }
 
     static String checkArgument(List<String> arguments) {
-        if (arguments.size() != 1) {
-            throw new ParameterException("Need to provide just 1 parameter");
-        }
+//        if (arguments.size() != 1) {
+//            throw new ParameterException("Need to provide just 1 parameter");
+//        }
 
         return arguments.get(0);
     }
