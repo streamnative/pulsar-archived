@@ -445,11 +445,15 @@ public class BundleStateChannel {
                 });
     }
 
-
-    // TODO make it CompletableFuture
     public CompletableFuture<Void> publishUnloadEvent(Unload unload) {
         String bundle = unload.getBundle();
         if (isTransferCommand(unload)) {
+            String destBroker = unload.getDestBroker().get();
+            if (!brokerRegistry.lookup(destBroker).isPresent()) {
+                return CompletableFuture.failedFuture(
+                        new IllegalStateException("The dest broker: "
+                                + destBroker + " is not available. Please retry."));
+            }
             BundleStateData next = new BundleStateData(Assigned,
                     unload.getDestBroker().get(), unload.getSourceBroker());
             return pubAsync(bundle, next).thenAccept(__ -> {});

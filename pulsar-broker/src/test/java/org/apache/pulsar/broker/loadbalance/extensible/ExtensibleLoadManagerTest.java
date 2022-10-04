@@ -396,6 +396,13 @@ public class ExtensibleLoadManagerTest {
         assertEquals(dstBrokerLookupAddress, lookupBroker2);
         assertEquals(lookupBroker2, srcAdmin.lookups().lookupTopic(topic));
 
+        try {
+            admin2.namespaces().unloadNamespaceBundle(namespace, bundleRange, "localhost:9999");
+            fail("Should fail.");
+        } catch (Exception ex) {
+            log.info("Unload namespace bundle has exception: ", ex);
+        }
+
     }
 
     @Test
