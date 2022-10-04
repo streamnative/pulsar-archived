@@ -141,9 +141,9 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
                 new TopBundleLoadDataReporter(pulsar, brokerRegistry.getLookupServiceAddress(), topBundleLoadDataStore);
 
         this.pulsar.getLoadManagerExecutor()
-                .scheduleAtFixedRate(() -> brokerLoadDataReporter.reportAsync(false), 5, 5, TimeUnit.SECONDS);
+                .scheduleAtFixedRate(() -> brokerLoadDataReporter.reportAsync(false), 0, 5, TimeUnit.SECONDS);
         this.pulsar.getLoadManagerExecutor()
-                .scheduleAtFixedRate(() -> topBundleLoadDataReporter.reportAsync(false), 5, 5, TimeUnit.SECONDS);
+                .scheduleAtFixedRate(() -> topBundleLoadDataReporter.reportAsync(false), 0, 5, TimeUnit.SECONDS);
 
 
 

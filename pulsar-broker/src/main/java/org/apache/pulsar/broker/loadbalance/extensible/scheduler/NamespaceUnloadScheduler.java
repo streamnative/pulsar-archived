@@ -100,8 +100,8 @@ public class NamespaceUnloadScheduler implements LoadManagerScheduler {
     @Override
     public void start() {
         ScheduledExecutorService loadManagerExecutor = this.pulsar.getLoadManagerExecutor();
-        long loadSheddingInterval = TimeUnit.SECONDS
-                .toMillis(configuration.getLoadBalancerExtensibleSheddingIntervalSeconds());
+        long loadSheddingInterval = TimeUnit.MINUTES
+                .toMillis(configuration.getLoadBalancerSheddingIntervalMinutes());
         this.loadSheddingTask = loadManagerExecutor.scheduleAtFixedRate(
                 this::execute, loadSheddingInterval, loadSheddingInterval, TimeUnit.MILLISECONDS);
     }
