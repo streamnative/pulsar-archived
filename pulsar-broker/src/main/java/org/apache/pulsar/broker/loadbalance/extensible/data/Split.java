@@ -33,7 +33,7 @@ public class Split {
     // bundle -> destBroker
     Map<String, Optional<String>> splitBundleToDestBroker;
 
-    public static Split of(String bundle, String sourceBroker, Map<String, Optional<String>> splitBundleToDestBroker) {
-        return new Split(bundle, sourceBroker, splitBundleToDestBroker);
+    public static Split of(String sourceBroker, String bundle, Map<String, Optional<String>> splitBundleToDestBroker) {
+        return new Split(sourceBroker, bundle, splitBundleToDestBroker);
     }
 }

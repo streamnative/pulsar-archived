@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarServerException;
@@ -91,6 +92,8 @@ public class ExtensibleLoadManagerImpl implements BrokerDiscovery {
     @Getter
     private LoadManagerScheduler namespaceUnloadScheduler;
 
+    @Getter
+    @VisibleForTesting
     private LoadManagerScheduler namespaceBundleSplitScheduler;
 
     private final AtomicBoolean started = new AtomicBoolean(false);

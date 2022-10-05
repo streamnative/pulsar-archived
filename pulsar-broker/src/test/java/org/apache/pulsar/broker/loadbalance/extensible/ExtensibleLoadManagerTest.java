@@ -39,6 +39,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.hash.Hashing;
+import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -51,10 +52,13 @@ import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Unload;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.api.MessageRoutingMode;
+import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.impl.TableViewImpl;
 import org.apache.pulsar.common.naming.NamespaceBundle;
 import org.apache.pulsar.common.naming.NamespaceBundleFactory;
+import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.common.policies.data.BundlesData;
 import org.apache.pulsar.common.policies.data.ClusterData;
 import org.apache.pulsar.common.policies.data.Policies;
@@ -482,6 +486,59 @@ public class ExtensibleLoadManagerTest {
         assertEquals(10, admin1.namespaces().getBundles(namespace).getNumBundles());
     }
 
+
+    @Test
+    public void testAutoSplitBundle() throws Exception {
+
+        admin1.tenants().createTenant("my-tenant",
+                TenantInfo.builder().allowedClusters(Collections.singleton(CLUSTER_NAME)).build());
+        Policies policies = new Policies();
+        policies.bundles = BundlesData.builder().numBundles(1).build();
+        policies.replication_clusters = Collections.singleton(CLUSTER_NAME);
+        namespace = "my-tenant/my-namespace";
+        admin1.namespaces().createNamespace(namespace, policies);
+        int numBundles = admin1.namespaces().getBundles(namespace).getNumBundles();
+        assertEquals(numBundles, 1);
+
+        String topic = "test-auto-split-bundle-topic";
+        String fullTopicName = "persistent://" + namespace + "/" + topic;
+        admin1.topics().createPartitionedTopic(fullTopicName, 1001);
+        String lookupBroker = admin1.lookups().lookupTopic(
+                TopicName.get(fullTopicName).getPartition(0).getPartitionedTopicName());
+        for (int i = 1; i < 1000; i++) {
+            String brokerUrl = admin1.lookups().lookupTopic(
+                    TopicName.get(fullTopicName).getPartition(i).getPartitionedTopicName());
+            assertEquals(lookupBroker, brokerUrl);
+        }
+        log.info("Topic {} broker url: {}", topic, lookupBroker);
+
+        assertEquals(lookupBroker,
+                admin2.lookups().lookupTopic(TopicName.get(fullTopicName).getPartition(0).getPartitionedTopicName()));
+        @Cleanup
+        Producer<byte[]> producer1 = pulsarClient.newProducer()
+                .topic(fullTopicName)
+                .enableBatching(false)
+                .messageRoutingMode(MessageRoutingMode.RoundRobinPartition)
+                .create();
+        @Cleanup
+        Producer<byte[]> producer2 = pulsarClient.newProducer()
+                .topic(fullTopicName)
+                .enableBatching(false)
+                .messageRoutingMode(MessageRoutingMode.RoundRobinPartition)
+                .create();
+
+        pulsar1.getBrokerService().updateRates();
+        pulsar2.getBrokerService().updateRates();
+
+        primaryLoadManager.getNamespaceBundleSplitScheduler().execute();
+        secondaryLoadManager.getNamespaceBundleSplitScheduler().execute();
+
+        Awaitility.await().untilAsserted(() -> {
+            int numBundles1 = admin1.namespaces().getBundles(namespace).getNumBundles();
+            assertEquals(numBundles1, 2);
+        });
+
+    }
 
     private void waitUntilNewOwner(BundleStateChannel channel, String key, String target)
             throws IllegalAccessException {

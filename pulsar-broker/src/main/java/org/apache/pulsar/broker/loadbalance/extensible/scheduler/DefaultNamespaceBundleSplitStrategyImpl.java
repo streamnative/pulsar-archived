@@ -68,12 +68,9 @@ public class DefaultNamespaceBundleSplitStrategyImpl implements NamespaceBundleS
                 try {
                     final int bundleCount = namespaceService.getBundleCount(NamespaceName.get(namespace));
                     if (bundleCount < maxBundleCount) {
-                        BundleSplitOption option = new BundleSplitOption();
-                        CompletableFuture<List<Long>> splitBoundary =
-                                NamespaceBundleSplitAlgorithm.RANGE_EQUALLY_DIVIDE_ALGO.getSplitBoundary(option);
 
                         bundleCache.add(
-                                Split.of(bundle, context.brokerRegistry().getLookupServiceAddress(), new HashMap<>()));
+                                Split.of(context.brokerRegistry().getLookupServiceAddress(), bundle, new HashMap<>()));
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug(
