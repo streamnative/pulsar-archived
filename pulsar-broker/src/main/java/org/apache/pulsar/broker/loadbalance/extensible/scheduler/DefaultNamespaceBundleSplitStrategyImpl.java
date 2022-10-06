@@ -20,10 +20,8 @@ package org.apache.pulsar.broker.loadbalance.extensible.scheduler;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.broker.PulsarService;
 import org.apache.pulsar.broker.ServiceConfiguration;
@@ -31,8 +29,6 @@ import org.apache.pulsar.broker.loadbalance.extensible.BaseLoadManagerContext;
 import org.apache.pulsar.broker.loadbalance.extensible.data.Split;
 import org.apache.pulsar.broker.loadbalance.impl.LoadManagerShared;
 import org.apache.pulsar.broker.namespace.NamespaceService;
-import org.apache.pulsar.common.naming.BundleSplitOption;
-import org.apache.pulsar.common.naming.NamespaceBundleSplitAlgorithm;
 import org.apache.pulsar.common.naming.NamespaceName;
 import org.apache.pulsar.policies.data.loadbalancer.NamespaceBundleStats;
 
