@@ -246,8 +246,8 @@
                   <shadedPattern>org.apache.pulsar.functions.runtime.shaded.commons-io</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.distributedlog</pattern>
-                  <shadedPattern>org.apache.pulsar.functions.runtime.shaded.org.apache.distributedlog</shadedPattern>
+                  <pattern>io.streamnative</pattern>
+                  <shadedPattern>org.apache.pulsar.functions.runtime.shaded.io.streamnative</shadedPattern>
                 </relocation>
                 <!-- Jackson cannot be shaded, this is causing java.lang.NoSuchMethodError when calling getThreadLocalYaml-->
                 <relocation>
@@ -259,8 +259,8 @@
                   <shadedPattern>org.apache.pulsar.functions.runtime.shaded.org.inferred</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.bookkeeper</pattern>
-                  <shadedPattern>org.apache.pulsar.functions.runtime.shaded.org.apache.bookkeeper</shadedPattern>
+                  <pattern>io.streamnative</pattern>
+                  <shadedPattern>org.apache.pulsar.functions.runtime.shaded.io.streamnative</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.bookkeeper</pattern>

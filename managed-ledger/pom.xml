@@ -31,15 +31,15 @@
   <name>Managed Ledger</name>
   <dependencies>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-server</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper.stats</groupId>
+      <groupId>io.streamnative.stats</groupId>
       <artifactId>prometheus-metrics-provider</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper.stats</groupId>
+      <groupId>io.streamnative.stats</groupId>
       <artifactId>codahale-metrics-provider</artifactId>
       <version>${bookkeeper.version}</version>
     </dependency>

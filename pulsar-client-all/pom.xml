@@ -155,7 +155,7 @@
                   <include>io.swagger:*</include>
                   <include>io.airlift:*</include>
                   <include>io.streamnative:pulsar-common</include>
-                  <include>org.apache.bookkeeper:*</include>
+                  <include>io.streamnative:*</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>org.glassfish.jersey*:*</include>
                   <include>javax.ws.rs:*</include>
@@ -202,8 +202,8 @@
                   <shadedPattern>org.apache.pulsar.shade.org.asynchttpclient</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache.bookkeeper</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
+                  <pattern>io.streamnative</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.io.streamnative</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>

@@ -76,7 +76,7 @@
       <classifier>linux-x86_64</classifier>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-common-allocator</artifactId>
       <exclusions>
         <exclusion>
@@ -86,7 +86,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>cpu-affinity</artifactId>
     </dependency>
     <dependency>
@@ -94,7 +94,7 @@
       <artifactId>aircompressor</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>circe-checksum</artifactId>
       <version>${bookkeeper.version}</version>
       <exclusions>
