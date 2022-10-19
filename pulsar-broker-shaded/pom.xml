@@ -99,7 +99,7 @@
               <artifactSet>
                 <includes>
                   <include>io.streamnative:*</include>
-                  <include>io.streamnative*:*</include>
+                  <include>org.apache.bookkeeper*:*</include>
                   <include>commons-*:*</include>
                   <include>org.apache.commons:*</include>
                   <include>org.asynchttpclient:*</include>
@@ -110,7 +110,7 @@
                   <include>com.fasterxml.jackson.*:*</include>
                   <include>io.netty:*</include>
                   <include>io.streamnative:pulsar-common</include>
-                  <include>io.streamnative:circe-checksum</include>
+                  <include>org.apache.bookkeeper:circe-checksum</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>javax.ws.rs:*</include>
                   <include>javax.websocket:*</include>
@@ -123,7 +123,7 @@
                   <include>com.github.ben-manes.caffeine:*</include>
                   <include>org.glassfish.jersey.*:*</include>
                   <include>org.rocksdb:*</include>
-                  <include>io.streamnative:*</include>
+                  <include>org.apache.bookkeeper:*</include>
                   <include>io.streamnative:*</include>
                   <include>jline:*</include>
                   <include>javax.servlet:*</include>
@@ -218,8 +218,8 @@
                   <shadedPattern>org.apache.pulsar.shade.org.glassfish</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>io.streamnative</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.streamnative</shadedPattern>
+                  <pattern>org.apache.bookkeeper</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.rocksdb</pattern>

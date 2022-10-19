@@ -119,7 +119,7 @@
                 <includes>
                   <include>io.streamnative:pulsar-client-original</include>
                   <include>io.streamnative:pulsar-transaction-common</include>
-                  <include>io.streamnative:*</include>
+                  <include>org.apache.bookkeeper:*</include>
                   <include>org.apache.commons:commons-lang3</include>
                   <include>commons-codec:commons-codec</include>
                   <include>commons-collections:commons-collections</include>
@@ -281,8 +281,8 @@
                   <shadedPattern>org.apache.pulsar.shade.org.tukaani</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>io.streamnative</pattern>
-                  <shadedPattern>org.apache.pulsar.shade.io.streamnative</shadedPattern>
+                  <pattern>org.apache.bookkeeper</pattern>
+                  <shadedPattern>org.apache.pulsar.shade.org.apache.bookkeeper</shadedPattern>
                 </relocation>
               </relocations>
               <transformers>
