@@ -88,7 +88,7 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>stream-storage-java-client</artifactId>
       <exclusions>
         <exclusion>
@@ -116,7 +116,7 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-common</artifactId>
       <exclusions>
         <exclusion>

@@ -117,7 +117,7 @@
                   <include>com.fasterxml.jackson.core</include>
                   <include>io.netty:*</include>
                   <include>io.streamnative:pulsar-common</include>
-                  <include>org.apache.bookkeeper:*</include>
+                  <include>io.streamnative:*</include>
                   <include>com.yahoo.datasketches:sketches-core</include>
                   <include>org.glassfish.jersey*:*</include>
                   <include>javax.ws.rs:*</include>

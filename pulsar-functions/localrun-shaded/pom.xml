@@ -100,7 +100,7 @@
               <artifactSet>
                 <includes>
                   <include>io.streamnative:*</include>
-                  <include>org.apache.bookkeeper:*</include>
+                  <include>io.streamnative:*</include>
                   <include>commons-*:*</include>
                   <include>org.apache.commons:*</include>
                   <include>com.fasterxml.jackson.*:*</include>

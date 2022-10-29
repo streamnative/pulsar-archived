@@ -89,7 +89,7 @@ flexible messaging model and an intuitive client API.</description>
     <narPluginPhase>package</narPluginPhase>
     <!-- apache commons -->
     <commons-compress.version>1.21</commons-compress.version>
-    <bookkeeper.version>4.14.5</bookkeeper.version>
+    <bookkeeper.version>4.14.5.1-iterable</bookkeeper.version>
     <zookeeper.version>3.6.3.1</zookeeper.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <snappy.version>1.1.7</snappy.version>
@@ -373,7 +373,7 @@ flexible messaging model and an intuitive client API.</description>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>bookkeeper-server</artifactId>
         <version>${bookkeeper.version}</version>
         <exclusions>
@@ -401,7 +401,7 @@ flexible messaging model and an intuitive client API.</description>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>cpu-affinity</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
@@ -427,12 +427,12 @@ flexible messaging model and an intuitive client API.</description>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>bookkeeper-common-allocator</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>bookkeeper-tools-framework</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
@@ -444,7 +444,7 @@ flexible messaging model and an intuitive client API.</description>
       </dependency>
       <!-- exclude the grpc version from bookkeeper and use the one defined here -->
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>stream-storage-java-client</artifactId>
         <version>${bookkeeper.version}</version>
         <exclusions>
@@ -472,7 +472,7 @@ flexible messaging model and an intuitive client API.</description>
       </dependency>
       <!-- exclude the grpc version from bookkeeper and use the one defined here -->
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>stream-storage-server</artifactId>
         <version>${bookkeeper.version}</version>
         <exclusions>
@@ -503,17 +503,17 @@ flexible messaging model and an intuitive client API.</description>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>bookkeeper-common</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper.stats</groupId>
+        <groupId>io.streamnative.stats</groupId>
         <artifactId>bookkeeper-stats-api</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper.stats</groupId>
+        <groupId>io.streamnative.stats</groupId>
         <artifactId>datasketches-metrics-provider</artifactId>
         <version>${bookkeeper.version}</version>
         <exclusions>
@@ -524,7 +524,7 @@ flexible messaging model and an intuitive client API.</description>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.bookkeeper.stats</groupId>
+        <groupId>io.streamnative.stats</groupId>
         <artifactId>prometheus-metrics-provider</artifactId>
         <version>${bookkeeper.version}</version>
       </dependency>
@@ -936,13 +936,13 @@ flexible messaging model and an intuitive client API.</description>
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>org.apache.distributedlog</groupId>
+        <groupId>io.streamnative</groupId>
         <artifactId>distributedlog-core</artifactId>
         <version>${bookkeeper.version}</version>
         <exclusions>
           <!-- exclude bookkeeper, reply on the bookkeeper version that pulsar uses -->
           <exclusion>
-            <groupId>org.apache.bookkeeper</groupId>
+            <groupId>io.streamnative</groupId>
             <artifactId>bookkeeper-server</artifactId>
           </exclusion>
         </exclusions>
@@ -1201,7 +1201,7 @@ flexible messaging model and an intuitive client API.</description>
     </dependency>
     <dependency>
       <!-- We use MockedBookKeeper in many unit tests -->
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-server</artifactId>
       <version>${bookkeeper.version}</version>
       <scope>test</scope>

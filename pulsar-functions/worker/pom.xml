@@ -87,7 +87,7 @@
       <artifactId>jetty-servlet</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.distributedlog</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>distributedlog-core</artifactId>
       <exclusions>
         <exclusion>
@@ -97,7 +97,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-server</artifactId>
     </dependency>
     <dependency>

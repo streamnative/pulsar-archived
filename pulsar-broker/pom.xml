@@ -80,7 +80,7 @@
       <artifactId>curator-recipes</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>stream-storage-server</artifactId>
       <exclusions>
         <exclusion>
@@ -92,7 +92,7 @@
           <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.bookkeeper.tests</groupId>
+          <groupId>io.streamnative.tests</groupId>
           <artifactId>stream-storage-tests-common</artifactId>
         </exclusion>
         <exclusion>
@@ -110,7 +110,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>bookkeeper-tools-framework</artifactId>
     </dependency>
     <dependency>
