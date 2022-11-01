@@ -419,18 +419,18 @@ The Apache Software License, Version 2.0
     - async-http-client-2.12.1.jar
     - async-http-client-netty-utils-2.12.1.jar
   * Apache Bookkeeper
-    - bookkeeper-common-4.14.5.jar
-    - bookkeeper-common-allocator-4.14.5.jar
-    - bookkeeper-proto-4.14.5.jar
-    - bookkeeper-server-4.14.5.jar
-    - bookkeeper-stats-api-4.14.5.jar
-    - bookkeeper-tools-framework-4.14.5.jar
-    - circe-checksum-4.14.5.jar
-    - codahale-metrics-provider-4.14.5.jar
-    - cpu-affinity-4.14.5.jar
-    - http-server-4.14.5.jar
-    - prometheus-metrics-provider-4.14.5.jar
-    - codahale-metrics-provider-4.14.5.jar
+    - bookkeeper-common-4.14.5.1-iterable.jar
+    - bookkeeper-common-allocator-4.14.5.1-iterable.jar
+    - bookkeeper-proto-4.14.5.1-iterable.jar
+    - bookkeeper-server-4.14.5.1-iterable.jar
+    - bookkeeper-stats-api-4.14.5.1-iterable.jar
+    - bookkeeper-tools-framework-4.14.5.1-iterable.jar
+    - circe-checksum-4.14.5.1-iterable.jar
+    - codahale-metrics-provider-4.14.5.1-iterable.jar
+    - cpu-affinity-4.14.5.1-iterable.jar
+    - http-server-4.14.5.1-iterable.jar
+    - prometheus-metrics-provider-4.14.5.1-iterable.jar
+    - codahale-metrics-provider-4.14.5.1-iterable.jar
   * Apache Commons
     - commons-cli-1.5.0.jar
     - commons-codec-1.15.jar
@@ -455,8 +455,8 @@ The Apache Software License, Version 2.0
     - memory-0.8.3.jar
     - sketches-core-0.8.3.jar
   * Apache Zookeeper
-    - zookeeper-3.6.3.jar
-    - zookeeper-jute-3.6.3.jar
+    - zookeeper-3.6.3.1.jar
+    - zookeeper-jute-3.6.3.1.jar
   * Apache Yetus Audience Annotations
     - audience-annotations-0.5.0.jar
   * Swagger
