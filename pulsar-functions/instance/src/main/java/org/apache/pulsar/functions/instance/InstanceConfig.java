@@ -49,6 +49,8 @@ public class InstanceConfig {
     private int metricsPort;
     private List<String> additionalJavaRuntimeArguments = Collections.emptyList();
 
+    private String configFile;
+
     /**
      * Get the string representation of {@link #getInstanceId()}.
      *
