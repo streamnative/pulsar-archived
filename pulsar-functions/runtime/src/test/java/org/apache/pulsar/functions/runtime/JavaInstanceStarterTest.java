@@ -28,12 +28,10 @@ import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.common.nar.NarClassLoader;
 import org.assertj.core.util.Sets;
-import org.bouncycastle.util.Integers;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
-import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
 
 @Slf4j
 public class JavaInstanceStarterTest {

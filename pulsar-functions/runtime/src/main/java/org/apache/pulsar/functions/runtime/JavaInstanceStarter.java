@@ -36,7 +36,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.prometheus.client.exporter.HTTPServer;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -66,9 +65,6 @@ import org.apache.pulsar.functions.runtime.thread.ThreadRuntimeFactory;
 import org.apache.pulsar.functions.secretsprovider.ClearTextSecretsProvider;
 import org.apache.pulsar.functions.secretsprovider.SecretsProvider;
 import org.apache.pulsar.functions.utils.FunctionCommon;
-
-import javax.validation.ValidationException;
-
 
 @Slf4j
 public class JavaInstanceStarter implements AutoCloseable {
@@ -641,8 +637,8 @@ public class JavaInstanceStarter implements AutoCloseable {
             requireNonNull(maxBufferedTuples);
             requireNonNull(expectedHealthCheckInterval);
         } catch (NullPointerException e) {
-            throw new IllegalArgumentException(String.format("Required field are not provided in command line args" +
-                    " or file, list of required fields are: %s",
+            throw new IllegalArgumentException(String.format("Required field are not provided in command line args"
+                            + " or file, list of required fields are: %s",
                     Strings.join(",", requiredConfigFieldNames().toArray())),
                     e);
         }
@@ -665,7 +661,9 @@ public class JavaInstanceStarter implements AutoCloseable {
         stateStorageServiceUrl = useSecondIfFirstIsNull(stateStorageServiceUrl, "");
         secretsProviderClassName = useSecondIfFirstIsNull(secretsProviderClassName, "");
         secretsProviderConfig = useSecondIfFirstIsNull(secretsProviderConfig, "");
-        narExtractionDirectory = useSecondIfFirstIsNull(narExtractionDirectory, NarClassLoader.DEFAULT_NAR_EXTRACTION_DIR);
+        narExtractionDirectory = useSecondIfFirstIsNull(
+                narExtractionDirectory,
+                NarClassLoader.DEFAULT_NAR_EXTRACTION_DIR);
         webServiceUrl = useSecondIfFirstIsNull(webServiceUrl, null);
 
         // Integer
