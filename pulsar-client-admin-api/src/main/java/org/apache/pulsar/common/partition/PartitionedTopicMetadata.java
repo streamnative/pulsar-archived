@@ -29,6 +29,7 @@ public class PartitionedTopicMetadata {
     /* Number of partitions for the topic */
     public int partitions;
 
+
     /* Topic properties */
     public Map<String, String> properties;
 
