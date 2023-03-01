@@ -475,8 +475,36 @@ public class TopicsImpl extends BaseResource implements Topics {
     }
 
     @Override
+    public void updateProperties(String topic, Map<String, String> properties) throws PulsarAdminException {
+        sync(() -> updatePropertiesAsync(topic, properties));
+    }
+
+    @Override
+    public CompletableFuture<Void> updatePropertiesAsync(String topic, Map<String, String> properties) {
+        TopicName tn = validateTopic(topic);
+        WebTarget path = topicPath(tn, "properties");
+        if (properties == null) {
+            properties = new HashMap<>();
+        }
+        return asyncPutRequest(path, Entity.entity(properties, MediaType.APPLICATION_JSON));
+    }
+
+    @Override
     public void deletePartitionedTopic(String topic) throws PulsarAdminException {
         deletePartitionedTopic(topic, false);
+    }
+
+    @Override
+    public void removeProperties(String topic, String key) throws PulsarAdminException {
+        sync(() -> removePropertiesAsync(topic, key));
+    }
+
+    @Override
+    public CompletableFuture<Void> removePropertiesAsync(String topic, String key) {
+        TopicName tn = validateTopic(topic);
+        WebTarget path = topicPath(tn, "properties")
+                .queryParam("key", key);
+        return asyncDeleteRequest(path);
     }
 
     @Override
