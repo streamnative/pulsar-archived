@@ -689,8 +689,8 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
 
             if (state != State.Connected) {
                 // First time authentication is done
-                if (service.isAuthenticationEnabled() && service.isAuthorizationEnabled()) {
-                    if (!isValidRoleAndOriginalPrincipal()) {
+                if (service.isAuthenticationEnabled()) {
+                    if (service.isAuthorizationEnabled() && !isValidRoleAndOriginalPrincipal()) {
                         state = State.Failed;
                         service.getPulsarStats().recordConnectionCreateFail();
                         final ByteBuf msg = Commands.newError(-1, ServerError.AuthorizationError, "Invalid roles.");
