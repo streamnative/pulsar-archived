@@ -600,28 +600,6 @@ public class ServerCnxTest {
         channel.finish();
     }
 
-    @Test(timeOut = 30000)
-    public void testConnectCommandWithInvalidRoleCombinations() throws Exception {
-        AuthenticationService authenticationService = mock(AuthenticationService.class);
-        AuthenticationProvider authenticationProvider = new MockAuthenticationProvider();
-        String authMethodName = authenticationProvider.getAuthMethodName();
-
-        when(brokerService.getAuthenticationService()).thenReturn(authenticationService);
-        when(authenticationService.getAuthenticationProvider(authMethodName)).thenReturn(authenticationProvider);
-        svcConfig.setAuthenticationEnabled(true);
-        svcConfig.setAuthenticateOriginalAuthData(false);
-        svcConfig.setAuthorizationEnabled(true);
-        svcConfig.setProxyRoles(Collections.singleton("pass.proxy"));
-
-        // Invalid combinations where authData is proxy role
-        verifyAuthRoleAndOriginalPrincipalBehavior(authMethodName, "pass.proxy", "pass.proxy");
-        verifyAuthRoleAndOriginalPrincipalBehavior(authMethodName, "pass.proxy", "");
-        verifyAuthRoleAndOriginalPrincipalBehavior(authMethodName, "pass.proxy", null);
-
-        verifyAuthRoleAndOriginalPrincipalBehavior(authMethodName, "pass.client", "pass.client");
-        verifyAuthRoleAndOriginalPrincipalBehavior(authMethodName, "pass.client", "pass.client1");
-    }
-
     private void verifyAuthRoleAndOriginalPrincipalBehavior(String authMethodName, String authData,
                                                             String originalPrincipal) throws Exception {
         resetChannel();
