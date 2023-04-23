@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0"?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,22 +19,28 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+  xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>io.streamnative</groupId>
+    <groupId>org.apache.pulsar</groupId>
     <artifactId>pulsar</artifactId>
-    <version>3.0.0-delayed2-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
   </parent>
+
   <artifactId>pulsar-broker-auth-sasl</artifactId>
   <packaging>jar</packaging>
   <description>SASL authentication plugin for broker</description>
+
   <dependencies>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>pulsar-broker</artifactId>
       <version>${project.version}</version>
     </dependency>
+
     <dependency>
       <groupId>org.apache.kerby</groupId>
       <artifactId>kerby-config</artifactId>
@@ -47,6 +53,7 @@
         </exclusion>
       </exclusions>
     </dependency>
+
     <dependency>
       <groupId>org.apache.kerby</groupId>
       <artifactId>kerb-simplekdc</artifactId>
@@ -59,25 +66,30 @@
         </exclusion>
       </exclusions>
     </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>pulsar-proxy</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>testmocks</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>pulsar-client-auth-sasl</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+
   </dependencies>
+
   <profiles>
     <profile>
       <!-- enables builds with -Dmaven.test.skip=true -->
@@ -99,6 +111,8 @@
       </dependencies>
     </profile>
   </profiles>
+
+
   <build>
     <plugins>
       <plugin>
@@ -118,6 +132,7 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>

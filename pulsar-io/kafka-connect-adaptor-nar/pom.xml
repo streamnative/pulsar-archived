@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,15 +18,18 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>io.streamnative</groupId>
+    <groupId>org.apache.pulsar</groupId>
     <artifactId>pulsar-io</artifactId>
-    <version>3.0.0-delayed2-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
   </parent>
+
   <artifactId>pulsar-io-kafka-connect-adaptor-nar</artifactId>
   <name>Pulsar IO :: Kafka Connect Adaptor NAR</name>
+
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -35,6 +37,8 @@
       <version>${project.version}</version>
     </dependency>
   </dependencies>
+
+
   <build>
     <plugins>
       <plugin>
@@ -44,30 +48,7 @@
           <finalName>pulsar-io-kafka-connect-adaptor-${project.version}</finalName>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.2.0</version>
-        <executions>
-          <execution>
-            <id>default-jar</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>javadoc-jar</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-            <configuration>
-              <classifier>javadoc</classifier>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
+
 </project>

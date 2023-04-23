@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,31 +18,39 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
-    <groupId>io.streamnative</groupId>
+    <groupId>org.apache.pulsar</groupId>
     <artifactId>pulsar-client-1x-base</artifactId>
-    <version>3.0.0-delayed2-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
+
   <artifactId>pulsar-client-1x</artifactId>
   <name>Pulsar Client 1.x Compatibility API</name>
+
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>pulsar-client-2x-shaded</artifactId>
       <version>${project.version}</version>
     </dependency>
+
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
     </dependency>
   </dependencies>
+
+
   <build>
     <plugins>
       <plugin>
@@ -63,6 +70,7 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-maven-plugin</artifactId>
@@ -82,4 +90,5 @@
       </plugin>
     </plugins>
   </build>
+
 </project>

@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,16 +18,20 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
-    <groupId>io.streamnative</groupId>
+    <groupId>org.apache.pulsar</groupId>
     <artifactId>bouncy-castle-parent</artifactId>
-    <version>3.0.0-delayed2-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
+
   <artifactId>bouncy-castle-bcfips</artifactId>
   <name>Apache Pulsar :: Bouncy Castle :: BC-FIPS</name>
+
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -36,17 +39,20 @@
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
+
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bc-fips</artifactId>
       <version>${bouncycastle.bc-fips.version}</version>
     </dependency>
+
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-fips</artifactId>
       <version>${bouncycastle.bcpkix-fips.version}</version>
     </dependency>
   </dependencies>
+
   <build>
     <plugins>
       <!-- build a `jar in jar` to avoid break bc signature-->

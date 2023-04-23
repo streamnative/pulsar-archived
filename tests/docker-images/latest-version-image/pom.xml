@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,16 +18,18 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>io.streamnative.tests</groupId>
+    <groupId>org.apache.pulsar.tests</groupId>
     <artifactId>docker-images</artifactId>
-    <version>3.0.0-delayed2-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>latest-version-image</artifactId>
   <name>Apache Pulsar :: Tests :: Docker Images :: Latest Version Testing</name>
   <packaging>pom</packaging>
+
   <profiles>
     <profile>
       <id>docker</id>
@@ -39,17 +40,17 @@
       </activation>
       <dependencies>
         <dependency>
-          <groupId>io.streamnative.tests</groupId>
+          <groupId>org.apache.pulsar.tests</groupId>
           <artifactId>java-test-functions</artifactId>
           <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-          <groupId>io.streamnative.tests</groupId>
+          <groupId>org.apache.pulsar.tests</groupId>
           <artifactId>java-test-plugins</artifactId>
           <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-          <groupId>io.streamnative</groupId>
+          <groupId>org.apache.pulsar</groupId>
           <artifactId>pulsar-all-docker-image</artifactId>
           <version>${project.parent.version}</version>
           <type>pom</type>
@@ -76,7 +77,7 @@
                 <configuration>
                   <artifactItems>
                     <artifactItem>
-                      <groupId>io.streamnative.tests</groupId>
+                      <groupId>org.apache.pulsar.tests</groupId>
                       <artifactId>java-test-functions</artifactId>
                       <version>${project.parent.version}</version>
                       <type>jar</type>
@@ -85,7 +86,7 @@
                       <destFileName>java-test-functions.jar</destFileName>
                     </artifactItem>
                     <artifactItem>
-                      <groupId>io.streamnative.tests</groupId>
+                      <groupId>org.apache.pulsar.tests</groupId>
                       <artifactId>java-test-plugins</artifactId>
                       <version>${project.parent.version}</version>
                       <type>jar</type>
