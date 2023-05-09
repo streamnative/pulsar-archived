@@ -369,9 +369,6 @@ public class PersistentReplicator extends AbstractReplicator
 
                 dispatchRateLimiter.ifPresent(rateLimiter -> rateLimiter.tryDispatchPermit(1, entry.getLength()));
 
-                // Increment pending messages for messages produced locally
-                PENDING_MESSAGES_UPDATER.incrementAndGet(this);
-
                 msgOut.recordEvent(headersAndPayload.readableBytes());
 
                 msg.setReplicatedFrom(localCluster);
@@ -403,6 +400,8 @@ public class PersistentReplicator extends AbstractReplicator
                     });
                 } else {
                     msg.setSchemaInfoForReplicator(schemaFuture.get());
+                    // Increment pending messages for messages produced locally
+                    PENDING_MESSAGES_UPDATER.incrementAndGet(this);
                     producer.sendAsync(msg, ProducerSendCallback.create(this, entry, msg));
                     atLeastOneMessageSentForReplication = true;
                 }
@@ -670,6 +669,14 @@ public class PersistentReplicator extends AbstractReplicator
     public void deleteFailed(ManagedLedgerException exception, Object ctx) {
         log.error("[{}][{} -> {}] Failed to delete message at {}: {}", topicName, localCluster, remoteCluster, ctx,
                 exception.getMessage(), exception);
+        if (exception instanceof CursorAlreadyClosedException) {
+            log.error("[{}][{} -> {}] Asynchronous ack failure because replicator is already deleted and cursor is"
+                    + " already closed {}, ({})", topic, localCluster, remoteCluster, ctx, exception.getMessage(),
+                    exception);
+            // replicator is already deleted and cursor is already closed so, producer should also be stopped
+            closeProducerAsync();
+            return;
+        }
         if (ctx instanceof PositionImpl) {
             PositionImpl deletedEntry = (PositionImpl) ctx;
             if (deletedEntry.compareTo((PositionImpl) cursor.getMarkDeletedPosition()) > 0) {
@@ -683,6 +690,8 @@ public class PersistentReplicator extends AbstractReplicator
     public void updateRates() {
         msgOut.calculateRate();
         msgExpired.calculateRate();
+        expiryMonitor.updateRates();
+
         stats.msgRateOut = msgOut.getRate();
         stats.msgThroughputOut = msgOut.getValueRate();
         stats.msgRateExpired = msgExpired.getRate() + expiryMonitor.getMessageExpiryRate();

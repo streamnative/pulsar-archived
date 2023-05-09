@@ -347,7 +347,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         return MetadataStoreFactory.create(config.getConfigurationMetadataStoreUrl(),
                 MetadataStoreConfig.builder()
                         .sessionTimeoutMillis((int) config.getMetadataStoreSessionTimeoutMillis())
-                        .allowReadOnlyOperations(false)
+                        .allowReadOnlyOperations(config.isZooKeeperAllowReadOnlyOperations())
                         .configFilePath(config.getMetadataStoreConfigPath())
                         .batchingEnabled(config.isMetadataStoreBatchingEnabled())
                         .batchingMaxDelayMillis(config.getMetadataStoreBatchingMaxDelayMillis())
@@ -452,6 +452,12 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 protocolHandlers = null;
             }
 
+            // cancel loadShedding task and shutdown the loadManager executor before shutting down the broker
+            if (this.loadSheddingTask != null) {
+                this.loadSheddingTask.cancel();
+            }
+            executorServicesShutdown.shutdown(loadManagerExecutor);
+
             List<CompletableFuture<Void>> asyncCloseFutures = new ArrayList<>();
             if (this.brokerService != null) {
                 CompletableFuture<Void> brokerCloseFuture = this.brokerService.closeAsync();
@@ -485,12 +491,6 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                 this.leaderElectionService.close();
                 this.leaderElectionService = null;
             }
-
-            // cancel loadShedding task and shutdown the loadManager executor before shutting down the broker
-            if (this.loadSheddingTask != null) {
-                this.loadSheddingTask.cancel();
-            }
-            executorServicesShutdown.shutdown(loadManagerExecutor);
 
             if (adminClient != null) {
                 adminClient.close();
@@ -980,7 +980,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         return MetadataStoreExtended.create(config.getMetadataStoreUrl(),
                 MetadataStoreConfig.builder()
                         .sessionTimeoutMillis((int) config.getMetadataStoreSessionTimeoutMillis())
-                        .allowReadOnlyOperations(false)
+                        .allowReadOnlyOperations(config.isZooKeeperAllowReadOnlyOperations())
                         .configFilePath(config.getMetadataStoreConfigPath())
                         .batchingEnabled(config.isMetadataStoreBatchingEnabled())
                         .batchingMaxDelayMillis(config.getMetadataStoreBatchingMaxDelayMillis())
@@ -1409,6 +1409,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                     conf.setTlsCiphers(this.getConfiguration().getBrokerClientTlsCiphers());
                     conf.setTlsProtocols(this.getConfiguration().getBrokerClientTlsProtocols());
                     conf.setTlsAllowInsecureConnection(this.getConfiguration().isTlsAllowInsecureConnection());
+                    conf.setTlsHostnameVerificationEnable(this.getConfiguration().isTlsHostnameVerificationEnabled());
                     if (this.getConfiguration().isBrokerClientTlsEnabledWithKeyStore()) {
                         conf.setUseKeyStoreTls(true);
                         conf.setTlsTrustStoreType(this.getConfiguration().getBrokerClientTlsTrustStoreType());
@@ -1471,7 +1472,8 @@ public class PulsarService implements AutoCloseable, ShutdownService {
                     } else {
                         builder.tlsTrustCertsFilePath(conf.getBrokerClientTrustCertsFilePath());
                     }
-                    builder.allowTlsInsecureConnection(conf.isTlsAllowInsecureConnection());
+                    builder.allowTlsInsecureConnection(conf.isTlsAllowInsecureConnection())
+                            .enableTlsHostnameVerification(conf.isTlsHostnameVerificationEnabled());
                 }
 
                 // most of the admin request requires to make zk-call so, keep the max read-timeout based on
@@ -1694,7 +1696,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
         workerConfig.setMetadataStoreCacheExpirySeconds(brokerConfig.getMetadataStoreCacheExpirySeconds());
         workerConfig.setTlsAllowInsecureConnection(brokerConfig.isTlsAllowInsecureConnection());
         workerConfig.setTlsEnabled(brokerConfig.isTlsEnabled());
-        workerConfig.setTlsEnableHostnameVerification(false);
+        workerConfig.setTlsEnableHostnameVerification(brokerConfig.isTlsHostnameVerificationEnabled());
         workerConfig.setBrokerClientTrustCertsFilePath(brokerConfig.getTlsTrustCertsFilePath());
 
         // client in worker will use this config to authenticate with broker
@@ -1703,6 +1705,7 @@ public class PulsarService implements AutoCloseable, ShutdownService {
 
         // inherit super users
         workerConfig.setSuperUserRoles(brokerConfig.getSuperUserRoles());
+        workerConfig.setProxyRoles(brokerConfig.getProxyRoles());
 
         // inherit the nar package locations
         if (isBlank(workerConfig.getFunctionsWorkerServiceNarPackage())) {

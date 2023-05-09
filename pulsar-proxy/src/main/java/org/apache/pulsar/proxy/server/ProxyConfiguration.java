@@ -149,6 +149,12 @@ public class ProxyConfiguration implements PulsarConfiguration {
     private int zooKeeperCacheExpirySeconds = -1;
 
     @FieldContext(
+            category = CATEGORY_SERVER,
+            doc = "Is zooKeeper allow read-only operations."
+    )
+    private boolean zooKeeperAllowReadOnlyOperations;
+
+    @FieldContext(
         category = CATEGORY_BROKER_DISCOVERY,
         doc = "The service url points to the broker cluster"
     )
@@ -356,6 +362,14 @@ public class ProxyConfiguration implements PulsarConfiguration {
         doc = "Service Principal, for login context name. Default value is \"PulsarProxy\"."
     )
     private String saslJaasServerSectionName = SaslConstants.JAAS_DEFAULT_PROXY_SECTION_NAME;
+
+    @FieldContext(
+            category = CATEGORY_SASL_AUTH,
+            doc = "Path to file containing the secret to be used to SaslRoleTokenSigner\n"
+                    + "The secret can be specified like:\n"
+                    + "saslJaasServerRoleTokenSignerSecretPath=file:///my/saslRoleTokenSignerSecret.key."
+    )
+    private String saslJaasServerRoleTokenSignerSecretPath;
 
     @FieldContext(
         category = CATEGORY_SASL_AUTH,

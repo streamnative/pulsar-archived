@@ -102,8 +102,9 @@ public class WebSocketService implements Closeable {
 
         if (isNotBlank(config.getConfigurationMetadataStoreUrl())) {
             try {
-                configMetadataStore = createMetadataStore(config.getConfigurationMetadataStoreUrl(),
-                        (int) config.getMetadataStoreSessionTimeoutMillis());
+                configMetadataStore = createConfigMetadataStore(config.getConfigurationMetadataStoreUrl(),
+                        (int) config.getMetadataStoreSessionTimeoutMillis(),
+                        config.isZooKeeperAllowReadOnlyOperations());
             } catch (MetadataStoreException e) {
                 throw new PulsarServerException(e);
             }
@@ -123,9 +124,10 @@ public class WebSocketService implements Closeable {
         log.info("Pulsar WebSocket Service started");
     }
 
-    public MetadataStoreExtended createMetadataStore(String serverUrls, int sessionTimeoutMs)
+    public MetadataStoreExtended createConfigMetadataStore(String serverUrls, int sessionTimeoutMs, boolean
+            isAllowReadOnlyOperations)
             throws MetadataStoreException {
-        return PulsarResources.createMetadataStore(serverUrls, sessionTimeoutMs);
+        return PulsarResources.createConfigMetadataStore(serverUrls, sessionTimeoutMs, isAllowReadOnlyOperations);
     }
 
     @Override
@@ -180,6 +182,7 @@ public class WebSocketService implements Closeable {
                 .statsInterval(0, TimeUnit.SECONDS) //
                 .enableTls(config.isTlsEnabled()) //
                 .allowTlsInsecureConnection(config.isTlsAllowInsecureConnection()) //
+                .enableTlsHostnameVerification(config.isTlsHostnameVerificationEnabled())
                 .tlsTrustCertsFilePath(config.getBrokerClientTrustCertsFilePath()) //
                 .ioThreads(config.getWebSocketNumIoThreads()) //
                 .connectionsPerBroker(config.getWebSocketConnectionsPerBroker());
