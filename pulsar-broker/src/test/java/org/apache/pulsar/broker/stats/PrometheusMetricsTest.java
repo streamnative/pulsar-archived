@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import javax.naming.AuthenticationException;
 import lombok.Cleanup;
@@ -550,8 +551,56 @@ public class PrometheusMetricsTest extends BrokerTestBase {
         }
 
         // Mock another broker to make split task work.
+        String json =
+            "{"
+                + "\"webServiceUrl\": \"http://127.0.0.1:0\","
+                + "\"webServiceUrlTls\": \"https://127.0.0.1:0\","
+                + "\"pulsarServiceUrl\": \"pulsar://127.0.0.1:0\","
+                + "\"pulsarServiceUrlTls\": \"pulsar+ssl://127.0.0.1:0\","
+                + "\"persistentTopicsEnabled\": true,"
+                + "\"nonPersistentTopicsEnabled\": true,"
+                + "\"cpu\": {"
+                    + "\"usage\": 0.0,"
+                    + "\"limit\": 1000.0"
+                + "},"
+                + "\"memory\": {"
+                    + "\"usage\": 124.1398696899414,"
+                    + "\"limit\": 1024.0"
+                + "},"
+                + "\"directMemory\": {"
+                    + "\"usage\": 4.0,"
+                    + "\"limit\": 1024.0"
+                + "},"
+                + "\"bandwidthIn\": {"
+                    + "\"usage\": -1.0,"
+                    + "\"limit\": -1.0"
+                + "},"
+                + "\"bandwidthOut\": {"
+                    + "\"usage\": -1.0,"
+                    + "\"limit\": -1.0"
+                + "},"
+                + "\"msgThroughputIn\": 0.0,"
+                + "\"msgThroughputOut\": 0.0,"
+                + "\"msgRateIn\": 0.0,"
+                + "\"msgRateOut\": 0.0,"
+                + "\"lastUpdate\": 1683812593521,"
+                + "\"lastStats\": {},"
+                + "\"numTopics\": 0,"
+                + "\"numBundles\": 0,"
+                + "\"numConsumers\": 0,"
+                + "\"numProducers\": 0,"
+                + "\"bundles\": [],"
+                + "\"lastBundleGains\": [],"
+                + "\"lastBundleLosses\": [],"
+                + "\"brokerVersionString\": \"2.10.4\","
+                + "\"protocols\": {},"
+                + "\"advertisedListeners\": {},"
+                + "\"maxResourceUsage\": 0.00390625,"
+                + "\"loadReportType\": \"LocalBrokerData\","
+                + "\"bundleStats\": {}"
+            + "}";
         String mockedBroker = "/loadbalance/brokers/127.0.0.1:0";
-        mockZooKeeper.create(mockedBroker, new byte[]{0}, Collections.emptyList(), CreateMode.EPHEMERAL);
+        mockZooKeeper.create(mockedBroker, json.getBytes(), Collections.emptyList(), CreateMode.EPHEMERAL);
 
         pulsar.getBrokerService().updateRates();
         Awaitility.await().untilAsserted(() -> assertTrue(pulsar.getBrokerService().getBundleStats().size() > 0));
@@ -1682,6 +1731,32 @@ public class PrometheusMetricsTest extends BrokerTestBase {
         public String toString() {
             return MoreObjects.toStringHelper(this).add("tags", tags).add("value", value).toString();
         }
+    }
+
+    @Test
+    public void testEscapeLabelValue() throws Exception {
+        String ns1 = "prop/ns-abc1";
+        admin.namespaces().createNamespace(ns1);
+        String topic = "persistent://" + ns1 + "/\"mytopic";
+        admin.topics().createNonPartitionedTopic(topic);
+
+        @Cleanup
+        final Consumer<?> consumer = pulsarClient.newConsumer()
+                .subscriptionName("sub")
+                .topic(topic)
+                .subscribe();
+        @Cleanup
+        ByteArrayOutputStream statsOut = new ByteArrayOutputStream();
+        PrometheusMetricsGenerator.generate(pulsar, true, false,
+                false, statsOut);
+        String metricsStr = statsOut.toString();
+        final List<String> subCountLines = Arrays.stream(metricsStr.split("\n"))
+                .filter(line -> line.startsWith("pulsar_subscriptions_count") && line.contains("topic="))
+                .collect(Collectors.toList());
+        System.out.println(subCountLines);
+        assertEquals(subCountLines.size(), 1);
+        assertEquals(subCountLines.get(0),
+                "pulsar_subscriptions_count{cluster=\"test\",namespace=\"prop/ns-abc1\",topic=\"persistent://prop/ns-abc1/\\\"mytopic\"} 1");
     }
 
 }
