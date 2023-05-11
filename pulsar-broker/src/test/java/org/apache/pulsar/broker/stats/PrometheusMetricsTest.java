@@ -576,7 +576,7 @@ public class PrometheusMetricsTest extends BrokerTestBase {
         assertTrue(metrics.containsKey("pulsar_lb_bandwidth_in_usage"));
         assertTrue(metrics.containsKey("pulsar_lb_bandwidth_out_usage"));
 
-        assertTrue(metrics.containsKey("pulsar_lb_bundles_split_total"));
+        assertTrue(metrics.containsKey("pulsar_lb_bundles_split_count"));
 
         mockZooKeeper.delete(mockedBroker, 0);
     }
