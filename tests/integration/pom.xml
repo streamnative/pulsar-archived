@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,24 +19,20 @@
     under the License.
 
 -->
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.pulsar.tests</groupId>
+    <groupId>io.streamnative.tests</groupId>
     <artifactId>tests-parent</artifactId>
-    <version>3.0.0</version>
+    <version>3.0.0.2</version>
   </parent>
-
   <artifactId>integration</artifactId>
   <packaging>jar</packaging>
   <name>Apache Pulsar :: Tests :: Integration</name>
-
   <properties>
     <integrationTestSuiteFile>pulsar.xml</integrationTestSuiteFile>
     <mongo-reactivestreams.version>4.1.2</mongo-reactivestreams.version>
   </properties>
-
   <dependencies>
     <dependency>
       <groupId>com.google.code.gson</groupId>
@@ -44,37 +40,37 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-functions-api-examples</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-broker</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-common</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-client-original</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-client-admin-original</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>managed-ledger</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -96,102 +92,86 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-io-kafka</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mysql</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql-jdbc.version}</version>
       <scope>runtime</scope>
     </dependency>
-
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>com.github.docker-java</groupId>
       <artifactId>docker-java-core</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
-      <groupId>org.apache.pulsar</groupId>
+      <groupId>io.streamnative</groupId>
       <artifactId>pulsar-io-jdbc-postgres</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-yaml</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.opensearch.client</groupId>
       <artifactId>opensearch-rest-high-level-client</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>co.elastic.clients</groupId>
       <artifactId>elasticsearch-java</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>elasticsearch</artifactId>
       <scope>test</scope>
     </dependency>
-
-
     <dependency>
       <groupId>com.rabbitmq</groupId>
       <artifactId>amqp-client</artifactId>
       <version>${rabbitmq-client.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>io.trino</groupId>
       <artifactId>trino-jdbc</artifactId>
       <version>${trino.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
       <scope>test</scope>
     </dependency>
-
-<!--    kinesis-->
+    <!--    kinesis-->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>localstack</artifactId>
@@ -208,7 +188,6 @@
       <artifactId>aws-java-sdk-core</artifactId>
       <scope>test</scope>
     </dependency>
-
     <!-- mongodb -->
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -221,9 +200,7 @@
       <version>${mongo-reactivestreams.version}</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
@@ -264,7 +241,6 @@
       </plugin>
     </plugins>
   </build>
-
   <profiles>
     <profile>
       <id>integrationTests</id>
