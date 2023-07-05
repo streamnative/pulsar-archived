@@ -79,7 +79,6 @@ RUN mkdir /pulsar && chmod g+w /pulsar
 
 ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
 RUN echo networkaddress.cache.ttl=1 >> /usr/lib/jvm/java-17-openjdk-amd64/conf/security/java.security
-ADD target/python-client/ /pulsar/pulsar-client
 
 ENV PULSAR_ROOT_LOGGER=INFO,CONSOLE
 
