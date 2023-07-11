@@ -50,8 +50,10 @@ import org.apache.pulsar.metadata.api.MetadataStoreFactory;
 import org.apache.pulsar.metadata.api.Notification;
 import org.apache.pulsar.metadata.api.NotificationType;
 import org.apache.pulsar.metadata.api.Stat;
+import org.apache.pulsar.metadata.impl.ZKMetadataStore;
 import org.assertj.core.util.Lists;
 import org.awaitility.Awaitility;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Slf4j
@@ -388,6 +390,69 @@ public class MetadataStoreTest extends BaseMetadataStoreTest {
 
         zks.checkContainers();
         assertFalse(store.exists(prefix).join());
+    }
+
+    @DataProvider(name = "conditionOfSwitchThread")
+    public Object[][] conditionOfSwitchThread(){
+        return new Object[][]{
+            {false},
+            {true},
+            {false},
+            {true}
+        };
+    }
+
+    @Test(dataProvider = "conditionOfSwitchThread")
+    public void testThreadSwitchOfZkMetadataStore(boolean enabledBatch) throws Exception {
+        final String prefix = newKey();
+        final String metadataStoreNamePrefix = "metadata-store";
+        MetadataStoreConfig.MetadataStoreConfigBuilder builder =
+                MetadataStoreConfig.builder();
+        builder.batchingEnabled(enabledBatch);
+        MetadataStoreConfig config = builder.build();
+        @Cleanup
+        ZKMetadataStore store = (ZKMetadataStore) MetadataStoreFactory.create(zks.getConnectionString(), config);
+
+        final Runnable verify = () -> {
+            String currentThreadName = Thread.currentThread().getName();
+            String errorMessage = String.format("Expect to switch to thread %s, but currently it is thread %s",
+                    metadataStoreNamePrefix, currentThreadName);
+            assertTrue(Thread.currentThread().getName().startsWith(metadataStoreNamePrefix), errorMessage);
+        };
+
+        // put with node which has parent(but the parent node is not exists).
+        store.put(prefix + "/a1/b1/c1", "value".getBytes(), Optional.of(-1L)).thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).join();
+        // put.
+        store.put(prefix + "/b1", "value".getBytes(), Optional.of(-1L)).thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).join();
+        // get.
+        store.get(prefix + "/b1").thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).join();
+        // get the node which is not exists.
+        store.get(prefix + "/non").thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).join();
+        // delete.
+        store.delete(prefix + "/b1", Optional.empty()).thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).join();
+        // delete the node which is not exists.
+        store.delete(prefix + "/non", Optional.empty()).thenApply((ignore) -> {
+            verify.run();
+            return null;
+        }).exceptionally(ex -> {
+            verify.run();
+            return null;
+        }).join();
     }
 
     @Test(dataProvider = "impl")

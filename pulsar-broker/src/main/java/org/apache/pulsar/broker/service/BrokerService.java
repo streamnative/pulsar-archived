@@ -72,7 +72,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import javax.ws.rs.core.Response;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -162,7 +161,6 @@ import org.apache.pulsar.common.stats.Metrics;
 import org.apache.pulsar.common.util.FieldParser;
 import org.apache.pulsar.common.util.FutureUtil;
 import org.apache.pulsar.common.util.RateLimiter;
-import org.apache.pulsar.common.util.RestException;
 import org.apache.pulsar.common.util.collections.ConcurrentOpenHashMap;
 import org.apache.pulsar.common.util.collections.ConcurrentOpenHashSet;
 import org.apache.pulsar.common.util.netty.ChannelFutures;
@@ -1403,7 +1401,8 @@ public class BrokerService implements Closeable {
                             return null;
                         });
                     } else {
-                        pendingTopicLoadingQueue.add(new TopicLoadingContext(topic, topicFuture, properties));
+                        pendingTopicLoadingQueue.add(new TopicLoadingContext(topic,
+                                createIfMissing, topicFuture, properties));
                         if (log.isDebugEnabled()) {
                             log.debug("topic-loading for {} added into pending queue", topic);
                         }
@@ -1991,10 +1990,6 @@ public class BrokerService implements Closeable {
 
     public AuthorizationService getAuthorizationService() {
         return authorizationService;
-    }
-
-    public CompletableFuture<Void> removeTopicFromCache(String topicName) {
-        return removeTopicFutureFromCache(topicName, null);
     }
 
     public CompletableFuture<Void> removeTopicFromCache(Topic topic) {
@@ -2683,7 +2678,10 @@ public class BrokerService implements Closeable {
             CompletableFuture<Optional<Topic>> pendingFuture = pendingTopic.getTopicFuture();
             final Semaphore topicLoadSemaphore = topicLoadRequestSemaphore.get();
             final boolean acquiredPermit = topicLoadSemaphore.tryAcquire();
-            checkOwnershipAndCreatePersistentTopic(topic, true, pendingFuture, pendingTopic.getProperties());
+            checkOwnershipAndCreatePersistentTopic(topic,
+                    pendingTopic.isCreateIfMissing(),
+                    pendingFuture,
+                    pendingTopic.getProperties());
             pendingFuture.handle((persistentTopic, ex) -> {
                 // release permit and process next pending topic
                 if (acquiredPermit) {
@@ -3082,16 +3080,8 @@ public class BrokerService implements Closeable {
         if (!pulsarService.getConfig().isTopicLevelPoliciesEnabled()) {
             return CompletableFuture.completedFuture(null);
         }
-        return pulsarService.getPulsarResources().getNamespaceResources()
-                .getPoliciesAsync(topicName.getNamespaceObject())
-                .thenCompose(optPolicies -> {
-                    if (optPolicies.isPresent() && optPolicies.get().deleted) {
-                        // We can return the completed future directly if the namespace is already deleted.
-                        return CompletableFuture.completedFuture(null);
-                    }
-                    TopicName cloneTopicName = TopicName.get(topicName.getPartitionedTopicName());
-                    return pulsar.getTopicPoliciesService().deleteTopicPoliciesAsync(cloneTopicName);
-                });
+        return pulsar.getTopicPoliciesService()
+                .deleteTopicPoliciesAsync(TopicName.get(topicName.getPartitionedTopicName()));
     }
 
     private CompletableFuture<Void> checkMaxTopicsPerNamespace(TopicName topicName, int numPartitions) {
@@ -3113,7 +3103,7 @@ public class BrokerService implements Closeable {
                                         log.error("Failed to create persistent topic {}, "
                                                 + "exceed maximum number of topics in namespace", topicName);
                                         return FutureUtil.failedFuture(
-                                                new RestException(Response.Status.PRECONDITION_FAILED,
+                                                new NotAllowedException(
                                                         "Exceed maximum number of topics in namespace."));
                                     } else {
                                         return CompletableFuture.completedFuture(null);
@@ -3167,6 +3157,7 @@ public class BrokerService implements Closeable {
     @Getter
     private static class TopicLoadingContext {
         private final String topic;
+        private final boolean createIfMissing;
         private final CompletableFuture<Optional<Topic>> topicFuture;
         private final Map<String, String> properties;
     }

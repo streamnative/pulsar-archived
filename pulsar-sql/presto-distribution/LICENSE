@@ -221,7 +221,7 @@ The Apache Software License, Version 2.0
     - jackson-module-jaxb-annotations-2.14.2.jar
     - jackson-module-jsonSchema-2.14.2.jar
  * Guava
-    - guava-31.0.1-jre.jar
+    - guava-32.0.0-jre.jar
     - listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar
     - failureaccess-1.0.1.jar
  * Google Guice
@@ -232,31 +232,31 @@ The Apache Software License, Version 2.0
     - commons-lang3-3.11.jar
  * Netty
      - netty-3.10.6.Final.jar
-    - netty-buffer-4.1.87.Final.jar
-    - netty-codec-4.1.87.Final.jar
-    - netty-codec-dns-4.1.87.Final.jar
-    - netty-codec-http-4.1.87.Final.jar
-    - netty-codec-haproxy-4.1.87.Final.jar
-    - netty-codec-socks-4.1.87.Final.jar
-    - netty-handler-proxy-4.1.87.Final.jar
-    - netty-common-4.1.87.Final.jar
-    - netty-handler-4.1.87.Final.jar
+    - netty-buffer-4.1.93.Final.jar
+    - netty-codec-4.1.93.Final.jar
+    - netty-codec-dns-4.1.93.Final.jar
+    - netty-codec-http-4.1.93.Final.jar
+    - netty-codec-haproxy-4.1.93.Final.jar
+    - netty-codec-socks-4.1.93.Final.jar
+    - netty-handler-proxy-4.1.93.Final.jar
+    - netty-common-4.1.93.Final.jar
+    - netty-handler-4.1.93.Final.jar
     - netty-reactive-streams-2.0.6.jar
-    - netty-resolver-4.1.87.Final.jar
-    - netty-resolver-dns-4.1.87.Final.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final-linux-aarch_64.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final-linux-x86_64.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final-osx-aarch_64.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final-osx-x86_64.jar
-    - netty-tcnative-boringssl-static-2.0.56.Final-windows-x86_64.jar
-    - netty-tcnative-classes-2.0.56.Final.jar
-    - netty-transport-4.1.87.Final.jar
-    - netty-transport-classes-epoll-4.1.87.Final.jar
-    - netty-transport-native-epoll-4.1.87.Final-linux-x86_64.jar
-    - netty-transport-native-unix-common-4.1.87.Final.jar
-    - netty-transport-native-unix-common-4.1.87.Final-linux-x86_64.jar
-    - netty-codec-http2-4.1.87.Final.jar
+    - netty-resolver-4.1.93.Final.jar
+    - netty-resolver-dns-4.1.93.Final.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final-linux-aarch_64.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final-linux-x86_64.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final-osx-aarch_64.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final-osx-x86_64.jar
+    - netty-tcnative-boringssl-static-2.0.61.Final-windows-x86_64.jar
+    - netty-tcnative-classes-2.0.61.Final.jar
+    - netty-transport-4.1.93.Final.jar
+    - netty-transport-classes-epoll-4.1.93.Final.jar
+    - netty-transport-native-epoll-4.1.93.Final-linux-x86_64.jar
+    - netty-transport-native-unix-common-4.1.93.Final.jar
+    - netty-transport-native-unix-common-4.1.93.Final-linux-x86_64.jar
+    - netty-codec-http2-4.1.93.Final.jar
  * GRPC
     - grpc-api-1.45.1.jar
     - grpc-context-1.45.1.jar
@@ -411,7 +411,7 @@ The Apache Software License, Version 2.0
     - presto-spi-332.jar
     - presto-record-decoder-332.jar
   * RocksDB JNI
-    - rocksdbjni-6.10.2.jar
+    - rocksdbjni-6.16.4.jar
   * SnakeYAML
     - snakeyaml-2.0.jar
   * Bean Validation API
@@ -457,7 +457,7 @@ The Apache Software License, Version 2.0
   * GSON
     - gson-2.8.9.jar
   * Snappy
-    - snappy-java-1.1.7.jar
+    - snappy-java-1.1.10.1.jar
   * Jackson
     - jackson-module-parameter-names-2.14.2.jar
   * Java Assist
@@ -470,10 +470,10 @@ The Apache Software License, Version 2.0
     - memory-0.8.3.jar
     - sketches-core-0.8.3.jar
   * Apache Zookeeper
-    - zookeeper-3.6.3.jar
-    - zookeeper-jute-3.6.3.jar
+    - zookeeper-3.6.4.jar
+    - zookeeper-jute-3.6.4.jar
   * Apache Yetus Audience Annotations
-    - audience-annotations-0.5.0.jar
+    - audience-annotations-0.13.0.jar
   * Swagger
     - swagger-annotations-1.6.10.jar
   * Perfmark
@@ -515,7 +515,7 @@ MIT License
  * JUL to SLF4J Bridge
    - jul-to-slf4j-1.7.32.jar
  * Checker Qual
-   - checker-qual-3.12.0.jar
+   - checker-qual-3.33.0.jar
  * Annotations
    - animal-sniffer-annotations-1.19.jar
    - annotations-4.1.1.4.jar

@@ -45,6 +45,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -119,6 +120,7 @@ public class PersistentDispatcherFailoverConsumerTest {
         executor = OrderedExecutor.newBuilder().numThreads(1).name("persistent-dispatcher-failover-test").build();
         ServiceConfiguration svcConfig = spy(ServiceConfiguration.class);
         svcConfig.setBrokerShutdownTimeoutMs(0L);
+        svcConfig.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         svcConfig.setClusterName("pulsar-cluster");
         pulsar = spyWithClassAndConstructorArgs(PulsarService.class, svcConfig);
         store = MetadataStoreFactory.create("memory:local", MetadataStoreConfig.builder().build());
@@ -291,6 +293,20 @@ public class PersistentDispatcherFailoverConsumerTest {
                                             boolean isActive) {
         assertEquals(consumerId, change.getConsumerId());
         assertEquals(isActive, change.isIsActive());
+    }
+
+    @Test(timeOut = 10000)
+    public void testAddConsumerWhenClosed() throws Exception {
+        PersistentTopic topic = new PersistentTopic(successTopicName, ledgerMock, brokerService);
+        PersistentSubscription sub = new PersistentSubscription(topic, "sub-1", cursorMock, false);
+        PersistentDispatcherSingleActiveConsumer pdfc = new PersistentDispatcherSingleActiveConsumer(cursorMock,
+                SubType.Failover, 0, topic, sub);
+        pdfc.close().get();
+
+        Consumer consumer = mock(Consumer.class);
+        pdfc.addConsumer(consumer);
+        verify(consumer, times(1)).disconnect();
+        assertEquals(0, pdfc.consumers.size());
     }
 
     @Test

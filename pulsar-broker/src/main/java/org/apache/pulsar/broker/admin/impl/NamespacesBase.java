@@ -339,6 +339,8 @@ public abstract class NamespacesBase extends AdminResource {
                     return;
                 }
             }
+            noPartitionSystemTopic.removeAll(partitionSystemTopic);
+            noPartitionedTopicPolicySystemTopic.removeAll(partitionedTopicPolicySystemTopic);
             deleteSystemTopicFuture = internalDeleteTopicsAsync(noPartitionSystemTopic)
                     .thenCompose(ignore -> internalDeletePartitionedTopicsAsync(partitionSystemTopic))
                     .thenCompose(ignore -> internalDeleteTopicsAsync(noPartitionedTopicPolicySystemTopic))
@@ -348,8 +350,6 @@ public abstract class NamespacesBase extends AdminResource {
         }
 
         deleteSystemTopicFuture
-                .thenCompose(ignore -> internalDeleteTopicsAsync(noPartitionedTopicPolicySystemTopic))
-                .thenCompose(ignore -> internalDeletePartitionedTopicsAsync(partitionedTopicPolicySystemTopic))
                 .thenCompose(__ -> {
                     List<CompletableFuture<Void>> deleteBundleFutures = Lists.newArrayList();
                     NamespaceBundles bundles = pulsar().getNamespaceService().getNamespaceBundleFactory()
@@ -523,7 +523,12 @@ public abstract class NamespacesBase extends AdminResource {
                             }
                             String partitionedTopic = topicName.getPartitionedTopicName();
                             if (!partitionedTopics.contains(partitionedTopic)) {
-                                partitionedTopics.add(partitionedTopic);
+                                if (!partitionedTopics.contains(partitionedTopic)
+                                        && !nonPartitionedTopics.contains(partitionedTopic)) {
+                                    partitionedTopics.add(partitionedTopic);
+                                } else {
+                                    continue;
+                                }
                             }
                         } else {
                             if (pulsar().getBrokerService().isSystemTopic(topicName)) {
@@ -534,7 +539,12 @@ public abstract class NamespacesBase extends AdminResource {
                                 }
                                 continue;
                             }
+                            if (!partitionedTopics.contains(topic)
+                                    && !nonPartitionedTopics.contains(topic)) {
                             nonPartitionedTopics.add(topic);
+                            } else {
+                                continue;
+                            }
                         }
                         topicFutures.add(pulsar().getAdminClient().topics().deleteAsync(
                                 topic, true, true));
@@ -550,10 +560,6 @@ public abstract class NamespacesBase extends AdminResource {
                     }
                 }
 
-                for (String partitionedTopic : partitionedTopics) {
-                    topicFutures.add(namespaceResources().getPartitionedTopicResources()
-                            .deletePartitionedTopicAsync(TopicName.get(partitionedTopic)));
-                }
 
                 if (log.isDebugEnabled()) {
                     log.debug("Successfully send deletion command of partitioned-topics:{} "
@@ -561,6 +567,8 @@ public abstract class NamespacesBase extends AdminResource {
                             partitionedTopics, nonPartitionedTopics, namespaceName);
                 }
 
+                allPartitionedSystemTopics.removeAll(allSystemTopics);
+                partitionedTopicPolicySystemTopic.removeAll(noPartitionedTopicPolicySystemTopic);
                 final CompletableFuture<Throwable> topicFutureEx =
                         FutureUtil.waitForAll(topicFutures)
                                 .thenCompose((ignore) -> internalDeleteTopicsAsync(allSystemTopics))
@@ -736,6 +744,7 @@ public abstract class NamespacesBase extends AdminResource {
 
             // remove from owned namespace map and ephemeral node from ZK
             pulsar().getNamespaceService().removeOwnedServiceUnit(bundle);
+            pulsar().getBrokerService().getBundleStats().remove(bundle.toString());
         } catch (WebApplicationException wae) {
             throw wae;
         } catch (Exception e) {
@@ -802,7 +811,9 @@ public abstract class NamespacesBase extends AdminResource {
                 authoritative, true);
             // directly remove from owned namespace map and ephemeral node from ZK
             pulsar().getNamespaceService().removeOwnedServiceUnit(bundle);
+            pulsar().getBrokerService().getBundleStats().remove(bundle.toString());
         } catch (WebApplicationException wae) {
+            log.error("validateNamespaceBundleOwnership failed with exception", wae);
             throw wae;
         } catch (Exception e) {
             log.error("[{}] Failed to remove namespace bundle {}/{}", clientAppId(), namespaceName.toString(),
@@ -1138,7 +1149,7 @@ public abstract class NamespacesBase extends AdminResource {
                         policies -> new LocalPolicies(policies.bundles,
                                 bookieAffinityGroup,
                                 policies.namespaceAntiAffinityGroup))
-                        .orElseGet(() -> new LocalPolicies(defaultBundle(),
+                        .orElseGet(() -> new LocalPolicies(getBundles(config().getDefaultNumberOfNamespaceBundles()),
                                 bookieAffinityGroup,
                                 null));
                 log.info("[{}] Successfully updated local-policies configuration: namespace={}, map={}", clientAppId(),

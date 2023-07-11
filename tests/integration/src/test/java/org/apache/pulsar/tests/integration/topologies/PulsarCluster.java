@@ -158,7 +158,9 @@ public class PulsarCluster {
                         .withEnv("journalSyncData", "false")
                         .withEnv("journalMaxGroupWaitMSec", "0")
                         .withEnv("clusterName", clusterName)
+                        .withEnv("PULSAR_PREFIX_diskUsageWarnThreshold", "0.95")
                         .withEnv("diskUsageThreshold", "0.99")
+                        .withEnv("PULSAR_PREFIX_diskUsageLwmThreshold", "0.97")
                         .withEnv("nettyMaxFrameSizeBytes", "" + spec.maxMessageSize)
                 )
         );
@@ -174,6 +176,7 @@ public class PulsarCluster {
                         .withEnv("configurationStoreServers", CSContainer.NAME + ":" + CS_PORT)
                         .withEnv("clusterName", clusterName)
                         .withEnv("brokerServiceCompactionMonitorIntervalInSeconds", "1")
+                        .withEnv("loadBalancerOverrideBrokerNicSpeedGbps", "1")
                         // used in s3 tests
                         .withEnv("AWS_ACCESS_KEY_ID", "accesskey")
                         .withEnv("AWS_SECRET_KEY", "secretkey")

@@ -533,6 +533,23 @@ public interface ManagedCursor {
             FindEntryCallback callback, Object ctx);
 
     /**
+     * Find the newest entry that matches the given predicate.
+     *
+     * @param constraint
+     *            search only active entries or all entries
+     * @param condition
+     *            predicate that reads an entry an applies a condition
+     * @param callback
+     *            callback object returning the resultant position
+     * @param ctx
+     *            opaque context
+     * @param isFindFromLedger
+     *            find the newest entry from ledger
+     */
+    void asyncFindNewestMatching(FindPositionConstraint constraint, Predicate<Entry> condition,
+            FindEntryCallback callback, Object ctx, boolean isFindFromLedger);
+
+    /**
      * reset the cursor to specified position to enable replay of messages.
      *
      * @param position
@@ -680,6 +697,12 @@ public interface ManagedCursor {
      * @return the estimated size from the mark delete position of the cursor
      */
     long getEstimatedSizeSinceMarkDeletePosition();
+
+    /**
+     * If a ledger is lost, this ledger will be skipped after enabled "autoSkipNonRecoverableData", and the method is
+     * used to delete information about this ledger in the ManagedCursor.
+     */
+    default void skipNonRecoverableLedger(long ledgerId){}
 
     /**
      * Returns cursor throttle mark-delete rate.

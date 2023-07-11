@@ -1512,7 +1512,8 @@ public class AdminApi2Test extends MockedPulsarServiceBaseTest {
         return new Object[][]{
                 {new NamespaceAttr(false, "non-partitioned", 0, false)},
                 {new NamespaceAttr(true, "non-partitioned", 0, false)},
-                {new NamespaceAttr(true, "partitioned", 3, false)}
+                {new NamespaceAttr(true, "partitioned", 3, false)},
+                {new NamespaceAttr(true, "partitioned", 3, true)}
         };
     }
 
@@ -1565,11 +1566,12 @@ public class AdminApi2Test extends MockedPulsarServiceBaseTest {
             // Expected: cannot delete non-empty tenant
         }
 
-        // delete topic
-        admin.topics().deletePartitionedTopic(topic);
-
+        if (!conf.isForceDeleteNamespaceAllowed()) {
+            // delete topic
+            admin.topics().deletePartitionedTopic(topic);
+        }
         // delete namespace
-        admin.namespaces().deleteNamespace(namespace, false);
+        admin.namespaces().deleteNamespace(namespace, conf.isForceDeleteNamespaceAllowed());
         assertFalse(admin.namespaces().getNamespaces(tenant).contains(namespace));
         assertTrue(admin.namespaces().getNamespaces(tenant).isEmpty());
 
@@ -1648,6 +1650,14 @@ public class AdminApi2Test extends MockedPulsarServiceBaseTest {
         // create namespace2
         String namespace = tenant + "/test-ns2";
         admin.namespaces().createNamespace(namespace, Sets.newHashSet("test"));
+        admin.topics().createNonPartitionedTopic(namespace + "/tobedeleted");
+        // verify namespace can be deleted even without topic policy events
+        admin.namespaces().deleteNamespace(namespace, true);
+
+        Set<String> permissions = new HashSet<>();
+        permissions.add("test");
+        admin.namespaces().createNamespace(namespace, permissions);
+
         // create topic
         String topic = namespace + "/test-topic2";
         Producer<byte[]> producer = pulsarClient.newProducer().topic(topic).create();
@@ -1869,7 +1879,6 @@ public class AdminApi2Test extends MockedPulsarServiceBaseTest {
 
     @Test
     public void testForceDeleteNamespace() throws Exception {
-        conf.setForceDeleteNamespaceAllowed(true);
         final String namespaceName = "prop-xyz2/ns1";
         TenantInfoImpl tenantInfo = new TenantInfoImpl(Sets.newHashSet("role1", "role2"), Sets.newHashSet("test"));
         admin.tenants().createTenant("prop-xyz2", tenantInfo);
