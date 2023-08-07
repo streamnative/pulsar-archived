@@ -97,6 +97,8 @@ RUN groupadd -g 10000 pulsar && \
     useradd -r -u 10000 -g pulsar pulsar
 
 COPY --from=pulsar --chown=10000:10000 /pulsar /pulsar
+RUN chown pulsar:pulsar /pulsar
+
 WORKDIR /pulsar
 
 ARG PULSAR_CLIENT_PYTHON_VERSION
