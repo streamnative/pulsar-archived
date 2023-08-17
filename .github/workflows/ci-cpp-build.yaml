@@ -23,6 +23,7 @@ on:
     branches:
       - master
       - branch-2.11
+      - branch-2.11.2.2-wss-e2e-enctryption
     paths:
       - '.github/workflows/**'
       - 'pulsar-client-cpp/**'
