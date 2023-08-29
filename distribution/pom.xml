@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>3.0.1.2</version>
+    <version>3.0.1.2-rootless</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>distribution</artifactId>
