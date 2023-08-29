@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>3.0.1.2</version>
+    <version>3.0.1.2-rootless</version>
   </parent>
   <artifactId>testmocks</artifactId>
   <packaging>jar</packaging>
