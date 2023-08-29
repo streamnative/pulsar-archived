@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -994,7 +995,8 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
                             remoteAddress, getPrincipal());
                 }
 
-                log.info("[{}] Subscribing on topic {} / {}", remoteAddress, topicName, subscriptionName);
+                log.info("[{}] Subscribing on topic {} / {}. consumerId: {}", this.ctx().channel().toString(),
+                        topicName, subscriptionName, consumerId);
                 try {
                     Metadata.validateMetadata(metadata,
                             service.getPulsar().getConfiguration().getMaxConsumerMetadataSize());
@@ -1033,48 +1035,53 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
                     return null;
                 }
 
-                boolean createTopicIfDoesNotExist = forceTopicCreation
-                        && service.isAllowAutoTopicCreation(topicName.toString());
-
-                service.getTopic(topicName.toString(), createTopicIfDoesNotExist)
+                service.isAllowAutoTopicCreationAsync(topicName)
+                        .thenCompose(isAllowAutoTopicCreation -> {
+                            final boolean createTopicIfDoesNotExist = forceTopicCreation && isAllowAutoTopicCreation;
+                            return service.getTopic(topicName.toString(), createTopicIfDoesNotExist);
+                        })
                         .thenCompose(optTopic -> {
                             if (!optTopic.isPresent()) {
                                 return FutureUtil
                                         .failedFuture(new TopicNotFoundException(
                                                 "Topic " + topicName + " does not exist"));
                             }
+                            final Topic topic = optTopic.get();
+                            return service.isAllowAutoSubscriptionCreationAsync(topicName)
+                                    .thenCompose(isAllowAutoSubscriptionCreation -> {
+                                        boolean rejectSubscriptionIfDoesNotExist = isDurable
+                                                && !isAllowAutoSubscriptionCreation
+                                                && !topic.getSubscriptions().containsKey(subscriptionName)
+                                                && topic.isPersistent();
 
-                            Topic topic = optTopic.get();
+                                        if (rejectSubscriptionIfDoesNotExist) {
+                                            return FutureUtil
+                                                    .failedFuture(
+                                                            new SubscriptionNotFoundException(
+                                                                    "Subscription does not exist"));
+                                        }
 
-                            boolean rejectSubscriptionIfDoesNotExist = isDurable
-                                && !service.isAllowAutoSubscriptionCreation(topicName.toString())
-                                && !topic.getSubscriptions().containsKey(subscriptionName)
-                                && topic.isPersistent();
-
-                            if (rejectSubscriptionIfDoesNotExist) {
-                                return FutureUtil
-                                        .failedFuture(
-                                                new SubscriptionNotFoundException(
-                                                        "Subscription does not exist"));
-                            }
-
-                            SubscriptionOption option = SubscriptionOption.builder().cnx(ServerCnx.this)
-                                    .subscriptionName(subscriptionName)
-                                    .consumerId(consumerId).subType(subType).priorityLevel(priorityLevel)
-                                    .consumerName(consumerName).isDurable(isDurable)
-                                    .startMessageId(startMessageId).metadata(metadata).readCompacted(readCompacted)
-                                    .initialPosition(initialPosition)
-                                    .startMessageRollbackDurationSec(startMessageRollbackDurationSec)
-                                    .replicatedSubscriptionStateArg(isReplicated).keySharedMeta(keySharedMeta)
-                                    .subscriptionProperties(subscriptionProperties)
-                                    .consumerEpoch(consumerEpoch)
-                                    .build();
-                            if (schema != null) {
-                                return topic.addSchemaIfIdleOrCheckCompatible(schema)
-                                        .thenCompose(v -> topic.subscribe(option));
-                            } else {
-                                return topic.subscribe(option);
-                            }
+                                        SubscriptionOption option = SubscriptionOption.builder().cnx(ServerCnx.this)
+                                                .subscriptionName(subscriptionName)
+                                                .consumerId(consumerId).subType(subType)
+                                                .priorityLevel(priorityLevel)
+                                                .consumerName(consumerName).isDurable(isDurable)
+                                                .startMessageId(startMessageId).metadata(metadata)
+                                                .readCompacted(readCompacted)
+                                                .initialPosition(initialPosition)
+                                                .startMessageRollbackDurationSec(startMessageRollbackDurationSec)
+                                                .replicatedSubscriptionStateArg(isReplicated)
+                                                .keySharedMeta(keySharedMeta)
+                                                .subscriptionProperties(subscriptionProperties)
+                                                .consumerEpoch(consumerEpoch)
+                                                .build();
+                                        if (schema != null) {
+                                            return topic.addSchemaIfIdleOrCheckCompatible(schema)
+                                                    .thenCompose(v -> topic.subscribe(option));
+                                        } else {
+                                            return topic.subscribe(option);
+                                        }
+                                    });
                         })
                         .thenAccept(consumer -> {
                             if (consumerFuture.complete(consumer)) {
@@ -1285,33 +1292,39 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
 
                     schemaVersionFuture.thenAccept(schemaVersion -> {
                         topic.checkIfTransactionBufferRecoverCompletely(isTxnEnabled).thenAccept(future -> {
-                            CompletableFuture<Subscription> createInitSubFuture;
+                            CompletionStage<Subscription> createInitSubFuture;
                             if (!Strings.isNullOrEmpty(initialSubscriptionName)
                                     && topic.isPersistent()
                                     && !topic.getSubscriptions().containsKey(initialSubscriptionName)) {
-                                if (!this.getBrokerService().isAllowAutoSubscriptionCreation(topicName)) {
-                                    String msg =
-                                            "Could not create the initial subscription due to the auto subscription "
-                                                    + "creation is not allowed.";
-                                    if (producerFuture.completeExceptionally(
-                                            new BrokerServiceException.NotAllowedException(msg))) {
-                                        log.warn("[{}] {} initialSubscriptionName: {}, topic: {}",
-                                                remoteAddress, msg, initialSubscriptionName, topicName);
-                                        commandSender.sendErrorResponse(requestId,
-                                                ServerError.NotAllowedError, msg);
-                                    }
-                                    producers.remove(producerId, producerFuture);
-                                    return;
-                                }
-                                createInitSubFuture =
-                                        topic.createSubscription(initialSubscriptionName, InitialPosition.Earliest,
-                                                false, null);
+                                createInitSubFuture = service.isAllowAutoSubscriptionCreationAsync(topicName)
+                                    .thenCompose(isAllowAutoSubscriptionCreation -> {
+                                        if (!isAllowAutoSubscriptionCreation) {
+                                            return FutureUtil.failedFuture(
+                                                    new BrokerServiceException.NotAllowedException(
+                                                            "Could not create the initial subscription due to"
+                                                            + " the auto subscription creation is not allowed."));
+                                        }
+                                        return topic.createSubscription(initialSubscriptionName,
+                                                InitialPosition.Earliest, false, null);
+                                    });
                             } else {
                                 createInitSubFuture = CompletableFuture.completedFuture(null);
                             }
 
                             createInitSubFuture.whenComplete((sub, ex) -> {
                                 if (ex != null) {
+                                    final Throwable rc = FutureUtil.unwrapCompletionException(ex);
+                                    if (rc instanceof BrokerServiceException.NotAllowedException) {
+                                        log.warn("[{}] {} initialSubscriptionName: {}, topic: {}",
+                                                remoteAddress, rc.getMessage(), initialSubscriptionName, topicName);
+                                        if (producerFuture.completeExceptionally(rc)) {
+                                            commandSender.sendErrorResponse(requestId,
+                                                    ServerError.NotAllowedError, rc.getMessage());
+                                        }
+                                        producers.remove(producerId, producerFuture);
+                                        return;
+                                    }
+
                                     String msg =
                                             "Failed to create the initial subscription: " + ex.getCause().getMessage();
                                     log.warn("[{}] {} initialSubscriptionName: {}, topic: {}",
@@ -1537,11 +1550,12 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
         headersAndPayload.resetReaderIndex();
         if (log.isDebugEnabled()) {
             log.debug("[{}] Received send message request. producer: {}:{} {}:{} size: {},"
-                            + " partition key is: {}, ordering key is {}",
+                            + " partition key is: {}, ordering key is {}, uncompressedSize is {}",
                     remoteAddress, send.getProducerId(), send.getSequenceId(), msgMetadata.getProducerName(),
                     msgMetadata.getSequenceId(), headersAndPayload.readableBytes(),
                     msgMetadata.hasPartitionKey() ? msgMetadata.getPartitionKey() : null,
-                    msgMetadata.hasOrderingKey() ? msgMetadata.getOrderingKey() : null);
+                    msgMetadata.hasOrderingKey() ? msgMetadata.getOrderingKey() : null,
+                    msgMetadata.getUncompressedSize());
         }
     }
 
@@ -1573,6 +1587,12 @@ public class ServerCnx extends PulsarHandler implements TransportCnx {
                         }
                         return null;
                     });
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Consumer future is not complete(not complete or error), but received command ack. so discard"
+                                + " this command. consumerId: {}, cnx: {}, messageIdCount: {}", ack.getConsumerId(),
+                        this.ctx().channel().toString(), ack.getMessageIdsCount());
+            }
         }
     }
 
