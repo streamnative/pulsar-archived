@@ -46,5 +46,5 @@ public class MetadataCacheConfig {
      * A negative or zero value disables automatic expiration.
      */
     @Builder.Default
-    private final long expireAfterWriteMillis = 2 * DEFAULT_CACHE_REFRESH_TIME_MILLIS;
+    private final long expireAfterWriteMillis = 0L;
 }
