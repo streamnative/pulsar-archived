@@ -126,6 +126,13 @@ public class NamespaceResources extends BaseResources<Policies> {
         return get(joinPath(BASE_POLICIES_PATH, ns.toString()));
     }
 
+    /**
+     * Get the namespace policy from the metadata cache. This method will not trigger the load of metadata cache.
+     *
+     * @deprecated Since this method may introduce inconsistent namespace policies. we should use
+     * #{@link NamespaceResources#getPoliciesAsync}
+     */
+    @Deprecated
     public Optional<Policies> getPoliciesIfCached(NamespaceName ns) {
         return getCache().getIfCached(joinPath(BASE_POLICIES_PATH, ns.toString()));
     }
@@ -267,8 +274,18 @@ public class NamespaceResources extends BaseResources<Policies> {
         }
 
         public CompletableFuture<Optional<PartitionedTopicMetadata>> getPartitionedTopicMetadataAsync(TopicName tn) {
-            return getAsync(joinPath(PARTITIONED_TOPIC_PATH, tn.getNamespace(), tn.getDomain().value(),
-                    tn.getEncodedLocalName()));
+            return getPartitionedTopicMetadataAsync(tn, false);
+        }
+
+        public CompletableFuture<Optional<PartitionedTopicMetadata>> getPartitionedTopicMetadataAsync(TopicName tn,
+                                                                                                      boolean refresh) {
+            if (refresh) {
+                return refreshAndGetAsync(joinPath(PARTITIONED_TOPIC_PATH, tn.getNamespace(), tn.getDomain().value(),
+                        tn.getEncodedLocalName()));
+            } else {
+                return getAsync(joinPath(PARTITIONED_TOPIC_PATH, tn.getNamespace(), tn.getDomain().value(),
+                        tn.getEncodedLocalName()));
+            }
         }
 
         public boolean partitionedTopicExists(TopicName tn) throws MetadataStoreException {
