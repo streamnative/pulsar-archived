@@ -34,6 +34,7 @@ import io.netty.util.Timeout;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -1416,7 +1417,9 @@ public class ConsumerImpl<T> extends ConsumerBase<T> implements ConnectionHandle
 
     private ByteBuf processMessageChunk(ByteBuf compressedPayload, MessageMetadata msgMetadata, MessageIdImpl msgId,
             MessageIdData messageId, ClientCnx cnx) {
-
+        if (msgMetadata.getChunkId() != (msgMetadata.getNumChunksFromMsg() - 1)) {
+            increaseAvailablePermits(cnx);
+        }
         // Lazy task scheduling to expire incomplete chunk message
         if (!expireChunkMessageTaskScheduled && expireTimeOfIncompleteChunkedMessageMillis > 0) {
             ((ScheduledExecutorService) client.getScheduledExecutorProvider().getExecutor()).scheduleAtFixedRate(
@@ -1428,11 +1431,58 @@ public class ConsumerImpl<T> extends ConsumerBase<T> implements ConnectionHandle
             expireChunkMessageTaskScheduled = true;
         }
 
+        ChunkedMessageCtx chunkedMsgCtx = chunkedMessagesMap.get(msgMetadata.getUuid());
+
         if (msgMetadata.getChunkId() == 0) {
+            if (chunkedMsgCtx != null) {
+                // Handle ack hole case when receive duplicated chunks.
+                // There are two situation that receives chunks with the same sequence ID and chunk ID.
+                // Situation 1 - Message redeliver:
+                // For example:
+                //     Chunk-1 sequence ID: 0, chunk ID: 0, msgID: 1:1
+                //     Chunk-2 sequence ID: 0, chunk ID: 1, msgID: 1:2
+                //     Chunk-3 sequence ID: 0, chunk ID: 0, msgID: 1:1
+                //     Chunk-4 sequence ID: 0, chunk ID: 1, msgID: 1:2
+                //     Chunk-5 sequence ID: 0, chunk ID: 2, msgID: 1:3
+                // In this case, chunk-3 and chunk-4 have the same msgID with chunk-1 and chunk-2.
+                // This may be caused by message redeliver, we can't ack any chunk in this case here.
+                // Situation 2 - Corrupted chunk message
+                // For example:
+                //     Chunk-1 sequence ID: 0, chunk ID: 0, msgID: 1:1
+                //     Chunk-2 sequence ID: 0, chunk ID: 1, msgID: 1:2
+                //     Chunk-3 sequence ID: 0, chunk ID: 0, msgID: 1:3
+                //     Chunk-4 sequence ID: 0, chunk ID: 1, msgID: 1:4
+                //     Chunk-5 sequence ID: 0, chunk ID: 2, msgID: 1:5
+                // In this case, all the chunks with different msgIDs and are persistent in the topic.
+                // But Chunk-1 and Chunk-2 belong to a corrupted chunk message that must be skipped since
+                // they will not be delivered to end users. So we should ack them here to avoid ack hole.
+                boolean isCorruptedChunkMessageDetected = Arrays.stream(chunkedMsgCtx.chunkedMessageIds)
+                        .noneMatch(messageId1 -> messageId1 != null && messageId1.ledgerId == messageId.getLedgerId()
+                                && messageId1.entryId == messageId.getEntryId());
+                if (isCorruptedChunkMessageDetected) {
+                    Arrays.stream(chunkedMsgCtx.chunkedMessageIds).forEach(messageId1 -> {
+                        if (messageId1 != null) {
+                            doAcknowledge(messageId1, AckType.Individual, Collections.emptyMap(), null);
+                        }
+                    });
+                }
+                // The first chunk of a new chunked-message received before receiving other chunks of previous
+                // chunked-message
+                // so, remove previous chunked-message from map and release buffer
+                if (chunkedMsgCtx.chunkedMsgBuffer != null) {
+                    ReferenceCountUtil.safeRelease(chunkedMsgCtx.chunkedMsgBuffer);
+                }
+                chunkedMsgCtx.recycle();
+                chunkedMessagesMap.remove(msgMetadata.getUuid());
+            }
+            pendingChunkedMessageCount++;
+            if (maxPendingChunkedMessage > 0 && pendingChunkedMessageCount > maxPendingChunkedMessage) {
+                removeOldestPendingChunkedMessage();
+            }
+            int totalChunks = msgMetadata.getNumChunksFromMsg();
             ByteBuf chunkedMsgBuffer = PulsarByteBufAllocator.DEFAULT.buffer(msgMetadata.getTotalChunkMsgSize(),
                     msgMetadata.getTotalChunkMsgSize());
-            int totalChunks = msgMetadata.getNumChunksFromMsg();
-            chunkedMessagesMap.computeIfAbsent(msgMetadata.getUuid(),
+            chunkedMsgCtx = chunkedMessagesMap.computeIfAbsent(msgMetadata.getUuid(),
                     (key) -> ChunkedMessageCtx.get(totalChunks, chunkedMsgBuffer));
             pendingChunkedMessageCount++;
             if (maxPendingChunkedMessage > 0 && pendingChunkedMessageCount > maxPendingChunkedMessage) {
@@ -1441,12 +1491,37 @@ public class ConsumerImpl<T> extends ConsumerBase<T> implements ConnectionHandle
             pendingChunkedMessageUuidQueue.add(msgMetadata.getUuid());
         }
 
-        ChunkedMessageCtx chunkedMsgCtx = chunkedMessagesMap.get(msgMetadata.getUuid());
         // discard message if chunk is out-of-order
         if (chunkedMsgCtx == null || chunkedMsgCtx.chunkedMsgBuffer == null
                 || msgMetadata.getChunkId() != (chunkedMsgCtx.lastChunkedMessageId + 1)) {
+            // Filter and ack duplicated chunks instead of discard ctx.
+            // For example:
+            //     Chunk-1 sequence ID: 0, chunk ID: 0, msgID: 1:1
+            //     Chunk-2 sequence ID: 0, chunk ID: 1, msgID: 1:2
+            //     Chunk-3 sequence ID: 0, chunk ID: 2, msgID: 1:3
+            //     Chunk-4 sequence ID: 0, chunk ID: 1, msgID: 1:4
+            //     Chunk-5 sequence ID: 0, chunk ID: 2, msgID: 1:5
+            //     Chunk-6 sequence ID: 0, chunk ID: 3, msgID: 1:6
+            // We should filter and ack chunk-4 and chunk-5.
+            if (chunkedMsgCtx != null && msgMetadata.getChunkId() <= chunkedMsgCtx.lastChunkedMessageId) {
+                log.warn("[{}] Receive a duplicated chunk message with messageId [{}], last-chunk-Id [{}], "
+                                + "chunkId [{}], sequenceId [{}]",
+                        msgMetadata.getProducerName(), msgId, chunkedMsgCtx.lastChunkedMessageId,
+                        msgMetadata.getChunkId(), msgMetadata.getSequenceId());
+                compressedPayload.release();
+                // Just like the above logic of receiving the first chunk again. We only ack this chunk in the message
+                // duplication case.
+                boolean isDuplicatedChunk = Arrays.stream(chunkedMsgCtx.chunkedMessageIds)
+                        .noneMatch(messageId1 -> messageId1 != null && messageId1.ledgerId == messageId.getLedgerId()
+                                && messageId1.entryId == messageId.getEntryId());
+                if (isDuplicatedChunk) {
+                    doAcknowledge(msgId, AckType.Individual, Collections.emptyMap(), null);
+                }
+                return null;
+            }
             // means we lost the first chunk: should never happen
-            log.info("Received unexpected chunk messageId {}, last-chunk-id{}, chunkId = {}", msgId,
+            log.info("[{}] [{}] Received unexpected chunk messageId {}, last-chunk-id = {}, chunkId = {}", topic,
+                    subscription, msgId,
                     (chunkedMsgCtx != null ? chunkedMsgCtx.lastChunkedMessageId : null), msgMetadata.getChunkId());
             if (chunkedMsgCtx != null) {
                 if (chunkedMsgCtx.chunkedMsgBuffer != null) {
@@ -1456,7 +1531,6 @@ public class ConsumerImpl<T> extends ConsumerBase<T> implements ConnectionHandle
             }
             chunkedMessagesMap.remove(msgMetadata.getUuid());
             compressedPayload.release();
-            increaseAvailablePermits(cnx);
             if (expireTimeOfIncompleteChunkedMessageMillis > 0
                     && System.currentTimeMillis() > (msgMetadata.getPublishTime()
                             + expireTimeOfIncompleteChunkedMessageMillis)) {
@@ -1475,7 +1549,6 @@ public class ConsumerImpl<T> extends ConsumerBase<T> implements ConnectionHandle
         // if final chunk is not received yet then release payload and return
         if (msgMetadata.getChunkId() != (msgMetadata.getNumChunksFromMsg() - 1)) {
             compressedPayload.release();
-            increaseAvailablePermits(cnx);
             return null;
         }
 
