@@ -901,8 +901,8 @@ public class PersistentTopic extends AbstractTopic implements Topic, AddEntryCal
                             consumer.close();
                         } catch (BrokerServiceException e) {
                             if (e instanceof ConsumerBusyException) {
-                                log.warn("[{}][{}] Consumer {} {} already connected",
-                                        topic, subscriptionName, consumerId, consumerName);
+                                log.warn("[{}][{}] Consumer {} {} already connected: {}",
+                                        topic, subscriptionName, consumerId, consumerName, e.getMessage());
                             } else if (e instanceof SubscriptionBusyException) {
                                 log.warn("[{}][{}] {}", topic, subscriptionName, e.getMessage());
                             }
@@ -932,8 +932,8 @@ public class PersistentTopic extends AbstractTopic implements Topic, AddEntryCal
                 decrementUsageCount();
 
                 if (ex.getCause() instanceof ConsumerBusyException) {
-                    log.warn("[{}][{}] Consumer {} {} already connected", topic, subscriptionName, consumerId,
-                            consumerName);
+                    log.warn("[{}][{}] Consumer {} {} already connected: {}", topic, subscriptionName, consumerId,
+                            consumerName, ex.getCause().getMessage());
                     Consumer consumer = null;
                     try {
                         consumer = subscriptionFuture.isDone() ? getActiveConsumer(subscriptionFuture.get()) : null;
@@ -1161,15 +1161,14 @@ public class PersistentTopic extends AbstractTopic implements Topic, AddEntryCal
 
     private void asyncDeleteCursorWithClearDelayedMessage(String subscriptionName,
                                                           CompletableFuture<Void> unsubscribeFuture) {
-        if (!isDelayedDeliveryEnabled()
-                || !(brokerService.getDelayedDeliveryTrackerFactory() instanceof BucketDelayedDeliveryTrackerFactory)) {
-            asyncDeleteCursor(subscriptionName, unsubscribeFuture);
-            return;
-        }
-
         PersistentSubscription persistentSubscription = subscriptions.get(subscriptionName);
         if (persistentSubscription == null) {
             log.warn("[{}][{}] Can't find subscription, skip clear delayed message", topic, subscriptionName);
+            unsubscribeFuture.complete(null);
+            return;
+        }
+        if (!isDelayedDeliveryEnabled()
+                || !(brokerService.getDelayedDeliveryTrackerFactory() instanceof BucketDelayedDeliveryTrackerFactory)) {
             asyncDeleteCursor(subscriptionName, unsubscribeFuture);
             return;
         }
@@ -3041,7 +3040,7 @@ public class PersistentTopic extends AbstractTopic implements Topic, AddEntryCal
                 // if AutoSkipNonRecoverableData is set to true, just return true here.
                 return true;
             } else {
-                log.warn("[{}] Error while getting the oldest message", topic, e);
+                log.warn("[{}] [{}] Error while getting the oldest message", topic, cursor.toString(), e);
             }
         } finally {
             if (entry != null) {
