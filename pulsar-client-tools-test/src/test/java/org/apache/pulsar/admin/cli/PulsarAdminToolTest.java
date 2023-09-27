@@ -1423,6 +1423,17 @@ public class PulsarAdminToolTest {
         verify(mockTopics).updateSubscriptionProperties("persistent://myprop/clust/ns1/ds1", "sub1", new HashMap<>());
 
         cmdTopics = new CmdTopics(() -> admin);
+        cmdTopics.run(split("update-properties persistent://myprop/clust/ns1/ds1 --property a=b -p x=y,z"));
+        props = new HashMap<>();
+        props.put("a", "b");
+        props.put("x", "y,z");
+        verify(mockTopics).updateProperties("persistent://myprop/clust/ns1/ds1", props);
+
+        cmdTopics = new CmdTopics(() -> admin);
+        cmdTopics.run(split("remove-properties persistent://myprop/clust/ns1/ds1 --key a"));
+        verify(mockTopics).removeProperties("persistent://myprop/clust/ns1/ds1", "a");
+
+        cmdTopics = new CmdTopics(() -> admin);
         props = new HashMap<>();
         props.put("a", "b");
         props.put("c", "d");
