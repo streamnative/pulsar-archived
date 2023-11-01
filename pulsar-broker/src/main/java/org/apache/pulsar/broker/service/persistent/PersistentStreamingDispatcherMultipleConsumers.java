@@ -91,7 +91,10 @@ public class PersistentStreamingDispatcherMultipleConsumers extends PersistentDi
 
         cursor.seek(((ManagedLedgerImpl) cursor.getManagedLedger())
                 .getNextValidPosition((PositionImpl) entry.getPosition()));
+        long size = entry.getLength();
+        updatePendingBytesToDispatch(size);
         sendMessagesToConsumers(readType, Lists.newArrayList(entry));
+        updatePendingBytesToDispatch(-size);
         ctx.recycle();
     }
 
