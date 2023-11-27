@@ -25,9 +25,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+
 import com.google.common.collect.Sets;
+import com.google.common.io.Resources;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.netty.channel.EventLoopGroup;
+
+import java.io.File;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -43,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy;
 import org.apache.bookkeeper.client.PulsarMockBookKeeper;
@@ -79,6 +84,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.reflect.WhiteboxImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testng.annotations.DataProvider;
 
 /**
@@ -94,7 +100,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     protected PulsarAdmin admin;
     protected PulsarClient pulsarClient;
     protected PortForwarder brokerGateway;
-    protected boolean enableBrokerGateway =  false;
+    protected boolean enableBrokerGateway = false;
     protected URL brokerUrl;
     protected URL brokerUrlTls;
 
@@ -235,7 +241,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
             mockZooKeeper.shutdown();
             mockZooKeeper = null;
         }
-        if(sameThreadOrderedSafeExecutor != null) {
+        if (sameThreadOrderedSafeExecutor != null) {
             try {
                 sameThreadOrderedSafeExecutor.shutdownNow();
                 sameThreadOrderedSafeExecutor.awaitTermination(5, TimeUnit.SECONDS);
@@ -245,7 +251,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
             }
             sameThreadOrderedSafeExecutor = null;
         }
-        if(bkExecutor != null) {
+        if (bkExecutor != null) {
             try {
                 bkExecutor.shutdownNow();
                 bkExecutor.awaitTermination(5, TimeUnit.SECONDS);
@@ -394,7 +400,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     }
 
     public static MockZooKeeper createMockZooKeeperGlobal() {
-        return  MockZooKeeper.newInstanceForGlobalZK(MoreExecutors.newDirectExecutorService());
+        return MockZooKeeper.newInstanceForGlobalZK(MoreExecutors.newDirectExecutorService());
     }
 
     public static NonClosableMockBookKeeper createMockBookKeeper(OrderedExecutor executor) throws Exception {
@@ -512,7 +518,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
 
     @DataProvider(name = "invalidPersistentPolicies")
     public Object[][] incorrectPersistentPolicies() {
-        return new Object[][] {
+        return new Object[][]{
                 {0, 0, 0},
                 {1, 0, 0},
                 {0, 0, 1},
@@ -541,7 +547,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     /**
      * see {@link MockedPulsarServiceBaseTest#deleteNamespaceWithRetry(String, boolean, PulsarAdmin, Collection)}
      */
-    public static void deleteNamespaceWithRetry(String ns, boolean force, PulsarAdmin admin, PulsarService...pulsars)
+    public static void deleteNamespaceWithRetry(String ns, boolean force, PulsarAdmin admin, PulsarService... pulsars)
             throws Exception {
         deleteNamespaceWithRetry(ns, force, admin, Arrays.asList(pulsars));
     }
@@ -588,4 +594,44 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     }
 
     private static final Logger log = LoggerFactory.getLogger(MockedPulsarServiceBaseTest.class);
+
+
+    // EC certificate
+    protected static final String TLS_EC_TRUSTED_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/ca.cert.pem");
+    protected static final String TLS_EC_SERVER_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/server.key-pk8.pem");
+    protected static final String TLS_EC_SERVER_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/server.cert.pem");
+    protected static final String TLS_EC_BROKER_CLIENT_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/broker_client.key-pk8.pem");
+    protected static final String TLS_EC_BROKER_CLIENT_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/broker_client.cert.pem");
+    protected static final String TLS_EC_CLIENT_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/client.key-pk8.pem");
+    protected static final String TLS_EC_CLIENT_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/client.cert.pem");
+
+    // EC KeyStore
+    protected static final String TLS_EC_KS_SERVER_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/server.keystore.jks");
+    protected static final String TLS_EC_KS_SERVER_PASS = "serverpw";
+    protected static final String TLS_EC_KS_BROKER_CLIENT_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/broker_client.keystore.jks");
+    protected static final String TLS_EC_KS_BROKER_CLIENT_PASS = "brokerclientpw";
+    protected static final String TLS_EC_KS_CLIENT_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/client.keystore.jks");
+    protected static final String TLS_EC_KS_CLIENT_PASS = "clientpw";
+    protected static final String TLS_EC_KS_TRUSTED_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/ca.truststore.jks");
+    protected static final String TLS_EC_KS_TRUSTED_STORE_PASS = "rootpw";
+
+    public static String getAbsolutePath(String resourceName) {
+        // On Windows, URL#getPath might return a string that starts with a disk name, e.g. "/C:/"
+        // It's invalid to use this path to open a file, so we need to get the absolute path via File.
+        return new File(Resources.getResource(resourceName).getPath()).getAbsolutePath();
+
+    }
+
+    protected static final ObjectMapper mapper = new ObjectMapper();
 }
