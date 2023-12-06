@@ -25,7 +25,7 @@
   <parent>
     <groupId>io.streamnative.tests</groupId>
     <artifactId>tests-parent</artifactId>
-    <version>3.0.1.8</version>
+    <version>3.0.1.8-gidrootless</version>
   </parent>
   <artifactId>docker-images</artifactId>
   <name>Apache Pulsar :: Tests :: Docker Images</name>

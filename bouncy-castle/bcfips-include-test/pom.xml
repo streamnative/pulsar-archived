@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>bouncy-castle-parent</artifactId>
-    <version>3.0.1.8</version>
+    <version>3.0.1.8-gidrootless</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>bcfips-include-test</artifactId>

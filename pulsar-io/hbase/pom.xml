@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar-io</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>3.0.1.8</version>
+    <version>3.0.1.8-gidrootless</version>
   </parent>
   <artifactId>pulsar-io-hbase</artifactId>
   <name>Pulsar IO :: Hbase</name>

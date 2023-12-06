@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar-io-debezium</artifactId>
-    <version>3.0.1.8</version>
+    <version>3.0.1.8-gidrootless</version>
   </parent>
   <artifactId>pulsar-io-debezium-oracle</artifactId>
   <name>Pulsar IO :: Debezium :: oracle</name>
