@@ -71,13 +71,14 @@ public class TlsWithECKeyStoreTest extends MockedPulsarServiceBaseTest {
     @Override
     protected void setup() throws Exception {
         init();
+        admin = pulsar.getAdminClient();
         setupDefaultTenantAndNamespace();
     }
 
     @AfterClass(alwaysRun = true)
     @Override
     protected void cleanup() throws Exception {
-        cleanup();
+        internalCleanup();
     }
 
     @Test(expectedExceptions = PulsarClientException.class)
