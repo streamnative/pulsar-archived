@@ -22,10 +22,13 @@ package org.apache.pulsar.security.tls.ec;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
-import org.apache.pulsar.security.tls.MockedPulsarStandalone;
+import org.apache.pulsar.broker.auth.MockedPulsarServiceBaseTest;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -40,27 +43,44 @@ import org.testng.annotations.Test;
 
 
 @Test
-public class TlsWithECCertificateFileTest extends MockedPulsarStandalone {
+public class TlsWithECCertificateFileTest extends MockedPulsarServiceBaseTest {
+
+    @Override
+    protected void doInitConf() throws Exception {
+        super.doInitConf();
+        conf.setTlsEnabled(true);
+        conf.setBrokerServicePort(Optional.empty());
+        conf.setWebServicePort(Optional.empty());
+        conf.setTlsTrustCertsFilePath(TLS_EC_TRUSTED_CERT_PATH);
+        conf.setTlsCertificateFilePath(TLS_EC_SERVER_CERT_PATH);
+        conf.setTlsKeyFilePath(TLS_EC_SERVER_KEY_PATH);
+        conf.setBrokerClientTlsEnabled(true);
+        conf.setBrokerClientTrustCertsFilePath(TLS_EC_TRUSTED_CERT_PATH);
+        conf.setBrokerClientAuthenticationPlugin(AuthenticationTls.class.getName());
+        final Map<String, String> brokerClientAuthParams = new HashMap<>();
+        brokerClientAuthParams.put("tlsCertFile", TLS_EC_BROKER_CLIENT_CERT_PATH);
+        brokerClientAuthParams.put("tlsKeyFile", TLS_EC_BROKER_CLIENT_KEY_PATH);
+        conf.setBrokerClientAuthenticationParameters(mapper.writeValueAsString(brokerClientAuthParams));
+        conf.setBrokerClientAuthenticationParameters(mapper.writeValueAsString(brokerClientAuthParams));
+    }
 
     @BeforeClass(alwaysRun = true)
-    public void suitSetup() {
-        loadECTlsCertificateWithFile();
-        enableTlsAuthentication();
-        super.start(); // start standalone service
+    @Override
+    protected void setup() throws Exception {
+        init();
+        setupDefaultTenantAndNamespace();
     }
 
-    @SneakyThrows
     @AfterClass(alwaysRun = true)
-    public void suitShutdown() {
-        super.close(); // close standalone service
+    @Override
+    protected void cleanup() throws Exception {
+        cleanup();
     }
-
-
     @Test(expectedExceptions = PulsarClientException.class)
     @SneakyThrows
     public void testConnectionFailWithoutCertificate() {
         @Cleanup final PulsarClient client = PulsarClient.builder()
-                .serviceUrl(getPulsarService().getBrokerServiceUrlTls())
+                .serviceUrl(pulsar.getBrokerServiceUrlTls())
                 .build();
         @Cleanup final Producer<byte[]> producer = client.newProducer()
                 .topic("should_be_failed")
@@ -76,13 +96,13 @@ public class TlsWithECCertificateFileTest extends MockedPulsarStandalone {
         final int testMsgNum = 10;
         @Cleanup final PulsarAdmin admin = PulsarAdmin.builder()
                 .authentication(authentication)
-                .serviceHttpUrl(getPulsarService().getWebServiceAddressTls())
+                .serviceHttpUrl(pulsar.getWebServiceAddressTls())
                 .tlsTrustCertsFilePath(TLS_EC_TRUSTED_CERT_PATH)
                 .build();
         admin.topics().createNonPartitionedTopic(topicName);
         admin.topics().createSubscription(topicName, "sub-1", MessageId.earliest);
         @Cleanup final PulsarClient client = PulsarClient.builder()
-                .serviceUrl(getPulsarService().getBrokerServiceUrlTls())
+                .serviceUrl(pulsar.getBrokerServiceUrlTls())
                 .authentication(authentication)
                 .tlsTrustCertsFilePath(TLS_EC_TRUSTED_CERT_PATH)
                 .build();

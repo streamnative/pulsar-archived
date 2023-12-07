@@ -23,7 +23,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
-import org.apache.pulsar.security.tls.MockedPulsarStandalone;
+import org.apache.pulsar.broker.auth.MockedPulsarServiceBaseTest;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -38,31 +38,53 @@ import org.testng.annotations.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 
 @Test
-public class TlsWithECKeyStoreTest extends MockedPulsarStandalone {
+public class TlsWithECKeyStoreTest extends MockedPulsarServiceBaseTest {
+    @Override
+    protected void doInitConf() throws Exception {
+        super.doInitConf();
+        conf.setTlsEnabled(true);
+        conf.setBrokerServicePort(Optional.empty());
+        conf.setWebServicePort(Optional.empty());
+        conf.setTlsEnabledWithKeyStore(true);
+        conf.setTlsKeyStore(TLS_EC_KS_SERVER_STORE);
+        conf.setTlsKeyStorePassword(TLS_EC_KS_SERVER_PASS);
+        conf.setTlsTrustStore(TLS_EC_KS_TRUSTED_STORE);
+        conf.setTlsTrustStorePassword(TLS_EC_KS_TRUSTED_STORE_PASS);
+        conf.setTlsRequireTrustedClientCertOnConnect(true);
+        conf.setBrokerClientTlsEnabled(true);
+        conf.setBrokerClientTlsEnabledWithKeyStore(true);
+        conf.setBrokerClientTlsTrustStore(TLS_EC_KS_TRUSTED_STORE);
+        conf.setBrokerClientTlsTrustStorePassword(TLS_EC_KS_TRUSTED_STORE_PASS);
+        conf.setBrokerClientAuthenticationPlugin(AuthenticationKeyStoreTls.class.getName());
+        final Map<String, String> brokerClientAuthParams = new HashMap<>();
+        brokerClientAuthParams.put("keyStorePath", TLS_EC_KS_BROKER_CLIENT_STORE);
+        brokerClientAuthParams.put("keyStorePassword", TLS_EC_KS_BROKER_CLIENT_PASS);
+        conf.setBrokerClientAuthenticationParameters(mapper.writeValueAsString(brokerClientAuthParams));
+    }
 
     @BeforeClass(alwaysRun = true)
-    public void suitSetup() {
-        loadECTlsCertificateWithKeyStore();
-        enableTlsAuthentication();
-        super.start(); // start standalone service
+    @Override
+    protected void setup() throws Exception {
+        init();
+        setupDefaultTenantAndNamespace();
     }
 
-    @SneakyThrows
     @AfterClass(alwaysRun = true)
-    public void suitShutdown() {
-        super.close(); // close standalone service
+    @Override
+    protected void cleanup() throws Exception {
+        cleanup();
     }
-
 
     @Test(expectedExceptions = PulsarClientException.class)
     @SneakyThrows
     public void testConnectionFailWithoutCertificate() {
         @Cleanup final PulsarClient client = PulsarClient.builder()
-                .serviceUrl(getPulsarService().getBrokerServiceUrlTls())
+                .serviceUrl(pulsar.getBrokerServiceUrlTls())
                 .build();
         @Cleanup final Producer<byte[]> producer = client.newProducer()
                 .topic("should_be_failed")
@@ -80,20 +102,16 @@ public class TlsWithECKeyStoreTest extends MockedPulsarStandalone {
         clientAuthParams.put("keyStorePassword", TLS_EC_KS_CLIENT_PASS);
         @Cleanup final PulsarAdmin admin = PulsarAdmin.builder()
                 .useKeyStoreTls(true)
-                .tlsKeyStorePath(TLS_EC_KS_CLIENT_STORE)
-                .tlsKeyStorePassword(TLS_EC_KS_CLIENT_PASS)
                 .tlsTrustStorePath(TLS_EC_KS_TRUSTED_STORE)
                 .tlsTrustStorePassword(TLS_EC_KS_TRUSTED_STORE_PASS)
                 .authentication(AuthenticationKeyStoreTls.class.getName(), mapper.writeValueAsString(clientAuthParams))
-                .serviceHttpUrl(getPulsarService().getWebServiceAddressTls())
+                .serviceHttpUrl(pulsar.getWebServiceAddressTls())
                 .build();
         admin.topics().createNonPartitionedTopic(topicName);
         admin.topics().createSubscription(topicName, "sub-1", MessageId.earliest);
         @Cleanup final PulsarClient client = PulsarClient.builder()
-                .serviceUrl(getPulsarService().getBrokerServiceUrlTls())
+                .serviceUrl(pulsar.getBrokerServiceUrlTls())
                 .useKeyStoreTls(true)
-                .tlsKeyStorePath(TLS_EC_KS_CLIENT_STORE)
-                .tlsKeyStorePassword(TLS_EC_KS_CLIENT_PASS)
                 .tlsTrustStorePath(TLS_EC_KS_TRUSTED_STORE)
                 .tlsTrustStorePassword(TLS_EC_KS_TRUSTED_STORE_PASS)
                 .authentication(AuthenticationKeyStoreTls.class.getName(), mapper.writeValueAsString(clientAuthParams))
@@ -118,4 +136,5 @@ public class TlsWithECKeyStoreTest extends MockedPulsarStandalone {
             assertEquals(s, i + "");
         }
     }
+
 }
