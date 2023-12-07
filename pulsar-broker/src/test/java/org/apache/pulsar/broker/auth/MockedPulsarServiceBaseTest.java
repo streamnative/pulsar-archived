@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,11 +26,11 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.io.Resources;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.netty.channel.EventLoopGroup;
-
 import java.io.File;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -47,7 +47,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy;
 import org.apache.bookkeeper.client.PulsarMockBookKeeper;
@@ -84,7 +83,6 @@ import org.awaitility.Awaitility;
 import org.awaitility.reflect.WhiteboxImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testng.annotations.DataProvider;
 
 /**
@@ -100,7 +98,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     protected PulsarAdmin admin;
     protected PulsarClient pulsarClient;
     protected PortForwarder brokerGateway;
-    protected boolean enableBrokerGateway = false;
+    protected boolean enableBrokerGateway =  false;
     protected URL brokerUrl;
     protected URL brokerUrlTls;
 
@@ -241,7 +239,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
             mockZooKeeper.shutdown();
             mockZooKeeper = null;
         }
-        if (sameThreadOrderedSafeExecutor != null) {
+        if(sameThreadOrderedSafeExecutor != null) {
             try {
                 sameThreadOrderedSafeExecutor.shutdownNow();
                 sameThreadOrderedSafeExecutor.awaitTermination(5, TimeUnit.SECONDS);
@@ -251,7 +249,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
             }
             sameThreadOrderedSafeExecutor = null;
         }
-        if (bkExecutor != null) {
+        if(bkExecutor != null) {
             try {
                 bkExecutor.shutdownNow();
                 bkExecutor.awaitTermination(5, TimeUnit.SECONDS);
@@ -400,7 +398,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     }
 
     public static MockZooKeeper createMockZooKeeperGlobal() {
-        return MockZooKeeper.newInstanceForGlobalZK(MoreExecutors.newDirectExecutorService());
+        return  MockZooKeeper.newInstanceForGlobalZK(MoreExecutors.newDirectExecutorService());
     }
 
     public static NonClosableMockBookKeeper createMockBookKeeper(OrderedExecutor executor) throws Exception {
@@ -518,7 +516,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
 
     @DataProvider(name = "invalidPersistentPolicies")
     public Object[][] incorrectPersistentPolicies() {
-        return new Object[][]{
+        return new Object[][] {
                 {0, 0, 0},
                 {1, 0, 0},
                 {0, 0, 1},
@@ -547,7 +545,7 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     /**
      * see {@link MockedPulsarServiceBaseTest#deleteNamespaceWithRetry(String, boolean, PulsarAdmin, Collection)}
      */
-    public static void deleteNamespaceWithRetry(String ns, boolean force, PulsarAdmin admin, PulsarService... pulsars)
+    public static void deleteNamespaceWithRetry(String ns, boolean force, PulsarAdmin admin, PulsarService...pulsars)
             throws Exception {
         deleteNamespaceWithRetry(ns, force, admin, Arrays.asList(pulsars));
     }
