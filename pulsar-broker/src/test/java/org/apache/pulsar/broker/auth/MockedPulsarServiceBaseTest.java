@@ -25,9 +25,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
+import com.google.common.io.Resources;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.netty.channel.EventLoopGroup;
+import java.io.File;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -588,4 +591,44 @@ public abstract class MockedPulsarServiceBaseTest extends TestRetrySupport {
     }
 
     private static final Logger log = LoggerFactory.getLogger(MockedPulsarServiceBaseTest.class);
+
+
+    // EC certificate
+    protected static final String TLS_EC_TRUSTED_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/ca.cert.pem");
+    protected static final String TLS_EC_SERVER_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/server.key-pk8.pem");
+    protected static final String TLS_EC_SERVER_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/server.cert.pem");
+    protected static final String TLS_EC_BROKER_CLIENT_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/broker_client.key-pk8.pem");
+    protected static final String TLS_EC_BROKER_CLIENT_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/broker_client.cert.pem");
+    protected static final String TLS_EC_CLIENT_KEY_PATH =
+            getAbsolutePath("certificate-authority/ec/client.key-pk8.pem");
+    protected static final String TLS_EC_CLIENT_CERT_PATH =
+            getAbsolutePath("certificate-authority/ec/client.cert.pem");
+
+    // EC KeyStore
+    protected static final String TLS_EC_KS_SERVER_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/server.keystore.jks");
+    protected static final String TLS_EC_KS_SERVER_PASS = "serverpw";
+    protected static final String TLS_EC_KS_BROKER_CLIENT_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/broker_client.keystore.jks");
+    protected static final String TLS_EC_KS_BROKER_CLIENT_PASS = "brokerclientpw";
+    protected static final String TLS_EC_KS_CLIENT_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/client.keystore.jks");
+    protected static final String TLS_EC_KS_CLIENT_PASS = "clientpw";
+    protected static final String TLS_EC_KS_TRUSTED_STORE =
+            getAbsolutePath("certificate-authority/ec/jks/ca.truststore.jks");
+    protected static final String TLS_EC_KS_TRUSTED_STORE_PASS = "rootpw";
+
+    public static String getAbsolutePath(String resourceName) {
+        // On Windows, URL#getPath might return a string that starts with a disk name, e.g. "/C:/"
+        // It's invalid to use this path to open a file, so we need to get the absolute path via File.
+        return new File(Resources.getResource(resourceName).getPath()).getAbsolutePath();
+
+    }
+
+    protected static final ObjectMapper mapper = new ObjectMapper();
 }
