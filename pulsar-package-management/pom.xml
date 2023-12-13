@@ -23,7 +23,7 @@
   <parent>
     <artifactId>pulsar</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>3.0.2.1</version>
+    <version>3.0.2.1-rootless</version>
     <relativePath>..</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>

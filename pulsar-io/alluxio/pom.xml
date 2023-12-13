@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar-io</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>3.0.2.1</version>
+    <version>3.0.2.1-rootless</version>
   </parent>
   <properties>
     <alluxio.version>2.7.3</alluxio.version>
