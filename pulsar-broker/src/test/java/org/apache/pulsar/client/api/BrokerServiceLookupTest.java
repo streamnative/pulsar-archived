@@ -155,6 +155,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
         /**** start broker-2 ****/
         ServiceConfiguration conf2 = new ServiceConfiguration();
         conf2.setBrokerShutdownTimeoutMs(0L);
+        conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         conf2.setBrokerServicePort(Optional.of(0));
         conf2.setWebServicePort(Optional.of(0));
         conf2.setAdvertisedAddress("localhost");
@@ -271,6 +272,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
         ServiceConfiguration conf2 = new ServiceConfiguration();
         conf2.setAdvertisedAddress("localhost");
         conf2.setBrokerShutdownTimeoutMs(0L);
+        conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         conf2.setBrokerServicePort(Optional.of(0));
         conf2.setWebServicePort(Optional.of(0));
         conf2.setAdvertisedAddress("localhost");
@@ -364,6 +366,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
         ServiceConfiguration conf2 = new ServiceConfiguration();
         conf2.setAdvertisedAddress("localhost");
         conf2.setBrokerShutdownTimeoutMs(0L);
+        conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         conf2.setBrokerServicePort(Optional.of(0));
         conf2.setWebServicePort(Optional.of(0));
         conf2.setAdvertisedAddress("localhost");
@@ -440,6 +443,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
         /**** start broker-2 ****/
         ServiceConfiguration conf2 = new ServiceConfiguration();
         conf2.setBrokerShutdownTimeoutMs(0L);
+        conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         conf2.setAdvertisedAddress("localhost");
         conf2.setBrokerShutdownTimeoutMs(0L);
         conf2.setBrokerServicePort(Optional.of(0));
@@ -556,6 +560,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
         ServiceConfiguration conf2 = new ServiceConfiguration();
         conf2.setAdvertisedAddress("localhost");
         conf2.setBrokerShutdownTimeoutMs(0L);
+        conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
         conf2.setBrokerServicePort(Optional.of(0));
         conf2.setWebServicePort(Optional.of(0));
         conf2.setAdvertisedAddress("localhost");
@@ -660,6 +665,7 @@ public class BrokerServiceLookupTest extends ProducerConsumerBase {
             // (1) Start broker-1
             ServiceConfiguration conf2 = new ServiceConfiguration();
             conf2.setBrokerShutdownTimeoutMs(0L);
+            conf2.setLoadBalancerOverrideBrokerNicSpeedGbps(Optional.of(1.0d));
             conf2.setAdvertisedAddress("localhost");
             conf2.setBrokerShutdownTimeoutMs(0L);
             conf2.setBrokerServicePort(Optional.of(0));
