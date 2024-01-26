@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative.tests</groupId>
     <artifactId>tests-parent</artifactId>
-    <version>3.0.2.5</version>
+    <version>3.0.2.5-bk4146rc0verify</version>
   </parent>
   <artifactId>pulsar-client-shade-test</artifactId>
   <packaging>jar</packaging>

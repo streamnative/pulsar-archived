@@ -24,7 +24,7 @@
   <parent>
     <artifactId>pulsar-io</artifactId>
     <groupId>io.streamnative</groupId>
-    <version>3.0.2.5</version>
+    <version>3.0.2.5-bk4146rc0verify</version>
   </parent>
   <artifactId>pulsar-io-hbase</artifactId>
   <name>Pulsar IO :: Hbase</name>

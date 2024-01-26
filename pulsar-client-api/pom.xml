@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar</artifactId>
-    <version>3.0.2.5</version>
+    <version>3.0.2.5-bk4146rc0verify</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>pulsar-client-api</artifactId>

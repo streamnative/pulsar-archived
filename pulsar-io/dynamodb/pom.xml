@@ -24,7 +24,7 @@
   <parent>
     <groupId>io.streamnative</groupId>
     <artifactId>pulsar-io</artifactId>
-    <version>3.0.2.5</version>
+    <version>3.0.2.5-bk4146rc0verify</version>
   </parent>
   <artifactId>pulsar-io-dynamodb</artifactId>
   <name>Pulsar IO :: DynamoDB</name>
