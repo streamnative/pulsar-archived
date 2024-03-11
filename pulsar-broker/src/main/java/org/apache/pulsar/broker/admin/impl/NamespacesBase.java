@@ -583,12 +583,12 @@ public abstract class NamespacesBase extends AdminResource {
                     Throwable realCause = FutureUtil.unwrapCompletionException(ex);
                     //The IllegalArgumentException and the IllegalStateException were historically thrown by the
                     // grantPermissionAsync method, so we catch them here to ensure backwards compatibility.
-                    if (realCause instanceof MetadataStoreException.NotFoundException
+                    if (realCause instanceof NotFoundException
                             || realCause instanceof IllegalArgumentException) {
                         log.warn("[{}] Failed to set permissions for namespace {}: does not exist", clientAppId(),
                                 namespaceName, ex);
                         throw new RestException(Status.NOT_FOUND, "Topic's namespace does not exist");
-                    } else if (realCause instanceof MetadataStoreException.BadVersionException
+                    } else if (realCause instanceof BadVersionException
                             || realCause instanceof IllegalStateException) {
                         log.warn("[{}] Failed to set permissions for namespace {}: {}",
                                 clientAppId(), namespaceName, ex.getCause().getMessage(), ex);
@@ -920,7 +920,7 @@ public abstract class NamespacesBase extends AdminResource {
         if (currentLeaderOpt.isEmpty()) {
             String errorStr = "The current leader is empty.";
             log.error(errorStr);
-            return FutureUtil.failedFuture(new RestException(Response.Status.PRECONDITION_FAILED, errorStr));
+            return FutureUtil.failedFuture(new RestException(Status.PRECONDITION_FAILED, errorStr));
         }
         LeaderBroker leaderBroker = pulsar().getLeaderElectionService().getCurrentLeader().get();
         String leaderBrokerId = leaderBroker.getBrokerId();
@@ -931,7 +931,7 @@ public abstract class NamespacesBase extends AdminResource {
                             : lookupResult.getLookupData().getHttpUrl();
                     if (redirectUrl == null) {
                         log.error("Redirected broker's service url is not configured");
-                        return FutureUtil.failedFuture(new RestException(Response.Status.PRECONDITION_FAILED,
+                        return FutureUtil.failedFuture(new RestException(Status.PRECONDITION_FAILED,
                                 "Redirected broker's service url is not configured."));
                     }
 
@@ -1331,7 +1331,7 @@ public abstract class NamespacesBase extends AdminResource {
             }
             boolean passCheck = checkBacklogQuota(needCheckQuota, retentionPolicies);
             if (!passCheck) {
-                throw new RestException(Response.Status.PRECONDITION_FAILED,
+                throw new RestException(Status.PRECONDITION_FAILED,
                         "Backlog Quota exceeds configured retention quota for namespace."
                                 + " Please increase retention quota and retry");
             }
@@ -1763,7 +1763,7 @@ public abstract class NamespacesBase extends AdminResource {
     }
 
     private boolean checkQuotas(Policies policies, RetentionPolicies retention) {
-        Map<BacklogQuota.BacklogQuotaType, BacklogQuota> backlogQuotaMap = policies.backlog_quota_map;
+        Map<BacklogQuotaType, BacklogQuota> backlogQuotaMap = policies.backlog_quota_map;
         if (backlogQuotaMap.isEmpty()) {
             return true;
         }
@@ -2339,102 +2339,110 @@ public abstract class NamespacesBase extends AdminResource {
    }
 
    protected void internalSetProperty(String key, String value, AsyncResponse asyncResponse) {
-       validatePoliciesReadOnlyAccess();
-       updatePoliciesAsync(namespaceName, policies -> {
-           policies.properties.put(key, value);
-           return policies;
-       }).thenAccept(v -> {
-           log.info("[{}] Successfully set property for key {} on namespace {}", clientAppId(), key,
-                   namespaceName);
-           asyncResponse.resume(Response.noContent().build());
-       }).exceptionally(ex -> {
-           Throwable cause = ex.getCause();
-           log.error("[{}] Failed to set property for key {} on namespace {}", clientAppId(), key,
-                   namespaceName, cause);
-           asyncResponse.resume(cause);
-           return null;
-       });
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.WRITE)
+               .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
+               .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
+                   policies.properties.put(key, value);
+                   return policies;
+               }))
+               .thenAccept(v -> {
+                   log.info("[{}] Successfully set property for key {} on namespace {}", clientAppId(), key,
+                           namespaceName);
+                   asyncResponse.resume(Response.noContent().build());
+               }).exceptionally(ex -> {
+                   Throwable cause = ex.getCause();
+                   log.error("[{}] Failed to set property for key {} on namespace {}", clientAppId(), key,
+                           namespaceName, cause);
+                   asyncResponse.resume(cause);
+                   return null;
+               });
    }
 
    protected void internalSetProperties(Map<String, String> properties, AsyncResponse asyncResponse) {
-       validatePoliciesReadOnlyAccess();
-       updatePoliciesAsync(namespaceName, policies -> {
-           policies.properties.putAll(properties);
-           return policies;
-       }).thenAccept(v -> {
-           log.info("[{}] Successfully set {} properties on namespace {}", clientAppId(), properties.size(),
-                   namespaceName);
-           asyncResponse.resume(Response.noContent().build());
-       }).exceptionally(ex -> {
-           Throwable cause = ex.getCause();
-           log.error("[{}] Failed to set {} properties on namespace {}", clientAppId(), properties.size(),
-                   namespaceName, cause);
-           asyncResponse.resume(cause);
-           return null;
-       });
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.WRITE)
+               .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
+               .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
+                   policies.properties.putAll(properties);
+                   return policies;
+               }))
+               .thenAccept(v -> {
+                    log.info("[{}] Successfully set {} properties on namespace {}", clientAppId(), properties.size(),
+                    namespaceName);
+                    asyncResponse.resume(Response.noContent().build());
+               }).exceptionally(ex -> {
+                   Throwable cause = ex.getCause();
+                   log.error("[{}] Failed to set {} properties on namespace {}", clientAppId(), properties.size(),
+                           namespaceName, cause);
+                   asyncResponse.resume(cause);
+                   return null;
+               });
    }
 
    protected void internalGetProperty(String key, AsyncResponse asyncResponse) {
-        getNamespacePoliciesAsync(namespaceName).thenAccept(policies -> {
-            asyncResponse.resume(policies.properties.get(key));
-        }).exceptionally(ex -> {
-            Throwable cause = ex.getCause();
-            log.error("[{}] Failed to get property for key {} of namespace {}", clientAppId(), key,
-                    namespaceName, cause);
-            asyncResponse.resume(cause);
-            return null;
-        });
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.READ)
+               .thenCompose(__ -> getNamespacePoliciesAsync(namespaceName))
+               .thenAccept(policies -> asyncResponse.resume(policies.properties.get(key)))
+               .exceptionally(ex -> {
+                    Throwable cause = ex.getCause();
+                    log.error("[{}] Failed to get property for key {} of namespace {}", clientAppId(), key,
+                            namespaceName, cause);
+                    asyncResponse.resume(cause);
+                    return null;
+                });
    }
 
    protected void internalGetProperties(AsyncResponse asyncResponse) {
-       getNamespacePoliciesAsync(namespaceName).thenAccept(policies -> {
-           asyncResponse.resume(policies.properties);
-       }).exceptionally(ex -> {
-           Throwable cause = ex.getCause();
-           log.error("[{}] Failed to get properties of namespace {}", clientAppId(), namespaceName, cause);
-           asyncResponse.resume(cause);
-           return null;
-       });
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.READ)
+               .thenCompose(__ -> getNamespacePoliciesAsync(namespaceName))
+               .thenAccept(policies -> asyncResponse.resume(policies.properties))
+               .exceptionally(ex -> {
+                   Throwable cause = ex.getCause();
+                   log.error("[{}] Failed to get properties of namespace {}", clientAppId(), namespaceName, cause);
+                   asyncResponse.resume(cause);
+                   return null;
+                });
    }
 
    protected void internalRemoveProperty(String key, AsyncResponse asyncResponse) {
-       validatePoliciesReadOnlyAccess();
-
        AtomicReference<String> oldVal = new AtomicReference<>(null);
-       updatePoliciesAsync(namespaceName, policies -> {
-           oldVal.set(policies.properties.remove(key));
-           return policies;
-       }).thenAccept(v -> {
-           asyncResponse.resume(oldVal.get());
-           log.info("[{}] Successfully remove property for key {} on namespace {}", clientAppId(), key,
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.WRITE)
+               .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
+               .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
+                   oldVal.set(policies.properties.remove(key));
+                   return policies;
+               })).thenAccept(v -> {
+                    asyncResponse.resume(oldVal.get());
+                    log.info("[{}] Successfully remove property for key {} on namespace {}", clientAppId(), key,
                    namespaceName);
-       }).exceptionally(ex -> {
-           Throwable cause = ex.getCause();
-           log.error("[{}] Failed to remove property for key {} on namespace {}", clientAppId(), key,
-                   namespaceName, cause);
-           asyncResponse.resume(cause);
-          return null;
-       });
-   }
+                }).exceptionally(ex -> {
+                   Throwable cause = ex.getCause();
+                   log.error("[{}] Failed to remove property for key {} on namespace {}", clientAppId(), key,
+                           namespaceName, cause);
+                   asyncResponse.resume(cause);
+                  return null;
+                });
+    }
 
    protected void internalClearProperties(AsyncResponse asyncResponse) {
-       validatePoliciesReadOnlyAccess();
        AtomicReference<Integer> clearedCount = new AtomicReference<>(0);
-       updatePoliciesAsync(namespaceName, policies -> {
-           clearedCount.set(policies.properties.size());
-           policies.properties.clear();
-           return policies;
-       }).thenAccept(v -> {
-           asyncResponse.resume(Response.noContent().build());
-           log.info("[{}] Successfully clear {} properties on namespace {}", clientAppId(), clearedCount.get(),
-                   namespaceName);
-       }).exceptionally(ex -> {
-           Throwable cause = ex.getCause();
-           log.error("[{}] Failed to clear {} properties on namespace {}", clientAppId(), clearedCount.get(),
-                   namespaceName, cause);
-           asyncResponse.resume(cause);
-           return null;
-       });
+       validateNamespacePolicyOperationAsync(namespaceName, PolicyName.PROPERTY, PolicyOperation.WRITE)
+               .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
+               .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
+                   clearedCount.set(policies.properties.size());
+                   policies.properties.clear();
+                   return policies;
+               }))
+               .thenAccept(v -> {
+                   asyncResponse.resume(Response.noContent().build());
+                   log.info("[{}] Successfully clear {} properties on namespace {}", clientAppId(), clearedCount.get(),
+                           namespaceName);
+               }).exceptionally(ex -> {
+                   Throwable cause = ex.getCause();
+                   log.error("[{}] Failed to clear {} properties on namespace {}", clientAppId(), clearedCount.get(),
+                           namespaceName, cause);
+                   asyncResponse.resume(cause);
+                   return null;
+               });
    }
 
    private CompletableFuture<Void> updatePoliciesAsync(NamespaceName ns, Function<Policies, Policies> updateFunction) {
@@ -2555,7 +2563,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenApply(policiesOpt -> {
                     if (!policiesOpt.isPresent()) {
-                        throw new RestException(Response.Status.NOT_FOUND, "Namespace policies does not exist");
+                        throw new RestException(Status.NOT_FOUND, "Namespace policies does not exist");
                     }
                     String clusterName = pulsar().getConfiguration().getClusterName();
                     return policiesOpt.get().replicatorDispatchRate.get(clusterName);
@@ -2598,7 +2606,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenAccept(policiesOpt -> {
                     Map<BacklogQuotaType, BacklogQuota> backlogQuotaMap = policiesOpt.orElseThrow(() ->
-                            new RestException(Response.Status.NOT_FOUND, "Namespace does not exist"))
+                            new RestException(Status.NOT_FOUND, "Namespace does not exist"))
                             .backlog_quota_map;
                     asyncResponse.resume(backlogQuotaMap);
                 })
@@ -2696,7 +2704,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenApply(policiesOpt -> {
                     if (!policiesOpt.isPresent()) {
-                        throw new RestException(Response.Status.NOT_FOUND, "Namespace policies does not exist");
+                        throw new RestException(Status.NOT_FOUND, "Namespace policies does not exist");
                     }
                     return policiesOpt.map(p -> p.dispatcherPauseOnAckStatePersistentEnabled).orElse(false);
                 });
