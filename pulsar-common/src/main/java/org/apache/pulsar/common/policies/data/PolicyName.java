@@ -53,6 +53,5 @@ public enum PolicyName {
     ENTRY_FILTERS,
     SHADOW_TOPIC,
     DISPATCHER_PAUSE_ON_ACK_STATE_PERSISTENT,
-
     PROPERTY,
 }
