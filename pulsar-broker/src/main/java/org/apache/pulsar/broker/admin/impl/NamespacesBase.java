@@ -583,12 +583,12 @@ public abstract class NamespacesBase extends AdminResource {
                     Throwable realCause = FutureUtil.unwrapCompletionException(ex);
                     //The IllegalArgumentException and the IllegalStateException were historically thrown by the
                     // grantPermissionAsync method, so we catch them here to ensure backwards compatibility.
-                    if (realCause instanceof NotFoundException
+                    if (realCause instanceof MetadataStoreException.NotFoundException
                             || realCause instanceof IllegalArgumentException) {
                         log.warn("[{}] Failed to set permissions for namespace {}: does not exist", clientAppId(),
                                 namespaceName, ex);
                         throw new RestException(Status.NOT_FOUND, "Topic's namespace does not exist");
-                    } else if (realCause instanceof BadVersionException
+                    } else if (realCause instanceof MetadataStoreException.BadVersionException
                             || realCause instanceof IllegalStateException) {
                         log.warn("[{}] Failed to set permissions for namespace {}: {}",
                                 clientAppId(), namespaceName, ex.getCause().getMessage(), ex);
@@ -920,7 +920,7 @@ public abstract class NamespacesBase extends AdminResource {
         if (currentLeaderOpt.isEmpty()) {
             String errorStr = "The current leader is empty.";
             log.error(errorStr);
-            return FutureUtil.failedFuture(new RestException(Status.PRECONDITION_FAILED, errorStr));
+            return FutureUtil.failedFuture(new RestException(Response.Status.PRECONDITION_FAILED, errorStr));
         }
         LeaderBroker leaderBroker = pulsar().getLeaderElectionService().getCurrentLeader().get();
         String leaderBrokerId = leaderBroker.getBrokerId();
@@ -931,7 +931,7 @@ public abstract class NamespacesBase extends AdminResource {
                             : lookupResult.getLookupData().getHttpUrl();
                     if (redirectUrl == null) {
                         log.error("Redirected broker's service url is not configured");
-                        return FutureUtil.failedFuture(new RestException(Status.PRECONDITION_FAILED,
+                        return FutureUtil.failedFuture(new RestException(Response.Status.PRECONDITION_FAILED,
                                 "Redirected broker's service url is not configured."));
                     }
 
@@ -1331,7 +1331,7 @@ public abstract class NamespacesBase extends AdminResource {
             }
             boolean passCheck = checkBacklogQuota(needCheckQuota, retentionPolicies);
             if (!passCheck) {
-                throw new RestException(Status.PRECONDITION_FAILED,
+                throw new RestException(Response.Status.PRECONDITION_FAILED,
                         "Backlog Quota exceeds configured retention quota for namespace."
                                 + " Please increase retention quota and retry");
             }
@@ -1763,7 +1763,7 @@ public abstract class NamespacesBase extends AdminResource {
     }
 
     private boolean checkQuotas(Policies policies, RetentionPolicies retention) {
-        Map<BacklogQuotaType, BacklogQuota> backlogQuotaMap = policies.backlog_quota_map;
+        Map<BacklogQuota.BacklogQuotaType, BacklogQuota> backlogQuotaMap = policies.backlog_quota_map;
         if (backlogQuotaMap.isEmpty()) {
             return true;
         }
@@ -2339,7 +2339,7 @@ public abstract class NamespacesBase extends AdminResource {
    }
 
    protected void internalSetProperty(String key, String value, AsyncResponse asyncResponse) {
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
                .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
                    policies.properties.put(key, value);
@@ -2359,7 +2359,7 @@ public abstract class NamespacesBase extends AdminResource {
    }
 
    protected void internalSetProperties(Map<String, String> properties, AsyncResponse asyncResponse) {
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
                .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
                    policies.properties.putAll(properties);
@@ -2379,7 +2379,7 @@ public abstract class NamespacesBase extends AdminResource {
    }
 
    protected void internalGetProperty(String key, AsyncResponse asyncResponse) {
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> getNamespacePoliciesAsync(namespaceName))
                .thenAccept(policies -> asyncResponse.resume(policies.properties.get(key)))
                .exceptionally(ex -> {
@@ -2392,7 +2392,7 @@ public abstract class NamespacesBase extends AdminResource {
    }
 
    protected void internalGetProperties(AsyncResponse asyncResponse) {
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> getNamespacePoliciesAsync(namespaceName))
                .thenAccept(policies -> asyncResponse.resume(policies.properties))
                .exceptionally(ex -> {
@@ -2405,7 +2405,7 @@ public abstract class NamespacesBase extends AdminResource {
 
    protected void internalRemoveProperty(String key, AsyncResponse asyncResponse) {
        AtomicReference<String> oldVal = new AtomicReference<>(null);
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
                .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
                    oldVal.set(policies.properties.remove(key));
@@ -2425,7 +2425,7 @@ public abstract class NamespacesBase extends AdminResource {
 
    protected void internalClearProperties(AsyncResponse asyncResponse) {
        AtomicReference<Integer> clearedCount = new AtomicReference<>(0);
-       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.DELETE_NAMESPACE)
+       validateTenantOperationAsync(namespaceName.getTenant(), TenantOperation.CREATE_NAMESPACE)
                .thenCompose(__ -> validatePoliciesReadOnlyAccessAsync())
                .thenCompose(__ -> updatePoliciesAsync(namespaceName, policies -> {
                    clearedCount.set(policies.properties.size());
@@ -2455,11 +2455,12 @@ public abstract class NamespacesBase extends AdminResource {
            .exceptionally(ex -> {
                Throwable cause = ex.getCause();
                if (cause instanceof NotFoundException) {
-                   result.completeExceptionally(new RestException(Status.NOT_FOUND, "Namespace does not exist"));
+                   result.completeExceptionally(new RestException(Response.Status.NOT_FOUND,
+                           "Namespace does not exist"));
                } else if (cause instanceof BadVersionException) {
                    log.warn("[{}] Failed to update the replication clusters on"
                                    + " namespace {} : concurrent modification", clientAppId(), namespaceName);
-                   result.completeExceptionally(new RestException(Status.CONFLICT, "Concurrent modification"));
+                   result.completeExceptionally(new RestException(Response.Status.CONFLICT, "Concurrent modification"));
                } else {
                    log.error("[{}] Failed to update namespace policies {}", clientAppId(), namespaceName, cause);
                    result.completeExceptionally(new RestException(cause));
@@ -2704,7 +2705,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenApply(policiesOpt -> {
                     if (!policiesOpt.isPresent()) {
-                        throw new RestException(Status.NOT_FOUND, "Namespace policies does not exist");
+                        throw new RestException(Response.Status.NOT_FOUND, "Namespace policies does not exist");
                     }
                     return policiesOpt.map(p -> p.dispatcherPauseOnAckStatePersistentEnabled).orElse(false);
                 });
