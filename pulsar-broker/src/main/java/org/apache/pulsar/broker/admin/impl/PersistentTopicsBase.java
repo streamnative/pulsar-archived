@@ -822,15 +822,13 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalUnloadTopic(AsyncResponse asyncResponse, boolean authoritative) {
         log.info("[{}] Unloading topic {}", clientAppId(), topicName);
-        CompletableFuture<Void> future;
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.UNLOAD);
         if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
+            future = future.thenCompose(__ -> validateGlobalNamespaceOwnershipAsync(namespaceName));
         } else {
-            future = CompletableFuture.completedFuture(null);
+            future = future.thenCompose(__ -> CompletableFuture.completedFuture(null));
         }
-        future
-        .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.UNLOAD))
-        .thenAccept(__ -> {
+        future.thenAccept(__ -> {
            // If the topic name is a partition name, no need to get partition topic metadata again
            if (topicName.isPartitioned()) {
                if (isTransactionCoordinatorAssign(topicName)) {
@@ -5037,8 +5035,8 @@ public class PersistentTopicsBase extends AdminResource {
     }
 
     protected CompletableFuture<Void> internalTruncateNonPartitionedTopicAsync(boolean authoritative) {
-        return validateTopicOwnershipAsync(topicName, authoritative)
-            .thenCompose(__ -> validateAdminAccessForTenantAsync(topicName.getTenant()))
+        return validateAdminAccessForTenantAsync(topicName.getTenant())
+            .thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
             .thenCompose(__ -> getTopicReferenceAsync(topicName))
             .thenCompose(Topic::truncate);
     }
