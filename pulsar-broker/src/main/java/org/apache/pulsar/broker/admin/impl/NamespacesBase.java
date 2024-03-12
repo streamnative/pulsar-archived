@@ -2455,12 +2455,11 @@ public abstract class NamespacesBase extends AdminResource {
            .exceptionally(ex -> {
                Throwable cause = ex.getCause();
                if (cause instanceof NotFoundException) {
-                   result.completeExceptionally(new RestException(Response.Status.NOT_FOUND,
-                           "Namespace does not exist"));
+                   result.completeExceptionally(new RestException(Status.NOT_FOUND, "Namespace does not exist"));
                } else if (cause instanceof BadVersionException) {
                    log.warn("[{}] Failed to update the replication clusters on"
                                    + " namespace {} : concurrent modification", clientAppId(), namespaceName);
-                   result.completeExceptionally(new RestException(Response.Status.CONFLICT, "Concurrent modification"));
+                   result.completeExceptionally(new RestException(Status.CONFLICT, "Concurrent modification"));
                } else {
                    log.error("[{}] Failed to update namespace policies {}", clientAppId(), namespaceName, cause);
                    result.completeExceptionally(new RestException(cause));
@@ -2564,7 +2563,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenApply(policiesOpt -> {
                     if (!policiesOpt.isPresent()) {
-                        throw new RestException(Status.NOT_FOUND, "Namespace policies does not exist");
+                        throw new RestException(Response.Status.NOT_FOUND, "Namespace policies does not exist");
                     }
                     String clusterName = pulsar().getConfiguration().getClusterName();
                     return policiesOpt.get().replicatorDispatchRate.get(clusterName);
@@ -2607,7 +2606,7 @@ public abstract class NamespacesBase extends AdminResource {
                 .thenCompose(__ -> namespaceResources().getPoliciesAsync(namespaceName))
                 .thenAccept(policiesOpt -> {
                     Map<BacklogQuotaType, BacklogQuota> backlogQuotaMap = policiesOpt.orElseThrow(() ->
-                            new RestException(Status.NOT_FOUND, "Namespace does not exist"))
+                            new RestException(Response.Status.NOT_FOUND, "Namespace does not exist"))
                             .backlog_quota_map;
                     asyncResponse.resume(backlogQuotaMap);
                 })
