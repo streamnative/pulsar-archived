@@ -823,12 +823,12 @@ public class PersistentTopicsBase extends AdminResource {
     protected void internalUnloadTopic(AsyncResponse asyncResponse, boolean authoritative) {
         log.info("[{}] Unloading topic {}", clientAppId(), topicName);
         CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.UNLOAD);
-        if (topicName.isGlobal()) {
-            future = future.thenCompose(__ -> validateGlobalNamespaceOwnershipAsync(namespaceName));
-        } else {
-            future = future.thenCompose(__ -> CompletableFuture.completedFuture(null));
-        }
-        future.thenAccept(__ -> {
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenAccept(__ -> {
            // If the topic name is a partition name, no need to get partition topic metadata again
            if (topicName.isPartitioned()) {
                if (isTransactionCoordinatorAssign(topicName)) {
@@ -1048,13 +1048,12 @@ public class PersistentTopicsBase extends AdminResource {
 
     private void internalUnloadNonPartitionedTopicAsync(AsyncResponse asyncResponse, boolean authoritative) {
         validateTopicOwnershipAsync(topicName, authoritative)
-                .thenCompose(unused -> validateTopicOperationAsync(topicName, TopicOperation.UNLOAD)
                         .thenCompose(__ -> getTopicReferenceAsync(topicName))
                         .thenCompose(topic -> topic.close(false))
                         .thenRun(() -> {
                             log.info("[{}] Successfully unloaded topic {}", clientAppId(), topicName);
                             asyncResponse.resume(Response.noContent().build());
-                        }))
+                        })
                 .exceptionally(ex -> {
                     // If the exception is not redirect exception we need to log it.
                     if (!isNot307And404Exception(ex)) {
@@ -1067,7 +1066,6 @@ public class PersistentTopicsBase extends AdminResource {
 
     private void internalUnloadTransactionCoordinatorAsync(AsyncResponse asyncResponse, boolean authoritative) {
         validateTopicOwnershipAsync(topicName, authoritative)
-                .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.UNLOAD)
                         .thenCompose(v -> pulsar()
                                 .getTransactionMetadataStoreService()
                                 .removeTransactionMetadataStore(
@@ -1076,7 +1074,7 @@ public class PersistentTopicsBase extends AdminResource {
                             log.info("[{}] Successfully unloaded tc {}", clientAppId(),
                                     topicName.getPartitionIndex());
                             asyncResponse.resume(Response.noContent().build());
-                        }))
+                        })
                 .exceptionally(ex -> {
                     // If the exception is not redirect exception we need to log it.
                     if (!isNot307And404Exception(ex)) {
@@ -1284,15 +1282,13 @@ public class PersistentTopicsBase extends AdminResource {
     }
 
     protected void internalGetManagedLedgerInfo(AsyncResponse asyncResponse, boolean authoritative) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-        future
-        .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.GET_STATS))
-        .thenAccept(__ -> {
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.GET_STATS);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenAccept(__ -> {
             // If the topic name is a partition name, no need to get partition topic metadata again
             if (topicName.isPartitioned()) {
                 internalGetManagedLedgerInfoForNonPartitionedTopic(asyncResponse);
@@ -1396,15 +1392,13 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalGetPartitionedStats(AsyncResponse asyncResponse, boolean authoritative, boolean perPartition,
                                                GetStatsOptions getStatsOptions) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-        future
-        .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.GET_STATS))
-        .thenCompose(__ -> getPartitionedTopicMetadataAsync(topicName,
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.GET_STATS);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return  CompletableFuture.completedFuture(null);
+        }).thenCompose(__ -> getPartitionedTopicMetadataAsync(topicName,
                 authoritative, false)).thenAccept(partitionMetadata -> {
             if (partitionMetadata.partitions == 0) {
                 asyncResponse.resume(new RestException(Status.NOT_FOUND,
@@ -1490,14 +1484,14 @@ public class PersistentTopicsBase extends AdminResource {
     }
 
     protected void internalGetPartitionedStatsInternal(AsyncResponse asyncResponse, boolean authoritative) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-        future.thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.GET_STATS))
-              .thenCompose(__ -> getPartitionedTopicMetadataAsync(topicName, authoritative, false))
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.GET_STATS);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            } else {
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenCompose(__ -> getPartitionedTopicMetadataAsync(topicName, authoritative, false))
                 .thenAccept(partitionMetadata -> {
             if (partitionMetadata.partitions == 0) {
                 asyncResponse.resume(new RestException(Status.NOT_FOUND,
@@ -2250,14 +2244,13 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalCreateSubscription(AsyncResponse asyncResponse, String subscriptionName,
             MessageIdImpl messageId, boolean authoritative, boolean replicated, Map<String, String> properties) {
-        CompletableFuture<Void> ret;
-        if (topicName.isGlobal()) {
-            ret = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            ret = CompletableFuture.completedFuture(null);
-        }
-        ret.thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.SUBSCRIBE, subscriptionName))
-           .thenAccept(__ -> {
+        CompletableFuture<Void> ret = validateTopicOperationAsync(topicName, TopicOperation.SUBSCRIBE, subscriptionName);
+        ret.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenAccept(__ -> {
             final MessageIdImpl targetMessageId = messageId == null ? (MessageIdImpl) MessageId.latest : messageId;
             log.info("[{}][{}] Creating subscription {} at message id {} with properties {}", clientAppId(),
                     topicName, subscriptionName, targetMessageId, properties);
@@ -2416,15 +2409,13 @@ public class PersistentTopicsBase extends AdminResource {
     protected void internalUpdateSubscriptionProperties(AsyncResponse asyncResponse, String subName,
                                                         Map<String, String> subscriptionProperties,
                                                         boolean authoritative) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-
-        future.thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
-              .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName))
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
               .thenAccept(__ -> {
             if (topicName.isPartitioned()) {
                 internalUpdateSubscriptionPropertiesForNonPartitionedTopic(asyncResponse, subName,
@@ -2497,15 +2488,13 @@ public class PersistentTopicsBase extends AdminResource {
     protected void internalAnalyzeSubscriptionBacklog(AsyncResponse asyncResponse, String subName,
                                                       Optional<Position> position,
                                                       boolean authoritative) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-
-        future.thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
-                .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName))
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
                 .thenCompose(__ -> {
                     if (topicName.isPartitioned()) {
                         return CompletableFuture.completedFuture(null);
@@ -2537,14 +2526,13 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalGetSubscriptionProperties(AsyncResponse asyncResponse, String subName,
                                                         boolean authoritative) {
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-        future.thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
-            .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName))
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.CONSUME, subName);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            }
+            return CompletableFuture.completedFuture(null);
+        }).thenCompose(__ -> validateTopicOwnershipAsync(topicName, authoritative))
             .thenAccept(__ -> {
             if (topicName.isPartitioned()) {
                 internalGetSubscriptionPropertiesForNonPartitionedTopic(asyncResponse, subName,
@@ -5090,9 +5078,9 @@ public class PersistentTopicsBase extends AdminResource {
 
         // 1.Permission to consume this topic is required
         // 2.Redirect the request to the peer-cluster if the local cluster is not included in the replication clusters
-        CompletableFuture<Void> validateFuture = validateGlobalNamespaceOwnershipAsync(namespaceName)
-            .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.SET_REPLICATED_SUBSCRIPTION_STATUS,
-                    subName));
+        CompletableFuture<Void> validateFuture =
+                validateTopicOperationAsync(topicName, TopicOperation.SET_REPLICATED_SUBSCRIPTION_STATUS, subName)
+            .thenCompose(__ -> validateGlobalNamespaceOwnershipAsync(namespaceName));
 
 
         CompletableFuture<Void> resultFuture;
