@@ -4211,14 +4211,14 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalTriggerCompaction(AsyncResponse asyncResponse, boolean authoritative) {
         log.info("[{}] Trigger compaction on topic {}", clientAppId(), topicName);
-        CompletableFuture<Void> future;
-        if (topicName.isGlobal()) {
-            future = validateGlobalNamespaceOwnershipAsync(namespaceName);
-        } else {
-            future = CompletableFuture.completedFuture(null);
-        }
-        future.thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.COMPACT))
-              .thenAccept(__ -> {
+        CompletableFuture<Void> future = validateTopicOperationAsync(topicName, TopicOperation.COMPACT);
+        future.thenCompose(__ -> {
+            if (topicName.isGlobal()) {
+                return validateGlobalNamespaceOwnershipAsync(namespaceName);
+            } else {
+                return CompletableFuture.completedFuture(null);
+            }
+        }).thenAccept(__ -> {
             // If the topic name is a partition name, no need to get partition topic metadata again
             if (topicName.isPartitioned()) {
                 internalTriggerCompactionNonPartitionedTopic(asyncResponse, authoritative);
@@ -4288,7 +4288,6 @@ public class PersistentTopicsBase extends AdminResource {
 
     protected void internalTriggerCompactionNonPartitionedTopic(AsyncResponse asyncResponse, boolean authoritative) {
         validateTopicOwnershipAsync(topicName, authoritative)
-                .thenCompose(__ -> validateTopicOperationAsync(topicName, TopicOperation.COMPACT))
                 .thenCompose(__ -> getTopicReferenceAsync(topicName))
                 .thenAccept(topic -> {
                     try {

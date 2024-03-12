@@ -80,7 +80,7 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
 
     @SneakyThrows
     @Test
-    public void testUnload() {
+    public void testUnloadAndCompactAndTrim() {
         final String random = UUID.randomUUID().toString();
         final String topic = "persistent://public/default/" + random;
         final String subject =  UUID.randomUUID().toString();
@@ -95,13 +95,29 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
                 .build();
         // test superuser
         superUserAdmin.topics().unload(topic);
+        superUserAdmin.topics().triggerCompaction(topic);
+        superUserAdmin.topics().trimTopic(TopicName.get(topic).getPartition(0).getLocalName());
 
         // test tenant manager
         tenantManagerAdmin.topics().unload(topic);
+        tenantManagerAdmin.topics().triggerCompaction(topic);
+        tenantManagerAdmin.topics().trimTopic(TopicName.get(topic).getPartition(0).getLocalName());
 
         // test nobody
         try {
             subAdmin.topics().unload(topic);
+            Assert.fail("unexpected behaviour");
+        } catch (PulsarAdminException ex) {
+            Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+        }
+        try {
+            subAdmin.topics().triggerCompaction(topic);
+            Assert.fail("unexpected behaviour");
+        } catch (PulsarAdminException ex) {
+            Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+        }
+        try {
+            subAdmin.topics().trimTopic(TopicName.get(topic).getPartition(0).getLocalName());
             Assert.fail("unexpected behaviour");
         } catch (PulsarAdminException ex) {
             Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
@@ -111,6 +127,12 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
             superUserAdmin.topics().grantPermission(topic, subject, Set.of(action));
             try {
                 subAdmin.topics().unload(topic);
+                Assert.fail("unexpected behaviour");
+            } catch (PulsarAdminException ex) {
+                Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+            }
+            try {
+                subAdmin.topics().triggerCompaction(topic);
                 Assert.fail("unexpected behaviour");
             } catch (PulsarAdminException ex) {
                 Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
@@ -336,6 +358,7 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
         }
         superUserAdmin.topics().deletePartitionedTopic(topic, true);
     }
+
 
 
 }
