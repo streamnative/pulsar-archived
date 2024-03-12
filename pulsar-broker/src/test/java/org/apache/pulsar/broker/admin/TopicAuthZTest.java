@@ -97,11 +97,13 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
         superUserAdmin.topics().unload(topic);
         superUserAdmin.topics().triggerCompaction(topic);
         superUserAdmin.topics().trimTopic(TopicName.get(topic).getPartition(0).getLocalName());
+        superUserAdmin.topicPolicies().getSchemaCompatibilityStrategy(topic, false);
 
         // test tenant manager
         tenantManagerAdmin.topics().unload(topic);
         tenantManagerAdmin.topics().triggerCompaction(topic);
         tenantManagerAdmin.topics().trimTopic(TopicName.get(topic).getPartition(0).getLocalName());
+        tenantManagerAdmin.topicPolicies().getSchemaCompatibilityStrategy(topic, false);
 
         // test nobody
         try {
@@ -122,6 +124,12 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
         } catch (PulsarAdminException ex) {
             Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
         }
+        try {
+            subAdmin.topicPolicies().getSchemaCompatibilityStrategy(topic, false);
+            Assert.fail("unexpected behaviour");
+        } catch (PulsarAdminException ex) {
+            Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+        }
 
         for (AuthAction action : AuthAction.values()) {
             superUserAdmin.topics().grantPermission(topic, subject, Set.of(action));
@@ -133,6 +141,18 @@ public final class TopicAuthZTest extends MockedPulsarStandalone {
             }
             try {
                 subAdmin.topics().triggerCompaction(topic);
+                Assert.fail("unexpected behaviour");
+            } catch (PulsarAdminException ex) {
+                Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+            }
+            try {
+                subAdmin.topics().trimTopic(topic);
+                Assert.fail("unexpected behaviour");
+            } catch (PulsarAdminException ex) {
+                Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
+            }
+            try {
+                subAdmin.topicPolicies().getSchemaCompatibilityStrategy(topic, false);
                 Assert.fail("unexpected behaviour");
             } catch (PulsarAdminException ex) {
                 Assert.assertTrue(ex instanceof PulsarAdminException.NotAuthorizedException);
