@@ -76,6 +76,12 @@ public final class NamespaceAuthZTest extends MockedPulsarStandalone {
     @SneakyThrows
     @AfterClass
     public void after() {
+        if (superUserAdmin != null) {
+            superUserAdmin.close();
+        }
+        if (tenantManagerAdmin != null) {
+            tenantManagerAdmin.close();
+        }
         close();
     }
 
